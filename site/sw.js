@@ -1,5 +1,5 @@
 /* v1.5 offline app shell and piano samples. Increment cache version for releases. */
-const CACHE_NAME = 'interval-trainer-pwa-v1.5.0';
+const CACHE_NAME = 'interval-trainer-pwa-v1.6.0';
 const ROOT = self.registration.scope;
 const FILES = [
   './', './index.html', './styles.css', './logic.js', './assets/piano-samples.js',

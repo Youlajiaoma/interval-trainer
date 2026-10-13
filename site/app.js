@@ -193,10 +193,21 @@
     $('submit-answer').classList.toggle('hidden', !settings.confirmAnswer || state.submitted);
     $('submit-answer').disabled = state.selected === null || state.submitted;
   }
+  // Group answers by musical interval family. Single-button rows span the
+  // same full width as both buttons in any pair (including the inter-button gap).
+  // The tritone remains available as an extra final row, without changing the
+  // seven rows explicitly requested for the other twelve intervals.
+  const answerRows = [[0], [1, 2], [3, 4], [5, 7], [8, 9], [10, 11], [12], [6]];
   function drawAnswerButtons() {
     const area = $('answer-grid');
     area.replaceChildren();
-    for (const interval of state.options) {
+    const available = new Map(state.options.map(interval => [interval.semitones, interval]));
+    for (const group of answerRows) {
+      const choices = group.map(semitones => available.get(semitones)).filter(Boolean);
+      if (choices.length === 0) continue;
+      const row = document.createElement('div');
+      row.className = 'answer-row';
+      for (const interval of choices) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'answer-button';
@@ -217,7 +228,9 @@
           else submitAnswer();
         });
       }
-      area.appendChild(b);
+      row.appendChild(b);
+      }
+      area.appendChild(row);
     }
   }
   function updateStats() {
@@ -404,13 +417,6 @@
     $('submit-answer').addEventListener('click', submitAnswer);
     $('reveal-notes').addEventListener('click', revealNotes);
     $('next-question').addEventListener('click', advanceQuestion);
-    document.addEventListener('keydown', e => {
-      if ($('settings-dialog').open || $('stats-dialog').open || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
-      if (e.code === 'Space') { e.preventDefault(); void play('harmonic'); }
-      else if (e.key.toLowerCase() === 'h') void play('hint');
-      else if (e.key.toLowerCase() === 'n') advanceQuestion();
-    });
   }
   setupSettings(); setupInteractions(); newQuestion();
   if (!storage.available) {
