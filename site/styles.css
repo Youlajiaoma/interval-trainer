@@ -29,6 +29,7 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .answer-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .answer-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .answer-row>.answer-button:only-child{grid-column:1 / -1}
+.answer-row.is-triple{grid-template-columns:repeat(3,minmax(0,1fr))}
 .answer-button{min-height:56px;padding:10px 5px;border-radius:10px;background:#1a1d2a;border:1px solid #34374a;color:#e7e5f2;font-size:13px;font-weight:600;transition:background .15s,border-color .15s}
 .answer-button:hover:not(:disabled){background:#26263d;border-color:#9d8ce5}
 .answer-button.selected{background:#332c4f;border-color:#ab99ee;color:#fff}
@@ -197,3 +198,8 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
   .practice-navigation{margin-bottom:14px}
 }
 @media(prefers-reduced-motion:reduce){.home-module{transition:none}}
+
+/* v2.0：减少解释性小字，三全音和纯四、纯五同一行。 */
+.home-module-text{gap:0}
+.stats-interval-name{width:115px}
+@media(max-width:620px){.stats-interval-name{width:92px}.answer-row.is-triple .answer-button{font-size:12px}}

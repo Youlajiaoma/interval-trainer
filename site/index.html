@@ -24,16 +24,16 @@
     </header>
 
     <main class="home-screen" id="home-screen" aria-labelledby="home-title">
-      <div class="home-intro"><h2 id="home-title">选择训练</h2><p>选择一个模块，开始练习</p></div>
+      <div class="home-intro"><h2 id="home-title">选择训练</h2></div>
       <div class="home-modules">
         <button class="home-module" id="home-harmonic" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M14 8v32M25 13v22M36 8v32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="24" r="5" fill="currentColor"/><circle cx="25" cy="24" r="5" fill="currentColor"/><circle cx="36" cy="24" r="5" fill="currentColor"/></svg></span>
-          <span class="home-module-text"><strong>和声音程</strong><small>两个音同时发声</small></span>
+          <span class="home-module-text"><strong>和声音程</strong></span>
           <span class="home-module-arrow" aria-hidden="true">→</span>
         </button>
         <button class="home-module" id="home-melodic" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M12 34V12l22-4v23" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="8" cy="35" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 8 35)"/><ellipse cx="30" cy="32" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 30 32)"/></svg></span>
-          <span class="home-module-text"><strong>旋律音程</strong><small>预录乐器音程 · 上行 / 下行</small></span>
+          <span class="home-module-text"><strong>旋律音程</strong></span>
           <span class="home-module-arrow" aria-hidden="true">→</span>
         </button>
       </div>
@@ -64,18 +64,16 @@
       <section class="answer-section" aria-label="选择音程名称">
         <div class="answer-grid" id="answer-grid"></div>
         <button class="confirm-button hidden" id="submit-answer" type="button" disabled>确认答案</button>
-        <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
+        <div class="sr-only" id="feedback" role="status" aria-live="polite"></div>
         <div class="action-row">
-          <button class="notes-link hidden" id="reveal-notes" type="button" aria-expanded="false">查看音名</button>
-          <button class="next-button is-skip" id="next-question" type="button">跳过 <span aria-hidden="true">→</span></button>
+          <button class="next-button is-skip" id="next-question" type="button">显示答案</button>
         </div>
-        <p id="notes-result" class="notes-result hidden" aria-live="polite"></p>
       </section>
     </main>
   </div>
 
   <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
-    <div class="settings-header"><div><h2 id="settings-title">练习设置</h2><p>音程与音区从下一题生效</p></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
+    <div class="settings-header"><div><h2 id="settings-title">练习设置</h2></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
     <div class="settings-content">
       <section class="settings-section">
         <div class="settings-section-title"><h3>练习哪些音程</h3><span id="enabled-count">已选 13 种</span></div>
@@ -98,9 +96,8 @@
       </section>
       <section class="settings-section stats-entry-section">
         <button type="button" id="open-stats" class="open-stats-button">
-          <span><strong>练习统计</strong><small>进步趋势 · 音程正确率 · 易错分析</small></span><span aria-hidden="true">›</span>
+          <span><strong>练习统计</strong></span><span aria-hidden="true">›</span>
         </button>
-        <p class="review-help">错题会自动融入后续练习；昨天做错的音程，今天会优先出现。无需切换练习模式。</p>
       </section>
       <details class="more-details"><summary>其他</summary><button class="reset-link" id="reset-stats" type="button">清空本次答题统计</button><div id="license-placeholder"></div></details>
     </div>
@@ -118,15 +115,15 @@
           <button id="stats-harmonic" type="button" class="active" aria-pressed="true">和声统计</button>
           <button id="stats-melodic" type="button" aria-pressed="false">旋律统计</button>
         </nav>
-        <div class="stats-intro"><div><h3>练习概览</h3><p>两类音程独立统计 · 仅保存在当前设备</p></div>
+        <div class="stats-intro"><div><h3>练习概览</h3></div>
         <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
         <div id="stats-summary" class="stats-summary-grid"></div>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3><span>每日表现</span></div><div id="stats-trend"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>练习日历</h3><span>最近 7 周</span></div><div id="stats-calendar"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>各音程表现</h3><span>正确 / 总题数</span></div><div id="stats-intervals"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>易混淆音程</h3><span>实际音程 → 误选音程</span></div><div id="stats-confusions"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>自动针对性复习</h3><span>无需手动开启</span></div><div id="stats-review-plan"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>最近答题</h3><span>按时间排序</span></div><div id="stats-history"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3></div><div id="stats-trend"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>练习日历</h3></div><div id="stats-calendar"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>各音程表现</h3></div><div id="stats-intervals"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>易混淆音程</h3></div><div id="stats-confusions"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>自动针对性复习</h3></div><div id="stats-review-plan"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>最近答题</h3></div><div id="stats-history"></div></section>
         <details class="stats-data-details"><summary>数据备份与管理</summary>
           <p>学习记录自动保存到本机 IndexedDB，无需每次手动备份。卸载应用、清除网站数据或更换设备前请导出备份；导入会覆盖现有数据。</p>
           <div class="stats-data-buttons"><button id="export-backup" type="button">导出 JSON 备份</button><button id="import-backup" type="button">导入备份</button><button id="clear-review" type="button" class="danger-text">清空历史</button></div>

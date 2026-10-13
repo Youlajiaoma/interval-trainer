@@ -8,7 +8,7 @@
     { semitones: 3, name: '小三度', short: 'm3', steps: 2 },
     { semitones: 4, name: '大三度', short: 'M3', steps: 2 },
     { semitones: 5, name: '纯四度', short: 'P4', steps: 3 },
-    { semitones: 6, name: '增四度（减五度）', short: 'TT', steps: 3 },
+    { semitones: 6, name: '三全音', short: 'TT', steps: 3 },
     { semitones: 7, name: '纯五度', short: 'P5', steps: 4 },
     { semitones: 8, name: '小六度', short: 'm6', steps: 5 },
     { semitones: 9, name: '大六度', short: 'M6', steps: 5 },

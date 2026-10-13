@@ -32,7 +32,7 @@
   }
   const settings = loadSettings();
   const harmonicReview = window.IntervalReview.createReviewManager(storage);
-  const melodicReview = window.IntervalReview.createReviewManager(storage, window.IntervalPwaStorage.MELODY_KEY);
+  const melodicReview = window.IntervalReview.createReviewManager(storage, window.IntervalPwaStorage.MELODY_KEY, {directional:true});
   let review = settings.mode === 'melodic' ? melodicReview : harmonicReview;
   let statisticsMode = settings.mode;
   const sessions = {harmonic:{questionNo:0,correct:0,answered:0},melodic:{questionNo:0,correct:0,answered:0}};
@@ -42,7 +42,7 @@
   let statsUi = null;
   let hintUsed = false;
   let firstPlayAt = null;
-  const state = { current: null, previous: null, options: [], questionNo: 0, answered: 0, correct: 0, selected: null, submitted: false, notesShown: false, hasPlayed: false, playToken: 0, playingTimeout: null };
+  const state = { current: null, previous: null, options: [], questionNo: 0, answered: 0, correct: 0, selected: null, submitted: false, revealed:false, hasPlayed: false, playToken: 0, playingTimeout: null };
   let audioCtx = null;
   let masterGain = null;
   const buffers = new Map();
@@ -74,7 +74,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'interval-toggle' + (enabled ? ' active' : '');
-      if (melodicUnavailable) { button.disabled = true; button.title = '提供的录音中没有纯一度'; }
+      if (melodicUnavailable) continue;
       button.setAttribute('aria-pressed', String(enabled));
       button.textContent = item.name;
       button.addEventListener('click', () => {
@@ -87,7 +87,7 @@
       area.appendChild(button);
     }
     $('enabled-count').textContent = settings.mode === 'melodic'
-      ? `已选 ${settings.enabled.filter(x => recordedLibrary.intervals[String(x)]).length} 种（缺少纯一度音源）`
+      ? `已选 ${settings.enabled.filter(x => recordedLibrary.intervals[String(x)]).length} 种`
       : `已选 ${settings.enabled.length} 种`;
   }
   function setupSettings() {
@@ -232,11 +232,8 @@
     $('submit-answer').classList.toggle('hidden', !settings.confirmAnswer || state.submitted);
     $('submit-answer').disabled = state.selected === null || state.submitted;
   }
-  // Group answers by musical interval family. Single-button rows span the
-  // same full width as both buttons in any pair (including the inter-button gap).
-  // The tritone remains available as an extra final row, without changing the
-  // seven rows explicitly requested for the other twelve intervals.
-  const answerRows = [[0], [1, 2], [3, 4], [5, 7], [8, 9], [10, 11], [12], [6]];
+  // Triple fourth/tritone/fifth row; the full-width rows remain the same width.
+  const answerRows = [[0], [1, 2], [3, 4], [5, 6, 7], [8, 9], [10, 11], [12]];
   function drawAnswerButtons() {
     const area = $('answer-grid');
     area.replaceChildren();
@@ -245,7 +242,7 @@
       const choices = group.map(semitones => available.get(semitones)).filter(Boolean);
       if (choices.length === 0) continue;
       const row = document.createElement('div');
-      row.className = 'answer-row';
+      row.className = 'answer-row' + (choices.length===3 ? ' is-triple' : '');
       for (const interval of choices) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -257,14 +254,14 @@
       if (state.submitted) {
         b.disabled = true;
         const correct = interval.semitones === state.current.semitones;
-        if ((settings.showAnswer && correct) || (selected && correct)) b.classList.add('correct-answer');
+        if ((settings.showAnswer || state.revealed) && correct || (selected && correct)) b.classList.add('correct-answer');
         if (selected && !correct) b.classList.add('wrong-answer');
       } else {
         if (selected) b.classList.add('selected');
         b.addEventListener('click', () => {
           state.selected = interval.semitones;
           if (settings.confirmAnswer) { drawAnswerButtons(); renderAnswerCaption(); }
-          else submitAnswer();
+          else submitAnswer(false);
         });
       }
       row.appendChild(b);
@@ -296,10 +293,9 @@
     }
     return logic.eligibleIntervals(settings.enabled,settings.low,settings.high).map(i=>i.semitones);
   }
-  function makeRecordedQuestion(semitones) {
+  function makeRecordedQuestion(semitones, direction) {
     const group = recordedLibrary.intervals[String(semitones)];
     if (!group) return null;
-    const direction = Math.random() < .5 ? 'up' : 'down';
     const timbre = recordedInstruments[Math.floor(Math.random() * recordedInstruments.length)];
     const asset = group[direction][timbre];
     if (!asset) throw Error(`录音缺失：${semitones}/${direction}/${timbre}`);
@@ -310,80 +306,57 @@
   function newQuestion() {
     const candidates=eligibleForCurrentMode();
     if(!candidates.length) {toast(settings.mode==='melodic' ? '请至少启用一种有录音的音程' : '音区过窄，无法生成当前音程');return false;}
-    const chosen=review.choose(candidates,state.previous?.semitones);
+    const chosen=settings.mode==='melodic'
+      ? review.choose(candidates,state.previous ? `${state.previous.semitones}:${state.previous.direction===1?'up':'down'}` : null)
+      : review.choose(candidates,state.previous?.semitones);
     const result=settings.mode==='melodic' ?
-      makeRecordedQuestion(chosen) :
+      makeRecordedQuestion(Number(chosen.split(':')[0]),chosen.split(':')[1]) :
       logic.makeQuestion([chosen],settings.low,settings.high,state.previous);
     if(!result) {toast('无法生成符合当前设置的音程');return false;}
     stopVoices();
     if(settings.mode!=='melodic') result.timbre='piano';
     state.current=result;state.previous=result;currentQuestionMode=settings.mode;
     sessions[settings.mode].questionNo++;
-    state.selected=null;state.submitted=false;state.notesShown=false;state.hasPlayed=false;
+    state.selected=null;state.submitted=false;state.revealed=false;state.hasPlayed=false;
     hintUsed=false;firstPlayAt=null;
     state.options=logic.INTERVALS.filter(i=>candidates.includes(i.semitones));
-    $('feedback').className='feedback hidden';$('feedback').textContent='';
-    $('notes-result').classList.add('hidden');$('notes-result').textContent='';
-    $('reveal-notes').classList.add('hidden');$('reveal-notes').textContent=settings.mode==='melodic'?'查看本题信息':'查看音名';
-    $('reveal-notes').setAttribute('aria-expanded','false');
-    $('next-question').innerHTML='跳过 <span aria-hidden="true">→</span>';
+    $('feedback').textContent='';
+    $('next-question').textContent='显示答案';
     $('next-question').classList.add('is-skip');$('play-label').textContent='播放';
     setAudioStatus('');renderAnswerCaption();drawAnswerButtons();updateStats();
     return true;
   }
   function renderFeedback() {
-    const correct = state.selected === state.current.semitones;
-    const el = $('feedback');
-    el.className = 'feedback ' + (correct ? 'success' : 'error');
-    const mark = correct ? '✓' : '✕';
-    const result = correct ? '回答正确' : '回答错误';
-    el.textContent = `${mark} ${result}${settings.showAnswer ? ` · ${correct ? state.current.name : `正确答案：${state.current.name}`}` : ''}`;
+    // 只通过答案按钮颜色显示结果。隐藏文本供屏幕阅读器使用。
+    $('feedback').textContent = state.revealed ? '已显示答案，计为错误' :
+      (state.selected === state.current.semitones ? '正确' : '错误');
     drawAnswerButtons();
   }
-  function submitAnswer() {
-    if (state.submitted || state.selected === null || !state.current) return;
+  function submitAnswer(revealed = false) {
+    if (state.submitted || !state.current || (!revealed && state.selected === null)) return;
     state.submitted = true;
-    sessions[settings.mode].answered++;
-    if (state.selected === state.current.semitones) sessions[settings.mode].correct++;
+    state.revealed = Boolean(revealed);
+    if (state.revealed) state.selected = null;
+    const session = sessions[settings.mode];
+    session.answered++;
+    if (!state.revealed && state.selected === state.current.semitones) session.correct++;
     review.record({ actual: state.current.semitones, chosen: state.selected,
-      hinted: hintUsed, low: state.current.low, high: state.current.high,
+      revealed: state.revealed, hinted: hintUsed,
+      low: state.current.low, high: state.current.high,
       direction: settings.mode === 'melodic' ? state.current.direction : null,
       firstMode: settings.mode === 'melodic' ? 'user-recording' : null,
       timbre: settings.mode === 'melodic' ? state.current.timbre : null,
       responseMs: firstPlayAt === null ? null : Math.max(0, Date.now() - firstPlayAt) });
     if (!review.storageAvailable) toast('当前设备无法持久保存学习记录，请检查存储权限');
     renderFeedback(); updateStats(); renderAnswerCaption();
-    $('reveal-notes').classList.remove('hidden');
     $('next-question').innerHTML = '下一题 <span aria-hidden="true">→</span>';
     $('next-question').classList.remove('is-skip');
   }
-  function revealNotes() {
-    if (!state.submitted || !state.current) return;
-    state.notesShown = !state.notesShown;
-    const el = $('notes-result');
-    if (state.notesShown) {
-      el.replaceChildren();
-      if (settings.mode === 'melodic') {
-        // These user-supplied complete recordings have no reliable note-name metadata.
-        el.textContent = `本题录音：${state.current.direction===1?'上行':'下行'} · ${timbreNames[state.current.timbre]} · ${state.current.name}。原始音源未标注两个音的具体音名。`;
-      } else {
-        const [lo, hi] = state.current.notes;
-        el.append('低音 ');
-        const lowStrong = document.createElement('strong'); lowStrong.textContent = lo;
-        el.append(lowStrong, '  +  高音 ');
-        const highStrong = document.createElement('strong'); highStrong.textContent = hi;
-        el.append(highStrong, `  ·  相差 ${state.current.semitones} 个半音`);
-      }
-      el.classList.remove('hidden');
-      $('reveal-notes').textContent = '收起本题信息';
-    } else {
-      el.classList.add('hidden');
-      $('reveal-notes').textContent = settings.mode==='melodic'?'查看本题信息':'查看音名';
-    }
-    $('reveal-notes').setAttribute('aria-expanded', String(state.notesShown));
-  }
   function advanceQuestion() {
-    if (state.current && !state.submitted) review.skip();
+    if (state.current && !state.submitted) {
+      submitAnswer(true);
+      return;
+    }
     if (newQuestion() && settings.autoPlayNext) void play('main');
   }
   async function getAudioContext() {
@@ -541,11 +514,39 @@
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
     syncModeControls();
     $('hint').addEventListener('click', () => play('hint'));
-    $('submit-answer').addEventListener('click', submitAnswer);
-    $('reveal-notes').addEventListener('click', revealNotes);
+    $('submit-answer').addEventListener('click', () => submitAnswer(false));
     $('next-question').addEventListener('click', advanceQuestion);
   }
-  setupSettings(); setupInteractions(); showHome();
+  function setupBackProtection() {
+    // Installed PWA: reserve one same-URL history entry for Android system Back.
+    // No local storage deletion; hardware Back from practice navigates HOME.
+    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || navigator.standalone === true;
+    if (!standalone || !window.history?.pushState) return;
+    const marker = {intervalTrainerGuard:true};
+    let lastBack = 0;
+    history.pushState(marker, '', location.href);
+    window.addEventListener('popstate', () => {
+      if ($('stats-dialog').open) {
+        $('stats-dialog').close();
+      } else if ($('settings-dialog').open) {
+        $('settings-dialog').close();
+      } else if (currentScreen === 'practice') {
+        showHome();
+        lastBack = Date.now();
+        toast('再按一次返回退出');
+      } else if (Date.now() - lastBack < 2200) {
+        // Do not insert another guard. The next Back leaves the installed app.
+        history.back();
+        return;
+      } else {
+        lastBack = Date.now();
+        toast('再按一次返回退出');
+      }
+      history.pushState(marker, '', location.href);
+    });
+  }
+  setupSettings(); setupInteractions(); showHome(); setupBackProtection();
   if (!storage.available) {
     toast('当前浏览器无法保存练习数据。请使用 HTTPS 安装应用，或检查存储权限。');
   } else if (storage.migrated) {

@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const $=id=>document.getElementById(id);
-  const names=['纯一度','小二度','大二度','小三度','大三度','纯四度','增四度（减五度）','纯五度','小六度','大六度','小七度','大七度','纯八度'];
+  const names=['纯一度','小二度','大二度','小三度','大三度','纯四度','三全音','纯五度','小六度','大六度','小七度','大七度','纯八度'];
   const fmtPct=(correct,total)=>total?Math.round(100*correct/total)+'%':'—';
   const safeDate=(s)=>s.slice(5).replace('-','/');
   function create(tag,cls,text) {
@@ -12,12 +12,11 @@
   const empty=(message)=>create('p','stats-empty',message);
   function renderSummary(s) {
     const t=s.totals, grid=create('div','stats-kpi-list');
-    const cards=[['答题总数',t.answered+'','不包括跳过'],['正确率',fmtPct(t.correct,t.answered),`${t.correct} 题正确`],['练习天数',s.practiceDays+' 天','所选时间范围内'],['连续练习',s.streak+' 天','按本地日期计算']];
-    for (const [title,value,help] of cards) {
-      const c=create('div','stats-kpi');c.append(create('span','stats-kpi-label',title),create('strong','stats-kpi-value',value),create('small','stats-kpi-help',help));grid.appendChild(c);
+    const cards=[['答题总数',t.answered+''],['正确率',fmtPct(t.correct,t.answered)],['练习天数',s.practiceDays+' 天'],['连续练习',s.streak+' 天']];
+    for (const [title,value] of cards) {
+      const c=create('div','stats-kpi');c.append(create('span','stats-kpi-label',title),create('strong','stats-kpi-value',value));grid.appendChild(c);
     }
-    const additional=create('div','stats-kpi-foot',`分开听提示 ${t.hints} 次 · 跳过 ${t.skipped} 题 · 平均作答耗时 ${t.responseCount? (t.responseTotal/t.responseCount/1000).toFixed(1)+' 秒' : '暂无数据'}`);
-    const parent=create('div');parent.append(grid,additional);replace('stats-summary',parent);
+    replace('stats-summary',grid);
   }
   function renderTrend(s) {
     const entries=s.trend;
@@ -83,12 +82,12 @@
   }
   function renderIntervals(s){
     const wrap=create('div','stats-interval-list');
-    const observed=s.byInterval.filter(i=>i.answered>0).sort((a,b)=>
+    const observed=(s.directional?s.byDirection:s.byInterval).filter(i=>i.answered>0).sort((a,b)=>
       a.correct/a.answered-b.correct/b.answered || b.answered-a.answered);
     if(!observed.length){replace('stats-intervals',empty('练习后这里会显示各音程的正确率。'));return;}
     for(const row of observed){
       const item=create('div','stats-interval-row');
-      item.append(create('span','stats-interval-name',names[row.semi]));
+      item.append(create('span','stats-interval-name',`${row.direction===1?'↑ ':row.direction===-1?'↓ ':''}${names[row.semi]}`));
       const track=create('div','stats-interval-track'),fill=create('span','stats-interval-fill');
       fill.style.width=(100*row.correct/row.answered).toFixed(2)+'%';track.append(fill);item.append(track);
       item.append(create('span','stats-interval-value',`${fmtPct(row.correct,row.answered)}  ·  ${row.correct}/${row.answered}`));wrap.append(item);
@@ -96,11 +95,11 @@
     replace('stats-intervals',wrap);
   }
   function renderConfusions(s){
-    const rows=s.confusions.slice(0,7);
+    const rows=(s.directional?s.directionConfusions:s.confusions).slice(0,7);
     if(!rows.length){replace('stats-confusions',empty('目前没有误判记录。'));return;}
     const wrap=create('div','stats-confusion-list');
     for(const r of rows){const line=create('div','stats-confusion-row');
-      line.append(create('span','',`${names[r.actual]} → ${names[r.chosen]}`),create('strong','',`${r.count} 次`));wrap.append(line);
+      line.append(create('span','',`${r.direction===1?'↑ ':r.direction===-1?'↓ ':''}${names[r.actual]} → ${names[r.chosen]}`),create('strong','',`${r.count} 次`));wrap.append(line);
     }replace('stats-confusions',wrap);
   }
   function renderPlan(s){
@@ -109,7 +108,7 @@
     if(focus.length){
       wrap.append(create('p','',`昨日答错 ${focus.length} 种音程，今天将自动提高这些音程的出题优先级：`));
       const group=create('div','stats-focus-tags');
-      for(const i of focus.sort((a,b)=>b.wrong-a.wrong))group.append(create('span','',`${names[i.semi]} · 错 ${i.wrong} 题`));wrap.append(group);
+      for(const i of focus.sort((a,b)=>b.wrong-a.wrong))group.append(create('span','',`${i.direction===1?'↑ ':i.direction===-1?'↓ ':''}${names[i.semi]} · 错 ${i.wrong} 题`));wrap.append(group);
     }else wrap.append(create('p','','昨日没有需要重点补练的错题；继续正常练习，系统会结合到期和历史误判调整题目比例。'));
     wrap.append(create('p','stats-plan-secondary',`当前有 ${s.due} 种音程到期待巩固。答错后也会在间隔其他题目后再次出现，不会让同一音程无休止地连续重复。`));
     replace('stats-review-plan',wrap);
@@ -118,12 +117,12 @@
     if(!s.history.length){replace('stats-history',empty('还没有作答记录。'));return;}
     const wrap=create('div','stats-history-list');
     for(const h of s.history.slice(0,25)){
-      const correct=h.actual===h.chosen;
+      const correct=!h.revealed&&h.actual===h.chosen;
       const line=create('div','stats-history-row');
       line.append(create('span','stats-history-at',new Date(h.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})));
       const dir = h.direction === 1 ? '↑ ' : h.direction === -1 ? '↓ ' : '';
       const timbre = ({piano:'钢琴',violin:'小提琴',guitar:'吉他',sax:'萨克斯',flute:'长笛'})[h.timbre] || '';
-      const label = correct ? names[h.actual] : `${names[h.actual]} → ${names[h.chosen]}`;
+      const label = h.revealed ? `${names[h.actual]} · 显示答案` : (correct ? names[h.actual] : `${names[h.actual]} → ${names[h.chosen]}`);
       line.append(create('span','stats-history-names',`${dir}${label}${timbre ? ' · '+timbre : ''}`));
       line.append(create('span',correct?'stats-history-ok':'stats-history-bad',correct?'正确':'错误'));
       wrap.append(line);

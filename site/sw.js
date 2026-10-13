@@ -1,5 +1,5 @@
-/* v1.9 offline app shell, user-provided melodic recordings and user-confirmed PWA updates. */
-const CACHE_NAME = 'interval-trainer-pwa-v1.9.0';
+/* v2.0 offline app shell. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.0.0';
 const ROOT = self.registration.scope;
 const FILES = [
   './', './index.html', './styles.css', './logic.js', './assets/piano-samples.js',
