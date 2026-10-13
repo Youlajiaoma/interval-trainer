@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>音程听辨</title>
+  <meta name="theme-color" content="#0c0d14">
+  <meta name="application-name" content="音程听辨">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <h1>音程听辨</h1>
+      <button class="settings-trigger" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.87l.06.06-1.88 1.88-.06-.06A1.7 1.7 0 0 0 16 18.4l-.15.06V21h-3v-.08a1.7 1.7 0 0 0-1.7-1.68l-.22.03-1.2.7-1.5-2.6.06-.04A1.7 1.7 0 0 0 8 15.48l-.1-.17L5.2 15v-3l.09-.01A1.7 1.7 0 0 0 6.9 10.4l-.02-.2-.68-1.2 2.6-1.5.06.06A1.7 1.7 0 0 0 10.71 7l.19-.1V4h3v.08a1.7 1.7 0 0 0 1.69 1.68l.2-.02 1.2-.69 1.5 2.6-.06.05a1.7 1.7 0 0 0-.34 1.87l.1.17 2.61.25v3l-.09.01A1.7 1.7 0 0 0 19.4 15Z" transform="translate(-.4,-.5) scale(.99)"/></svg>
+      </button>
+    </header>
+
+    <main class="practice" id="practice">
+      <div class="practice-meta" aria-label="本次练习统计">
+        <span>第 <strong id="question-number">01</strong> 题</span>
+        <span>答对 <strong id="correct-number">0</strong>/<strong id="answered-number">0</strong> · <strong id="accuracy-number">—</strong></span>
+      </div>
+
+      <div class="audio-toolbar" aria-label="音程播放操作">
+        <button class="play-primary" id="play-harmonic" type="button" aria-label="播放或重新播放当前音程">
+          <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.8a1 1 0 0 1 1.53-.85l10.12 6.2a1 1 0 0 1 0 1.7L9.53 19.05A1 1 0 0 1 8 18.2Z"/></svg>
+          <span class="soundbars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <span id="play-label">播放</span>
+        </button>
+        <button class="hint-button" id="hint" type="button">分开听</button>
+        <p class="sr-only" id="audio-status" role="status" aria-live="polite"></p>
+      </div>
+
+      <section class="answer-section" aria-label="选择音程名称">
+        <div class="answer-grid" id="answer-grid"></div>
+        <button class="confirm-button hidden" id="submit-answer" type="button" disabled>确认答案</button>
+        <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
+        <div class="action-row">
+          <button class="notes-link hidden" id="reveal-notes" type="button" aria-expanded="false">查看音名</button>
+          <button class="next-button is-skip" id="next-question" type="button">跳过 <span aria-hidden="true">→</span></button>
+        </div>
+        <p id="notes-result" class="notes-result hidden" aria-live="polite"></p>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+    <div class="settings-header"><div><h2 id="settings-title">练习设置</h2><p>音程与音区从下一题生效</p></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
+    <div class="settings-content">
+      <section class="settings-section">
+        <div class="settings-section-title"><h3>练习哪些音程</h3><span id="enabled-count">已选 13 种</span></div>
+        <div class="preset-row"><button id="toggle-all" class="subtle-button" type="button">全部音程</button><button id="preset-common" class="subtle-button" type="button">常用组合</button></div>
+        <div class="chosen-intervals" id="interval-toggles" aria-label="选择参与训练的音程"></div>
+      </section>
+      <section class="settings-section">
+        <h3>音区范围</h3>
+        <div class="range-row"><label for="note-low">最低音<select id="note-low"></select></label><span class="range-separator">至</span><label for="note-high">最高音<select id="note-high"></select></label></div>
+      </section>
+      <section class="settings-section">
+        <label class="slider-label" for="volume">钢琴音量 <strong id="volume-value">65%</strong></label><input id="volume" type="range" min="0" max="100" value="65" step="1">
+        <label class="slider-label second-slider" for="duration">音程时长 <strong id="duration-value">2.0 秒</strong></label><input id="duration" type="range" min="0.8" max="4.0" value="2.0" step="0.1">
+      </section>
+      <section class="settings-section optional-section">
+        <h3>答题偏好</h3>
+        <label class="option-row" for="show-answer"><span>答题后显示正确答案</span><input id="show-answer" type="checkbox" checked></label>
+        <label class="option-row" for="auto-play-next"><span>下一题自动播放</span><input id="auto-play-next" type="checkbox" checked></label>
+        <label class="option-row" for="confirm-answer"><span>选择后需要再确认</span><input id="confirm-answer" type="checkbox"></label>
+      </section>
+      <section class="settings-section stats-entry-section">
+        <button type="button" id="open-stats" class="open-stats-button">
+          <span><strong>练习统计</strong><small>进步趋势 · 音程正确率 · 易错分析</small></span><span aria-hidden="true">›</span>
+        </button>
+        <p class="review-help">错题会自动融入后续练习；昨天做错的音程，今天会优先出现。无需切换练习模式。</p>
+      </section>
+      <details class="more-details"><summary>快捷键与其他</summary><p>空格：播放或重听；H：分开听；N：跳过或下一题。提示不会影响评分。</p><button class="reset-link" id="reset-stats" type="button">清空本次答题统计</button><div id="license-placeholder"></div></details>
+    </div>
+    <div class="settings-footer"><button class="settings-done" id="settings-done" type="button">完成</button></div>
+  </dialog>
+  <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
+    <div class="stats-shell">
+      <header class="stats-header">
+        <button id="close-stats" class="stats-back" type="button" aria-label="返回练习">← <span>返回练习</span></button>
+        <h2 id="stats-title">练习统计</h2>
+        <span class="stats-header-spacer" aria-hidden="true"></span>
+      </header>
+      <div class="stats-content">
+        <div class="stats-intro"><div><h3>练习概览</h3><p>每次作答自动记录，仅保存在当前设备</p></div>
+        <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
+        <div id="stats-summary" class="stats-summary-grid"></div>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3><span>每日表现</span></div><div id="stats-trend"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>练习日历</h3><span>最近 7 周</span></div><div id="stats-calendar"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>各音程表现</h3><span>正确 / 总题数</span></div><div id="stats-intervals"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>易混淆音程</h3><span>实际音程 → 误选音程</span></div><div id="stats-confusions"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>自动针对性复习</h3><span>无需手动开启</span></div><div id="stats-review-plan"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3>最近答题</h3><span>按时间排序</span></div><div id="stats-history"></div></section>
+        <details class="stats-data-details"><summary>数据备份与管理</summary>
+          <p>学习记录自动保存到本机 IndexedDB，无需每次手动备份。卸载应用、清除网站数据或更换设备前请导出备份；导入会覆盖现有数据。</p>
+          <div class="stats-data-buttons"><button id="export-backup" type="button">导出 JSON 备份</button><button id="import-backup" type="button">导入备份</button><button id="clear-review" type="button" class="danger-text">清空历史</button></div>
+          <input id="backup-file" type="file" accept=".json,application/json" class="hidden" aria-label="选择历史备份文件">
+          <p class="storage-warning" id="stats-storage-warning"></p>
+        </details>
+      </div>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="logic.js"></script>
+  <script src="assets/piano-samples.js"></script>
+  <script src="review.js"></script>
+  <script src="statistics.js"></script>
+  <script src="storage.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa-register.js"></script>
+</body>
+</html>

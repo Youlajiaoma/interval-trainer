@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "音程听辨 · 钢琴和声音程训练",
+  "short_name": "音程听辨",
+  "description": "离线钢琴和声音程练习、统计与自动针对性复习",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0d14",
+  "theme_color": "#0c0d14",
+  "orientation": "any",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
