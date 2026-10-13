@@ -1,4 +1,4 @@
-/* Sight-reading module - no additional fonts or network assets. */
+/* Sight-reading module, v2.5. VexFlow draws the notation; this file handles responsive UI and selection. */
 .home-modules{grid-template-columns:repeat(3,minmax(0,1fr))}
 .home-module{padding:19px 14px;gap:11px;min-height:137px}
 .home-module-symbol{width:45px;height:45px;flex:none}
@@ -6,9 +6,15 @@
 .sight-practice{max-width:780px}
 .sight-meta{display:flex;justify-content:space-between;color:#a3a5ba;margin:0 0 10px;font-size:12px}
 .sight-meta strong{color:#d8caff}
-.sight-score{display:grid;gap:0;min-width:0;background:#f6f5f0;border-radius:16px;padding:8px 0;overflow:hidden}
-.sight-staff{display:block;width:100%;height:auto;overflow:visible}
-.sight-keyboard{margin-top:16px;padding:5px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;background:#1b1d2a;border:1px solid #444357;border-radius:13px;touch-action:manipulation}
+.sight-score{position:relative;min-width:0;display:flex;flex-direction:column;background:#f6f5f0;border-radius:16px;padding:7px 4px;overflow-y:auto;overscroll-behavior:contain;max-height:calc(100dvh - 280px);scrollbar-width:thin;scrollbar-color:#aaa8ad transparent}
+.sight-system{position:relative;flex:none;min-width:0;height:123px;isolation:isolate;background:transparent}
+.sight-system>svg{display:block;position:relative;z-index:1;width:100%;height:123px;overflow:visible}
+.sight-position-highlight{display:none;position:absolute;z-index:0;top:5px;width:38px;height:100px;border:1.8px solid #50b48c;background:rgba(143,226,186,.37);border-radius:9px;pointer-events:none}
+.sight-position-highlight.visible{display:block}
+.sight-vex-note.sight-note-error *{animation:sight-pitch-error .34s ease-in-out 1}
+.sight-position-highlight.note-error{border-color:#50b48c;background:rgba(143,226,186,.37)}
+@keyframes sight-pitch-error{0%,100%{fill:#27272d;stroke:#27272d}15%,70%{fill:#ce334d;stroke:#ce334d}}
+.sight-keyboard{margin-top:12px;padding:5px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;background:#1b1d2a;border:1px solid #444357;border-radius:13px;touch-action:manipulation}
 .sight-key{min-width:0;min-height:97px;background:linear-gradient(#fff,#efedf2);border:1px solid #b5b3bf;border-bottom:5px solid #b1b0bb;border-radius:5px 5px 9px 9px;color:#23684c;font-size:16px;font-weight:750;touch-action:manipulation}
 .sight-key:active{background:#d2c3f9}
 .sight-key.is-correct,.sight-key.is-correct:disabled{background:#baf3d1;border-color:#65b38e;color:#124b36;opacity:1}
@@ -35,18 +41,15 @@
 .sight-stat-track div{height:100%;background:#ab91ee;border-radius:8px}
 .sight-confusion{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:8px 0;color:#bcb8d2;border-bottom:1px solid #313246}
 .sight-review-plan{font-size:12px;color:#a8a7bb;margin:14px 0}
+.sight-warning{font-size:12px;color:#efb4c3;margin:4px 0}
+.sight-warning:empty{display:none}
 @media(max-width:620px){
  .home-modules{grid-template-columns:1fr}.home-module{min-height:100px;padding:17px 16px}
- .sight-score{gap:0}
+ .sight-score{padding:5px 2px}
  .sight-key{min-height:82px;font-size:15px}
  .sight-keyboard{margin-top:10px;gap:2px}
  .sight-meta{font-size:11px;margin-bottom:8px}
  .stats-mode-switch button{font-size:11px}
 }
-@media(max-width:360px){.sight-key{min-height:72px}.sight-score{gap:0}}
-
-.sight-warning{font-size:12px;color:#efb4c3;margin:4px 0}.sight-warning:empty{display:none}
-
-/* Constrain only the score on short/landscape viewports. Keyboard remains available. */
-.sight-score{max-height:calc(100dvh - 280px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#68647e transparent}
+@media(max-width:360px){.sight-key{min-height:72px}}
 @media(max-height:520px){.sight-score{max-height:calc(100dvh - 235px)}}

@@ -1,14 +1,14 @@
-/* v2.4 offline PWA app shell; sight-reading notation and piano feedback updated. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.4.0';
+/* v2.5 PWA app shell; adaptive VexFlow sight-reading score. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.5.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
   './','./index.html','./styles.css','./sight.css','./logic.js',
-  './review.js','./statistics.js','./storage.js','./app.js','./sight.js',
-  './pwa-register.js','./update.html','./manifest.webmanifest',
+  './review.js','./statistics.js','./storage.js','./app.js','./sight.js','./vendor/vexflow-loader.js',
+  './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png','./icons/icon-512.png',
-  './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt'
+  './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt','./LICENSE_VEXFLOW_MIT.txt'
 ];
 const AUDIO_FILES = [
   'assets/melodic-recordings/min2_up_guitar.m4a',

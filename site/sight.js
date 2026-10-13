@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.4. Shares IndexedDB and review engine. */
+/* Five-line staff sight-reading module, v2.5. Shares IndexedDB and review engine. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -9,19 +9,29 @@ const SETTINGS_KEY='interval-trainer-sight-settings-v1';
 const SESSION_KEY='interval-trainer-sight-session-v1';
 const TREBLE_KEY='interval-trainer-review-sight-treble-v1';
 const BASS_KEY='interval-trainer-review-sight-bass-v1';
+// Each measure sums to 4 quarter-note beats. Variable notes per measure.
 const RHYTHMS=[
- [1,1,1,.5,.5], [.5,.5,1,1,1], [1,.5,.5,1,1], [1,1,.5,.5,1],
- [.5,.5,.5,.5,2], [2,.5,.5,.5,.5], [1.5,.5,1,.5,.5],
- [1,.5,.5,.5,1.5], [.25,.25,.5,1,2], [2,1,.5,.25,.25]
+ [1,1,1,1], [2,1,1], [1,1,2], [2,2],
+ [.5,.5,1,1,1], [1,.5,.5,1,1], [1,1,.5,.5,1],
+ [.5,.5,.5,.5,1,1], [1,.5,.5,.5,.5,1],
+ [1.5,.5,1,1], [1,.5,1.5,1], [.5,1.5,1,1],
+ [1,.5,.5,.5,.5,1], [.5,.5,.5,.5,.5,.5,1],
+ [1,1,.5,.25,.25,1], [.25,.25,.5,1,1,1],
+ [.5,.5,.5,.5,.5,.5,.5,.5]
 ];
+const DURATION_CODES={'2':'h','1.5':'qd','1':'q','0.5':'8','0.25':'16'};
+const SEMITONES=[0,2,4,5,7,9,11];
 const POOLS={
  treble:[...Array.from({length:13},(_,i)=>28+i)],
  bass:[...Array.from({length:13},(_,i)=>17+i)]
 };
 const CLEF_BASE={treble:30,bass:18};
-const SEMI=[0,2,4,5,7,9,11];
+const SEMI=SEMITONES;
 let storage, review, settings={clef:'both'}, session=null, active=false, busy=false;
 let initialized=false, pendingTimer=null, flashWrongPos=-1;
+let drawing=0, lastLayoutWidth=0, resizeTimer=null;
+const engravings=new Map();
+const LAYOUT={minNote:41, firstBarExtra:78, otherBarExtra:20, maxPerLine:12};
 let audioCtx=null, audioGain=null;
 const buffers=new Map(), loading=new Map();
 const random=(n)=>Math.floor(Math.random()*n);
@@ -42,164 +52,190 @@ function getJson(key){try{return JSON.parse(storage.getItem(key)||'null');}catch
 function save(key,item){try{storage.setItem(key,JSON.stringify(item));}catch(err){console.error(err);$('sight-warning').textContent='学习记录保存失败';}}
 function getReview(clef){return clef==='bass'?review.bass:review.treble;}
 function currentNote(){return session && session.pos<20 ? session.notes[session.pos] : null;}
-function makeClefs(){ if(settings.clef!=='both')return Array(4).fill(settings.clef); return shuffle(['treble','treble','bass','bass']); }
-function makeGroup(){
- const notes=[];
- for(const clef of makeClefs()){
-  const rhythm=RHYTHMS[random(RHYTHMS.length)];
-  for(let k=0;k<5;k++){
-   const pool=POOLS[clef];
-   const candidates=pool.map((_,i)=>i);
-   const previous=notes.length&&notes[notes.length-1].clef===clef?notes[notes.length-1].index-pool[0]:null;
-   const chosen=getReview(clef).choose(candidates,previous);
-   const noteIndex=pool[chosen===null?random(candidates.length):chosen];
-   const letter=letterFromIndex(noteIndex);
-   notes.push({clef,letter,index:noteIndex,duration:rhythm[k],mistakeChosen:null});
-  }
+function measurePlans(){
+ const candidates=RHYTHMS.map((beats)=>({beats,count:beats.length}));
+ const possible=Array(21).fill(false); possible[0]=true;
+ for(let n=1;n<=20;n++) possible[n]=candidates.some(p=>p.count<=n&&possible[n-p.count]);
+ const bars=[]; let remaining=20;
+ while(remaining>0){
+  const valid=candidates.filter(p=>p.count<=remaining&&possible[remaining-p.count]);
+  if(!valid.length) throw Error('无法构造20个音符');
+  const plan=valid[random(valid.length)];
+  bars.push({duration:plan.beats.slice(),start:20-remaining,end:20-remaining+plan.count,clef:null});
+  remaining-=plan.count;
  }
- session={version:2,pos:0,notes,startedAt:Date.now(),correct:0};
- save(SESSION_KEY,session);
+ const clefs=[];
+ if(settings.clef==='both'){
+  // Group adjacent measures by clef. Each notated line has exactly one clef.
+  for(let k=0;k<bars.length;k++) clefs.push(k%2===1?clefs[k-1]:(random(2)?'treble':'bass'));
+  if(!clefs.includes('treble'))clefs[0]='treble';
+  if(!clefs.includes('bass'))clefs[clefs.length-1]='bass';
+ } else for(let k=0;k<bars.length;k++) clefs.push(settings.clef);
+ bars.forEach((b,i)=>b.clef=clefs[i]);
+ return bars;
+}
+function makeGroup(){
+ const container=$('sight-score');if(container)delete container.dataset.layout;
+ const notes=[],bars=measurePlans();
+ for(const bar of bars)for(const duration of bar.duration){
+  const clef=bar.clef, pool=POOLS[clef], candidates=pool.map((_,i)=>i);
+  const last=notes.at(-1), previous=last?.clef===clef?last.index-pool[0]:null;
+  const chosen=getReview(clef).choose(candidates,previous);
+  const index=pool[chosen===null?random(pool.length):chosen];
+  notes.push({clef,letter:letterFromIndex(index),index,duration,result:null,mistakeChosen:null});
+ }
+ session={version:3,pos:0,notes,bars,startedAt:Date.now(),correct:0};
+ engravings.clear();save(SESSION_KEY,session);
 }
 function validatedSession(x){
  if(!x||!Number.isInteger(x.pos)||x.pos<0||x.pos>20||!Array.isArray(x.notes)||x.notes.length!==20||!Number.isInteger(x.correct))return null;
- for(let row=0;row<4;row++){
-  const clef=x.notes[row*5]?.clef;
-  if(!['treble','bass'].includes(clef))return null;
-  for(const n of x.notes.slice(row*5,row*5+5)){
-   if(!n||n.clef!==clef||!Number.isInteger(n.index)||!POOLS[clef].includes(n.index)||n.letter!==letterFromIndex(n.index))return null;
-  }
+ const notes=x.notes;
+ for(const n of notes){
+  if(!n||!['treble','bass'].includes(n.clef)||!Number.isInteger(n.index)||!POOLS[n.clef].includes(n.index)||n.letter!==letterFromIndex(n.index))return null;
+  if(![.25,.5,1,1.5,2].includes(n.duration))return null;
+  if(n.mistakeChosen===undefined)n.mistakeChosen=null;
  }
- x.version=2;
+ if(!Array.isArray(x.bars)||!x.bars.length){
+  // Upgrade v2.4's four 5-note systems without losing the unfinished session.
+  x.bars=Array.from({length:4},(_,i)=>({start:i*5,end:i*5+5,clef:notes[i*5].clef,duration:notes.slice(i*5,i*5+5).map(n=>n.duration)}));
+ }
+ let cursor=0;
+ for(const bar of x.bars){
+  if(!Number.isInteger(bar.start)||!Number.isInteger(bar.end)||bar.start!==cursor||bar.end<=cursor||bar.end>20||!['treble','bass'].includes(bar.clef))return null;
+  if(notes.slice(bar.start,bar.end).some(n=>n.clef!==bar.clef))return null;
+  cursor=bar.end;
+ }
+ if(cursor!==20)return null;
+ x.version=3;
  return x;
 }
-function svgEl(tag,attrs={},text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(text!==undefined)e.textContent=text;return e;}
-function line(parent,x1,y1,x2,y2,extras={}){parent.append(svgEl('line',{x1,y1,x2,y2,...extras}));}
-function drawClef(svg,clef){
- const g=svgEl('g',{fill:'#27282f',transform:clef==='treble'?'translate(16 95) scale(.054 -.054)':'translate(14 101) scale(.068 -.068)'});
- g.append(svgEl('path',{d:PATHS[clef]}));svg.append(g);
+function packLines(bars,width){
+ const limit=Math.max(240,width-24),lines=[];
+ let group=[],estimated=0,noteCount=0;
+ for(const bar of bars){
+  const count=bar.end-bar.start;
+  const cost=count*LAYOUT.minNote+(group.length?LAYOUT.otherBarExtra:LAYOUT.firstBarExtra);
+  if(group.length&&(group[0].clef!==bar.clef||estimated+cost>limit||noteCount+count>LAYOUT.maxPerLine)){
+   lines.push(group);group=[];estimated=0;noteCount=0;
+  }
+  const oneCost=count*LAYOUT.minNote+(group.length?LAYOUT.otherBarExtra:LAYOUT.firstBarExtra);
+  group.push(bar);estimated+=oneCost;noteCount+=count;
+ }
+ if(group.length)lines.push(group);
+ return lines;
 }
-function addLedger(svg,x,y){
- if(y>87){for(let ly=99;ly<=y+1;ly+=12)line(svg,x-14,ly,x+14,ly,{stroke:'#4b4d56','stroke-width':1.2});}
- if(y<39){for(let ly=27;ly>=y-1;ly-=12)line(svg,x-14,ly,x+14,ly,{stroke:'#4b4d56','stroke-width':1.2});}
+function scoreLayoutSignature(lines,width){return width+':'+lines.map(group=>group.map(b=>`${b.start}-${b.end}`).join(',')).join('|');}
+async function ensureEngraver(){
+ const vf=await root.SightVexFlowReady;
+ if(!vf)throw Error('乐谱渲染组件加载失败，请联网重新打开应用');
+ // The full VexFlow bundle embeds its music glyph tables.
+ if(!ensureEngraver.fontSet){
+  if(typeof vf.setFonts==='function')vf.setFonts('Bravura','Academico');
+  ensureEngraver.fontSet=true;
+ }
+ return vf;
 }
-function shortGroupInfo(notes, start, end, positions){
- const ys=positions.slice(start,end+1).map(p=>p.y);
- const meanY=ys.reduce((a,b)=>a+b,0)/ys.length;
- const down=meanY<63;
- const rawFirst=ys[0]+(down?32:-32), rawLast=ys[ys.length-1]+(down?32:-32);
- const x1=positions[start].x+(down?-8:8), x2=positions[end].x+(down?-8:8);
- const slope=clamp((rawLast-rawFirst)/(x2-x1||1),-.22,.22);
- const mid=(rawFirst+rawLast)/2;
- const base=clamp(mid,(down?54:18),(down?92:56));
- const intercept=base-slope*((x1+x2)/2);
- const stemYAt=x=>intercept+slope*x;
- return {start,end,down,stemYAt};
+function applyDots(note,VF){
+ if(typeof VF.Dot?.buildAndAttach==='function')VF.Dot.buildAndAttach([note],{all:true});
+ else if(typeof note.addDotToAll==='function')note.addDotToAll();
+ else throw Error('当前记谱引擎不支持附点音符');
 }
-function drawFlag(svg,x,y,down,doubleFlag,color){
- const d1=down
-  ? `M ${x} ${y} C ${x+2} ${y+8}, ${x+12} ${y+10}, ${x+14} ${y+19} C ${x+9} ${y+14}, ${x+4} ${y+13}, ${x} ${y+15}`
-  : `M ${x} ${y} C ${x+2} ${y-8}, ${x+12} ${y-10}, ${x+14} ${y-19} C ${x+9} ${y-14}, ${x+4} ${y-13}, ${x} ${y-15}`;
- svg.append(svgEl('path',{d:d1,fill:'none',stroke:color,'stroke-width':2.5,'stroke-linecap':'round'}));
- if(doubleFlag){
-  const shift=down?8:-8;
-  const d2=down
-   ? `M ${x} ${y+shift} C ${x+2} ${y+shift+8}, ${x+12} ${y+shift+10}, ${x+14} ${y+shift+19} C ${x+9} ${y+shift+14}, ${x+4} ${y+shift+13}, ${x} ${y+shift+15}`
-   : `M ${x} ${y+shift} C ${x+2} ${y+shift-8}, ${x+12} ${y+shift-10}, ${x+14} ${y+shift-19} C ${x+9} ${y+shift-14}, ${x+4} ${y+shift-13}, ${x} ${y+shift-15}`;
-  svg.append(svgEl('path',{d:d2,fill:'none',stroke:color,'stroke-width':2.3,'stroke-linecap':'round'}));
+function noteKey(diIndex){return `${NAMES[letterFromIndex(diIndex)].toLowerCase()}/${Math.floor(diIndex/7)}`;}
+function addBarlines(host,bars,allNotes){
+ if(bars.length<2)return;
+ const svg=host.querySelector('svg');if(!svg)return;
+ // Bar lines are purely graphical; all notes, beams, glyphs and ledger lines use VexFlow.
+ for(let b=0;b<bars.length-1;b++){
+  const last=allNotes[bars[b].end-bars[0].start-1];
+  const next=allNotes[bars[b+1].start-bars[0].start];
+  if(!last||!next)continue;
+  const x=(last.getAbsoluteX()+next.getAbsoluteX())/2;
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  for(const [k,v] of Object.entries({x1:x,x2:x,y1:30,y2:70,stroke:'#55545a','stroke-width':'1.2'}))line.setAttribute(k,String(v));
+  svg.append(line);
  }
 }
-function renderSystem(notes,rowIndex){
- const svg=svgEl('svg',{viewBox:'0 0 444 126',role:'img','aria-label':`第${rowIndex+1}行 ${CH_NAME[notes[0].clef]}`});
- const clef=notes[0].clef;
- svg.classList.add('sight-staff');
- for(let n=0;n<5;n++)line(svg,64,39+12*n,430,39+12*n,{stroke:'#52535b','stroke-width':1.35});
- line(svg,429,39,429,87,{stroke:'#52535b','stroke-width':1.6});
- drawClef(svg,clef);
- const positions=notes.map((note,k)=>({x:111+k*62,y:87-(note.index-CLEF_BASE[clef])*6}));
- const shortGroups=[];
- for(let k=0;k<notes.length;){
-  if(![.5,.25].includes(notes[k].duration)){k++;continue;}
-  let end=k;
-  while(end+1<notes.length && [.5,.25].includes(notes[end+1].duration))end++;
-  shortGroups.push(shortGroupInfo(notes,k,end,positions));
-  k=end+1;
+function drawLine(VF,group,width){
+ const lineHost=document.createElement('div');lineHost.className='sight-system';
+ lineHost.dataset.from=String(group[0].start);lineHost.dataset.to=String(group.at(-1).end);
+ const w=Math.max(240,width-4),height=123;
+ const renderer=new VF.Renderer(lineHost,VF.Renderer.Backends.SVG);
+ renderer.resize(w,height);
+ const ctx=renderer.getContext(),clef=group[0].clef;
+ const stave=new VF.Stave(8,30,w-16).addClef(clef);
+ const voiceNotes=[],barSlices=[];
+ for(const bar of group){
+  const bNotes=[];
+  for(let i=bar.start;i<bar.end;i++){
+   const n=session.notes[i];
+   const note=new VF.StaveNote({keys:[noteKey(n.index)],duration:DURATION_CODES[String(n.duration)],clef});
+   if(n.duration===1.5)applyDots(note,VF);
+   bNotes.push(note);voiceNotes.push(note);
+  }
+  barSlices.push(bNotes);
  }
- const groupByNote=new Map();
- for(const info of shortGroups)for(let i=info.start;i<=info.end;i++)groupByNote.set(i,info);
- const stemMeta=notes.map((note,k)=>{
-  const pos=positions[k], info=groupByNote.get(k);
-  if(info){
-   const stemX=pos.x+(info.down?-8:8); return {down:info.down, stemX, stemEndY:info.stemYAt(stemX), group:info};
-  }
-  const down=pos.y<63; const stemX=pos.x+(down?-8:8); const stemEndY=pos.y+(down?32:-32); return {down,stemX,stemEndY,group:null};
+ const beats=group.length*4;
+ const voice=new VF.Voice({num_beats:beats,beat_value:4});
+ voice.addTickables(voiceNotes);
+ // Never beam across barlines; the engraver decides the correct stem and beam geometry.
+ const beams=barSlices.flatMap(part=>VF.Beam.generateBeams(part,{groups:[new VF.Fraction(2,8)]}));
+ new VF.Formatter().joinVoices([voice]).formatToStave([voice],stave);
+ stave.setContext(ctx).draw();
+ voice.draw(ctx,stave);
+ for(const b of beams)b.setContext(ctx).draw();
+ addBarlines(lineHost,group,voiceNotes);
+ const highlight=document.createElement('div');highlight.className='sight-position-highlight';
+ lineHost.prepend(highlight);
+ const byIndex=[];
+ voiceNotes.forEach((note,i)=>{
+  const index=group[0].start+i;
+  const el=typeof note.getSVGElement==='function'?note.getSVGElement():null;
+  if(el){el.classList.add('sight-vex-note');el.dataset.sightIndex=String(index);}
+  byIndex.push({index,x:note.getAbsoluteX(),el,note,host:lineHost,highlight});
  });
- notes.forEach((note,k)=>{
-  const {x,y}=positions[k], meta=stemMeta[k], idx=rowIndex*5+k;
-  const current=idx===session.pos;
-  const wrongFlash=idx===flashWrongPos;
-  if(current){
-    svg.append(svgEl('rect',{x:x-20,y:8,width:40,height:108,rx:9,fill:wrongFlash?'#f4c4cc':'#bfe9d2','fill-opacity':wrongFlash?'.72':'.78',stroke:wrongFlash?'#c85b70':'#52b389','stroke-width':wrongFlash?2.1:1.8}));
-  }
-  addLedger(svg,x,y);
-  const color=wrongFlash?'#ba415b':'#26272d';
-  const filled=note.duration!==2;
-  svg.append(svgEl('ellipse',{cx:x,cy:y,rx:9.2,ry:6.2,fill:filled?color:'transparent',stroke:color,'stroke-width':1.9,transform:`rotate(-18 ${x} ${y})`}));
-  if(note.duration!==2||note.duration===2){
-    line(svg,meta.stemX,y,meta.stemX,meta.stemEndY,{stroke:color,'stroke-width':1.9,'stroke-linecap':'round'});
-  }
-  if(note.duration===1.5)svg.append(svgEl('circle',{cx:x+15,cy:y-3,r:2.5,fill:color}));
-  if([.5,.25].includes(note.duration) && (!meta.group || meta.group.start===meta.group.end)){
-    drawFlag(svg,meta.stemX,meta.stemEndY,meta.down,note.duration===.25,color);
-  }
- });
- const done=new Set();
- for(const info of shortGroups){
-  const key=`${info.start}-${info.end}`; if(done.has(key))continue; done.add(key);
-  if(info.end<=info.start)continue;
-  const color='#26272d'; const beamThick=5;
-  const beamPoly=[];
-  const sx=stemMeta[info.start].stemX, ex=stemMeta[info.end].stemX;
-  const sy=info.stemYAt(sx), ey=info.stemYAt(ex);
-  const shift=info.down?-beamThick:beamThick;
-  beamPoly.push(`M${sx} ${sy} L${ex} ${ey} L${ex} ${ey+shift} L${sx} ${sy+shift} Z`);
-  svg.append(svgEl('path',{d:beamPoly[0],fill:color}));
-  let segStart=null;
-  for(let i=info.start;i<=info.end;i++){
-    if(notes[i].duration===.25){ if(segStart===null)segStart=i; }
-    else if(segStart!==null){
-      const s=segStart, e=i-1;
-      if(e>s){
-        const x1=stemMeta[s].stemX, x2=stemMeta[e].stemX, y1=info.stemYAt(x1)+(info.down?-8:8), y2=info.stemYAt(x2)+(info.down?-8:8), sh=info.down?-4:4;
-        svg.append(svgEl('path',{d:`M${x1} ${y1} L${x2} ${y2} L${x2} ${y2+sh} L${x1} ${y1+sh} Z`,fill:color}));
-      } else {
-        drawFlag(svg,stemMeta[s].stemX,info.stemYAt(stemMeta[s].stemX)+(info.down?-8:8),info.down,true,color);
-      }
-      segStart=null;
-    }
-  }
-  if(segStart!==null){
-    const s=segStart, e=info.end;
-    if(e>s){
-      const x1=stemMeta[s].stemX, x2=stemMeta[e].stemX, y1=info.stemYAt(x1)+(info.down?-8:8), y2=info.stemYAt(x2)+(info.down?-8:8), sh=info.down?-4:4;
-      svg.append(svgEl('path',{d:`M${x1} ${y1} L${x2} ${y2} L${x2} ${y2+sh} L${x1} ${y1+sh} Z`,fill:color}));
-    } else {
-      drawFlag(svg,stemMeta[s].stemX,info.stemYAt(stemMeta[s].stemX)+(info.down?-8:8),info.down,true,color);
-    }
-  }
- }
- return svg;
+ return {host:lineHost,entries:byIndex};
 }
-function renderScore(){
- const container=$('sight-score'); const oldScroll=container.scrollTop;
- container.replaceChildren();
- for(let row=0;row<4;row++)container.append(renderSystem(session.notes.slice(row*5,row*5+5),row));
- container.scrollTop=oldScroll;
- const row=Math.min(3,Math.floor(session.pos/5));
- requestAnimationFrame(()=>{
-  const target=container.children[row]; if(!target)return;
-  const outer=container.getBoundingClientRect(), rect=target.getBoundingClientRect();
-  if(rect.bottom>outer.bottom-4||rect.top<outer.top+4) container.scrollTop+=rect.top-outer.top-7;
- });
+function markCurrent(){
+ const container=$('sight-score');
+ // One highlight element per engraved system, shared by its notes.
+ for(const indicator of container.querySelectorAll('.sight-position-highlight')) indicator.classList.remove('visible');
+ const info=engravings.get(session.pos);
+ if(!info)return;
+ const marker=info.highlight;
+ marker.classList.add('visible');marker.style.left=`${info.x-19}px`;
+ const y=info.note.getYs?.()?.[0];
+ marker.style.top=`${Math.max(4,Math.min(25,(y??53)-45))}px`;
+ const rect=info.host.getBoundingClientRect(),outer=container.getBoundingClientRect();
+ if(rect.top<outer.top+2)container.scrollTop+=rect.top-outer.top-3;
+ else if(rect.bottom>outer.bottom-3)container.scrollTop+=rect.bottom-outer.bottom+3;
+}
+function flashCurrent(){
+ const entry=engravings.get(session.pos);
+ if(!entry)return;
+ if(entry.el){entry.el.classList.remove('sight-note-error');void entry.el.getBoundingClientRect();entry.el.classList.add('sight-note-error');}
+ else {entry.highlight.classList.add('note-error');}
+ setTimeout(()=>{entry.el?.classList.remove('sight-note-error');entry.highlight.classList.remove('note-error');},360);
+}
+async function renderScore(force=false){
+ const container=$('sight-score');if(!container||!session)return;
+ const token=++drawing;
+ let vf;
+ try{vf=await ensureEngraver();}catch(err){if(token===drawing){container.textContent='乐谱无法加载';$('sight-warning').textContent=err.message;}return;}
+ if(token!==drawing||!session||!active)return;
+ const width=Math.floor(container.getBoundingClientRect().width||container.clientWidth||340);
+ const groups=packLines(session.bars,width),signature=scoreLayoutSignature(groups,width);
+ if(!force&&container.dataset.layout===signature){markCurrent();return;}
+ container.replaceChildren();engravings.clear();
+ try{
+  for(const group of groups){
+   const output=drawLine(vf,group,width);
+   container.append(output.host);
+   for(const e of output.entries)engravings.set(e.index,e);
+  }
+  container.dataset.layout=signature;lastLayoutWidth=width;
+  $('sight-warning').textContent='';
+  markCurrent();
+ }catch(err){console.error('Sight score rendering failed',err);container.textContent='乐谱生成失败';$('sight-warning').textContent='请重新开始本组练习';}
 }
 async function getAudioContext(){
  if(!window.AudioContext && !window.webkitAudioContext) throw Error('当前浏览器不支持 Web Audio');
@@ -233,15 +269,11 @@ function scheduleTone(sample,at,duration,gainMultiplier=.7){
 async function playKeyPitch(letter){
  try{
   const ctx=await getAudioContext();
-  const note=currentNote();
-  let midi=60+SEMI[letter];
-  if(note){
-    const guessPos=nearestChosenPosition(note.clef,note.index,letter);
-    midi=diatonicToMidi(POOLS[note.clef][guessPos]);
-  }
+  // The keyboard is pitch-class only. C4–B4 stays constant and never leaks octave hints.
+  const midi=60+SEMI[letter];
   const sample=await loadSample(midi);
   scheduleTone(sample,ctx.currentTime+.01,.92,.72);
- }catch(err){ console.error('Sight key playback error:',err); }
+ }catch(err){console.error('Sight key playback error:',err);}
 }
 function renderKeyboard(){
  const area=$('sight-keys'); area.replaceChildren();
@@ -258,16 +290,16 @@ function render(){
  $('sight-count').textContent=String(Math.min(20,session.pos+1)).padStart(2,'0');
  $('sight-correct').textContent=String(session.correct);
  $('sight-accuracy').textContent=session.pos?`${Math.round(session.correct/session.pos*100)}%`:'—';
- renderScore(); renderKeyboard();
+ void renderScore(); renderKeyboard();
  $('sight-reveal').classList.toggle('hidden',finished); $('sight-reveal').disabled=busy;
  $('sight-keys').classList.toggle('hidden',finished);
  $('sight-complete').classList.toggle('hidden',!finished);
  if(finished)$('sight-complete-score').textContent=`${session.correct} / 20  ·  ${Math.round(100*session.correct/20)}%`;
 }
 function blinkWrong(){
- if(pendingTimer) clearTimeout(pendingTimer);
- flashWrongPos=session.pos; render();
- pendingTimer=setTimeout(()=>{ flashWrongPos=-1; pendingTimer=null; busy=false; render(); },340);
+ if(pendingTimer)clearTimeout(pendingTimer);
+ flashCurrent();
+ pendingTimer=setTimeout(()=>{ pendingTimer=null; busy=false; renderKeyboard(); $('sight-reveal').disabled=false; },360);
 }
 function commitNote(outcome){
  const n=currentNote(); if(!n) return;
