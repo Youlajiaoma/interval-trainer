@@ -18,7 +18,7 @@
   <div class="app-shell">
     <header class="app-header">
       <h1>音程听辨</h1>
-      <button class="settings-trigger" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
+      <button class="settings-trigger hidden" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.87l.06.06-1.88 1.88-.06-.06A1.7 1.7 0 0 0 16 18.4l-.15.06V21h-3v-.08a1.7 1.7 0 0 0-1.7-1.68l-.22.03-1.2.7-1.5-2.6.06-.04A1.7 1.7 0 0 0 8 15.48l-.1-.17L5.2 15v-3l.09-.01A1.7 1.7 0 0 0 6.9 10.4l-.02-.2-.68-1.2 2.6-1.5.06.06A1.7 1.7 0 0 0 10.71 7l.19-.1V4h3v.08a1.7 1.7 0 0 0 1.69 1.68l.2-.02 1.2-.69 1.5 2.6-.06.05a1.7 1.7 0 0 0-.34 1.87l.1.17 2.61.25v3l-.09.01A1.7 1.7 0 0 0 19.4 15Z" transform="translate(-.4,-.5) scale(.99)"/></svg>
       </button>
     </header>
@@ -73,11 +73,10 @@
   </div>
 
   <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
-    <div class="settings-header"><div><h2 id="settings-title">练习设置</h2></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
+    <div class="settings-header"><div><h2 id="settings-title">和声音程设置</h2></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
     <div class="settings-content">
       <section class="settings-section">
         <div class="settings-section-title"><h3>练习哪些音程</h3><span id="enabled-count">已选 13 种</span></div>
-        <div class="preset-row"><button id="toggle-all" class="subtle-button" type="button">全部音程</button><button id="preset-common" class="subtle-button" type="button">常用组合</button></div>
         <div class="chosen-intervals" id="interval-toggles" aria-label="选择参与训练的音程"></div>
       </section>
       <section class="settings-section" id="audio-range-section">

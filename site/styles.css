@@ -203,3 +203,6 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .home-module-text{gap:0}
 .stats-interval-name{width:115px}
 @media(max-width:620px){.stats-interval-name{width:92px}.answer-row.is-triple .answer-button{font-size:12px}}
+
+/* v2.1: post-answer demonstration only. Disabled state intentionally low-contrast. */
+.hint-button:disabled,.hint-button:disabled:hover{opacity:.38;cursor:not-allowed;color:#9293a6;border-color:#33364a;background:#1a1d2b}

@@ -10,31 +10,53 @@
     toast('学习记录保存失败，请立即导出备份');
   });
   window.IntervalPwaStorageAdapter = storage;
-  const defaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false, mode: 'harmonic', };
-  function loadSettings() {
-    try {
-      const saved = JSON.parse(storage.getItem('interval-trainer-settings') || '{}');
-      const value = Object.assign({}, defaults, saved);
-      if (!Array.isArray(value.enabled)) value.enabled = defaults.enabled.slice();
-      value.enabled = [...new Set(value.enabled)].filter(i => Number.isInteger(i) && i >= 0 && i <= 12);
-      if (!value.enabled.length) value.enabled = defaults.enabled.slice();
-      if (!lowChoices.includes(value.low)) value.low = defaults.low;
-      if (!highChoices.includes(value.high) || value.high <= value.low) value.high = Math.min(96, value.low + 12);
-      value.volume = Math.min(100, Math.max(0, Number(value.volume) || 0));
-      value.duration = Math.min(4, Math.max(.8, Number(value.duration) || 2));
-      value.showAnswer = Boolean(value.showAnswer);
-      value.autoPlayNext = Boolean(value.autoPlayNext);
-      value.confirmAnswer = Boolean(value.confirmAnswer);
-      value.mode = value.mode === 'melodic' ? 'melodic' : 'harmonic';
-      delete value.melodicFirst; // discard obsolete v1.7/v1.8 submode setting
-      return value;
-    } catch { return { ...defaults, enabled: defaults.enabled.slice() }; }
+  // Module-specific preferences share one IndexedDB key, but each module owns
+  // its own values. Legacy v2.0 flat settings are copied into both modules once.
+  const settingsKey = 'interval-trainer-settings';
+  const commonDefaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false };
+  function normalizeProfile(saved, mode) {
+    const raw = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    const profile = { ...commonDefaults, enabled: commonDefaults.enabled.slice(), mode };
+    if (Array.isArray(raw.enabled)) {
+      profile.enabled = [...new Set(raw.enabled)].filter(i => Number.isInteger(i) && i >= 0 && i <= 12);
+    }
+    if (!profile.enabled.length) profile.enabled = commonDefaults.enabled.slice();
+    if (lowChoices.includes(raw.low)) profile.low = raw.low;
+    if (highChoices.includes(raw.high) && raw.high > profile.low) profile.high = raw.high;
+    else if (profile.high <= profile.low) profile.high = Math.min(96, profile.low + 12);
+    if (Number.isFinite(Number(raw.volume))) profile.volume = Math.min(100,Math.max(0,Number(raw.volume)));
+    if (Number.isFinite(Number(raw.duration))) profile.duration = Math.min(4,Math.max(.8,Number(raw.duration)));
+    for (const key of ['showAnswer','autoPlayNext','confirmAnswer']) {
+      if (typeof raw[key] === 'boolean') profile[key] = raw[key];
+    }
+    return profile;
   }
-  const settings = loadSettings();
+  function normalizeSettings(raw) {
+    const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const storedModules = obj.modules && typeof obj.modules === 'object' && !Array.isArray(obj.modules) ? obj.modules : null;
+    const legacy = storedModules ? null : obj;
+    const activeMode = (obj.activeModule || obj.mode) === 'melodic' ? 'melodic' : 'harmonic';
+    return {
+      schema: 2,
+      activeModule: activeMode,
+      modules: {
+        harmonic: normalizeProfile(storedModules?.harmonic ?? legacy, 'harmonic'),
+        melodic: normalizeProfile(storedModules?.melodic ?? legacy, 'melodic')
+      }
+    };
+  }
+  function loadSettings() {
+    try { return normalizeSettings(JSON.parse(storage.getItem(settingsKey) || '{}')); }
+    catch { return normalizeSettings({}); }
+  }
+  const savedSettings = loadSettings();
+  const moduleSettings = savedSettings.modules;
+  let activeMode = savedSettings.activeModule;
+  let settings = moduleSettings[activeMode];
   const harmonicReview = window.IntervalReview.createReviewManager(storage);
   const melodicReview = window.IntervalReview.createReviewManager(storage, window.IntervalPwaStorage.MELODY_KEY, {directional:true});
-  let review = settings.mode === 'melodic' ? melodicReview : harmonicReview;
-  let statisticsMode = settings.mode;
+  let review = activeMode === 'melodic' ? melodicReview : harmonicReview;
+  let statisticsMode = activeMode;
   const sessions = {harmonic:{questionNo:0,correct:0,answered:0},melodic:{questionNo:0,correct:0,answered:0}};
   const recordedLibrary = window.MELODIC_RECORDINGS;
   const recordedInstruments = Object.keys(recordedLibrary.instruments);
@@ -55,8 +77,31 @@
   let currentQuestionMode = null;
 
   function persist() {
-    try { storage.setItem('interval-trainer-settings', JSON.stringify(settings)); }
-    catch (e) { toast('设置保存失败，请检查浏览器存储权限'); console.error(e); }
+    try {
+      storage.setItem(settingsKey, JSON.stringify({ schema: 2, activeModule: activeMode, modules: moduleSettings }));
+    } catch (e) { toast('设置保存失败，请检查浏览器存储权限'); console.error(e); }
+  }
+  function syncSettingsForm() {
+    $('settings-title').textContent = settings.mode === 'harmonic' ? '和声音程设置' : '旋律音程设置';
+    $('note-low').value = String(settings.low);
+    $('note-high').value = String(settings.high);
+    $('volume').value = String(settings.volume);
+    $('duration').value = String(settings.duration);
+    $('volume-value').textContent = `${settings.volume}%`;
+    $('duration-value').textContent = `${settings.duration.toFixed(1)} 秒`;
+    $('show-answer').checked = settings.showAnswer;
+    $('auto-play-next').checked = settings.autoPlayNext;
+    $('confirm-answer').checked = settings.confirmAnswer;
+    $('audio-range-section').classList.toggle('hidden', settings.mode === 'melodic');
+    $('duration-label').classList.toggle('hidden', settings.mode === 'melodic');
+    $('duration').classList.toggle('hidden', settings.mode === 'melodic');
+    if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(settings.volume / 100 * .8, audioCtx.currentTime, .015);
+    drawToggles();
+  }
+  function syncHintButton() {
+    const available = settings.mode === 'harmonic' && !!state.current && state.submitted && currentScreen === 'practice';
+    $('hint').disabled = !available;
+    $('hint').setAttribute('aria-disabled', String(!available));
   }
   function toast(message) {
     const elem = $('toast');
@@ -134,12 +179,6 @@
       settings.confirmAnswer = $('confirm-answer').checked; persist();
       if (!state.submitted) { renderAnswerCaption(); drawAnswerButtons(); }
     });
-    $('toggle-all').addEventListener('click', () => {
-      settings.enabled = logic.INTERVALS.map(i => i.semitones); persist(); drawToggles();
-    });
-    $('preset-common').addEventListener('click', () => {
-      settings.enabled = [3, 4, 7]; persist(); drawToggles();
-    });
     $('reset-stats').addEventListener('click', () => {
       if (!window.confirm('确定清空成绩并从第一题重新开始吗？')) return;
       const sess=sessions[settings.mode];sess.questionNo=0;sess.correct=0;sess.answered=0; state.previous = null;
@@ -148,33 +187,43 @@
       $('settings-dialog').close(); toast('本次计数已清零，历史记录保留');
     });
     const dialog = $('settings-dialog');
-    $('open-settings').addEventListener('click', () => dialog.showModal());
+    $('open-settings').addEventListener('click', () => {
+      if (currentScreen !== 'practice') return;
+      syncSettingsForm();
+      dialog.showModal();
+    });
     $('close-settings').addEventListener('click', () => dialog.close());
     $('settings-done').addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
     setupStatsControls();
-    updateSliders(); drawToggles();
+    syncSettingsForm();
   }
   const intervalName = semi => logic.INTERVALS[semi]?.name || `音程 ${semi}`;
   function createBackup() {
     return JSON.stringify({ format: 'interval-trainer-backup', version: 2,
-      exportedAt: new Date().toISOString(), settings: { ...settings },
+      exportedAt: new Date().toISOString(), settings: JSON.parse(JSON.stringify({schema: 2, activeModule: activeMode, modules: moduleSettings})),
       harmonic: harmonicReview.snapshot(), melodic: melodicReview.snapshot() }, null, 2);
   }
   async function restoreBackup(data) {
     const obj = JSON.parse(data);
     if (!obj || obj.format !== 'interval-trainer-backup' ||
-      ![1,2].includes(obj.version) || !obj.settings || !Array.isArray(obj.settings.enabled)) throw Error('备份格式不正确');
-    if (!obj.settings.enabled.every(x => Number.isInteger(x) && x >= 0 && x <= 12)) throw Error('音程设置不正确');
+      ![1,2].includes(obj.version) || !obj.settings ||
+      !(Array.isArray(obj.settings.enabled) ||
+        (obj.settings.modules && Array.isArray(obj.settings.modules.harmonic?.enabled) && Array.isArray(obj.settings.modules.melodic?.enabled)))) throw Error('备份格式不正确');
+    const selected = obj.settings.modules
+      ? [...obj.settings.modules.harmonic.enabled, ...obj.settings.modules.melodic.enabled]
+      : obj.settings.enabled;
+    if (!selected.every(x => Number.isInteger(x) && x >= 0 && x <= 12)) throw Error('音程设置不正确');
+    const restoredSettings = JSON.stringify(normalizeSettings(obj.settings));
     if (!storage.available) throw Error('当前浏览器无法保存学习记录');
     if (obj.version === 1) {
       // v1.5/1.6 legacy backup affects harmonic history only; preserve melodic history.
       const harmonic = window.IntervalReview.normalizeStore(obj.review);
-      await storage.replaceBoth(JSON.stringify(obj.settings), JSON.stringify(harmonic));
+      await storage.replaceBoth(restoredSettings, JSON.stringify(harmonic));
     } else {
       const harmonic = window.IntervalReview.normalizeStore(obj.harmonic);
       const melodic = window.IntervalReview.normalizeStore(obj.melodic);
-      await storage.replaceAll(JSON.stringify(obj.settings), JSON.stringify(harmonic), JSON.stringify(melodic));
+      await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
     }
     window.location.reload();
   }
@@ -191,7 +240,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
   function setupStatsControls() {
-    statsUi = window.IntervalStats.init(() => statisticsMode === 'melodic' ? melodicReview : harmonicReview, () => settings.enabled);
+    statsUi = window.IntervalStats.init(() => statisticsMode === 'melodic' ? melodicReview : harmonicReview, () => moduleSettings[statisticsMode].enabled);
     const statsDialog = $('stats-dialog');
     for (const mode of ['harmonic','melodic']) {
       $('stats-'+mode).addEventListener('click', () => {
@@ -323,7 +372,7 @@
     $('feedback').textContent='';
     $('next-question').textContent='显示答案';
     $('next-question').classList.add('is-skip');$('play-label').textContent='播放';
-    setAudioStatus('');renderAnswerCaption();drawAnswerButtons();updateStats();
+    setAudioStatus('');renderAnswerCaption();drawAnswerButtons();updateStats();syncHintButton();
     return true;
   }
   function renderFeedback() {
@@ -348,7 +397,7 @@
       timbre: settings.mode === 'melodic' ? state.current.timbre : null,
       responseMs: firstPlayAt === null ? null : Math.max(0, Date.now() - firstPlayAt) });
     if (!review.storageAvailable) toast('当前设备无法持久保存学习记录，请检查存储权限');
-    renderFeedback(); updateStats(); renderAnswerCaption();
+    renderFeedback(); updateStats(); renderAnswerCaption(); syncHintButton();
     $('next-question').innerHTML = '下一题 <span aria-hidden="true">→</span>';
     $('next-question').classList.remove('is-skip');
   }
@@ -427,6 +476,8 @@
   }
   async function play(kind) {
     if(!state.current)return;
+    // The split-notes demonstration is available only after committing an answer.
+    if (kind === 'hint' && (settings.mode !== 'harmonic' || !state.submitted)) return;
     stopVoices();const token=state.playToken;
     try {
       setAudioStatus('正在准备音源…');await getAudioContext();
@@ -470,26 +521,27 @@
   function syncModeControls(){
     $('practice-mode-title').textContent = settings.mode==='melodic'?'旋律音程':'和声音程';
     $('hint').classList.toggle('hidden',settings.mode==='melodic');
-    $('audio-range-section').classList.toggle('hidden',settings.mode==='melodic');
-    $('duration-label').classList.toggle('hidden',settings.mode==='melodic');
-    $('duration').classList.toggle('hidden',settings.mode==='melodic');
     $('stats-title').textContent='练习统计';
-    drawToggles();
+    syncSettingsForm();
+    syncHintButton();
   }
   function showHome(){
     // Leaving a module is navigation, not a wrong answer or a skipped question.
+    if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
     currentScreen='home';
     $('home-screen').classList.remove('hidden');
+    $('open-settings').classList.add('hidden');
     $('practice-navigation').classList.add('hidden');
     $('practice').classList.add('hidden');
     syncModeControls();
   }
   function enterPractice(mode){
-    const changed=settings.mode!==mode;
+    const changed=activeMode!==mode;
     const created=changed || !state.current || currentQuestionMode!==mode;
     if(changed){
-      settings.mode=mode;
+      activeMode=mode;
+      settings=moduleSettings[mode];
       review=mode==='melodic'?melodicReview:harmonicReview;
       state.previous=null;
       persist();
@@ -498,6 +550,7 @@
     if (created && !newQuestion()) return;
     currentScreen='practice';
     $('home-screen').classList.add('hidden');
+    $('open-settings').classList.remove('hidden');
     $('practice-navigation').classList.remove('hidden');
     $('practice').classList.remove('hidden');
     syncModeControls();
@@ -547,6 +600,11 @@
     });
   }
   setupSettings(); setupInteractions(); showHome(); setupBackProtection();
+  // One-time, idempotent upgrade from the flat v2.0 settings format.
+  try {
+    const raw = JSON.parse(storage.getItem(settingsKey) || '{}');
+    if (!raw.modules && storage.available) persist();
+  } catch { /* invalid legacy settings already normalized in memory */ }
   if (!storage.available) {
     toast('当前浏览器无法保存练习数据。请使用 HTTPS 安装应用，或检查存储权限。');
   } else if (storage.migrated) {
