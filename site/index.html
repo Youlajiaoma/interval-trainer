@@ -33,7 +33,7 @@
         </button>
         <button class="home-module" id="home-melodic" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M12 34V12l22-4v23" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="8" cy="35" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 8 35)"/><ellipse cx="30" cy="32" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 30 32)"/></svg></span>
-          <span class="home-module-text"><strong>旋律音程</strong><small>两个音先后发声 · 上行 / 下行</small></span>
+          <span class="home-module-text"><strong>旋律音程</strong><small>预录乐器音程 · 上行 / 下行</small></span>
           <span class="home-module-arrow" aria-hidden="true">→</span>
         </button>
       </div>
@@ -44,10 +44,6 @@
       <button class="home-back" id="back-home" type="button" aria-label="返回主页">← HOME</button>
       <span class="practice-mode-title" id="practice-mode-title">和声音程</span>
     </nav>
-    <div id="melodic-submode" class="melodic-submode hidden" role="group" aria-label="旋律音程首音模式">
-      <button id="first-a440" class="submode-button active" type="button" aria-pressed="true">固定 A4 · 440 Hz</button>
-      <button id="first-random" class="submode-button" type="button" aria-pressed="false">随机首音</button>
-    </div>
 
     <main class="practice hidden" id="practice">
       <div class="practice-meta" aria-label="本次练习统计">
@@ -86,13 +82,13 @@
         <div class="preset-row"><button id="toggle-all" class="subtle-button" type="button">全部音程</button><button id="preset-common" class="subtle-button" type="button">常用组合</button></div>
         <div class="chosen-intervals" id="interval-toggles" aria-label="选择参与训练的音程"></div>
       </section>
-      <section class="settings-section">
-        <h3>音区范围</h3>
+      <section class="settings-section" id="audio-range-section">
+        <h3>音区范围（仅和声音程）</h3>
         <div class="range-row"><label for="note-low">最低音<select id="note-low"></select></label><span class="range-separator">至</span><label for="note-high">最高音<select id="note-high"></select></label></div>
       </section>
       <section class="settings-section">
         <label class="slider-label" for="volume">播放音量 <strong id="volume-value">65%</strong></label><input id="volume" type="range" min="0" max="100" value="65" step="1">
-        <label class="slider-label second-slider" for="duration">音程时长 <strong id="duration-value">2.0 秒</strong></label><input id="duration" type="range" min="0.8" max="4.0" value="2.0" step="0.1">
+        <label class="slider-label second-slider" id="duration-label" for="duration">音程时长 <strong id="duration-value">2.0 秒</strong></label><input id="duration" type="range" min="0.8" max="4.0" value="2.0" step="0.1">
       </section>
       <section class="settings-section optional-section">
         <h3>答题偏好</h3>
@@ -143,7 +139,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="logic.js"></script>
   <script src="assets/piano-samples.js"></script>
-  <script src="assets/melody-samples.js"></script>
+  <script src="assets/melodic-recordings.js"></script>
   <script src="review.js"></script>
   <script src="statistics.js"></script>
   <script src="storage.js"></script>

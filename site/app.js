@@ -10,7 +10,7 @@
     toast('学习记录保存失败，请立即导出备份');
   });
   window.IntervalPwaStorageAdapter = storage;
-  const defaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false, mode: 'harmonic', melodicFirst: 'a440', };
+  const defaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false, mode: 'harmonic', };
   function loadSettings() {
     try {
       const saved = JSON.parse(storage.getItem('interval-trainer-settings') || '{}');
@@ -26,7 +26,7 @@
       value.autoPlayNext = Boolean(value.autoPlayNext);
       value.confirmAnswer = Boolean(value.confirmAnswer);
       value.mode = value.mode === 'melodic' ? 'melodic' : 'harmonic';
-      value.melodicFirst = value.melodicFirst === 'random' ? 'random' : 'a440';
+      delete value.melodicFirst; // discard obsolete v1.7/v1.8 submode setting
       return value;
     } catch { return { ...defaults, enabled: defaults.enabled.slice() }; }
   }
@@ -36,8 +36,9 @@
   let review = settings.mode === 'melodic' ? melodicReview : harmonicReview;
   let statisticsMode = settings.mode;
   const sessions = {harmonic:{questionNo:0,correct:0,answered:0},melodic:{questionNo:0,correct:0,answered:0}};
-  const timbres = ['piano','violin','guitar','sax','flute'];
-  const timbreNames={piano:'钢琴',violin:'小提琴',guitar:'钢弦吉他',sax:'中音萨克斯',flute:'长笛'};
+  const recordedLibrary = window.MELODIC_RECORDINGS;
+  const recordedInstruments = Object.keys(recordedLibrary.instruments);
+  const timbreNames = recordedLibrary.instruments;
   let statsUi = null;
   let hintUsed = false;
   let firstPlayAt = null;
@@ -47,6 +48,8 @@
   const buffers = new Map();
   const loading = new Map();
   const activeVoices = new Set();
+  const recordingBuffers = new Map();
+  const recordingLoading = new Map();
   let toastTimeout = null;
   let currentScreen = 'home';
   let currentQuestionMode = null;
@@ -66,22 +69,26 @@
     const area = $('interval-toggles');
     area.replaceChildren();
     for (const item of logic.INTERVALS) {
-      const enabled = settings.enabled.includes(item.semitones);
+      const melodicUnavailable = settings.mode === 'melodic' && !recordedLibrary.intervals[String(item.semitones)];
+      const enabled = settings.enabled.includes(item.semitones) && !melodicUnavailable;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'interval-toggle' + (enabled ? ' active' : '');
+      if (melodicUnavailable) { button.disabled = true; button.title = '提供的录音中没有纯一度'; }
       button.setAttribute('aria-pressed', String(enabled));
       button.textContent = item.name;
       button.addEventListener('click', () => {
         if (enabled) {
-          if (settings.enabled.length === 1) { toast('至少需要选择一种音程'); return; }
+          if (settings.enabled.filter(x => settings.mode !== 'melodic' || recordedLibrary.intervals[String(x)]).length <= 1) { toast('至少需要选择一种可用音程'); return; }
           settings.enabled = settings.enabled.filter(x => x !== item.semitones);
         } else settings.enabled.push(item.semitones);
         persist(); drawToggles();
       });
       area.appendChild(button);
     }
-    $('enabled-count').textContent = `已选 ${settings.enabled.length} 种`;
+    $('enabled-count').textContent = settings.mode === 'melodic'
+      ? `已选 ${settings.enabled.filter(x => recordedLibrary.intervals[String(x)]).length} 种（缺少纯一度音源）`
+      : `已选 ${settings.enabled.length} 种`;
   }
   function setupSettings() {
     for (const midi of lowChoices) {
@@ -103,7 +110,7 @@
           $('note-high').value = String(settings.high);
           toast('已自动调整为有效音区');
         }
-        ensureA440InRange();persist();
+        persist();
       });
     }
     $('volume').value = String(settings.volume);
@@ -284,24 +291,32 @@
     activeVoices.clear();
   }
   function eligibleForCurrentMode() {
-    if (settings.mode !== 'melodic' || settings.melodicFirst !== 'a440')
-      return logic.eligibleIntervals(settings.enabled,settings.low,settings.high).map(i=>i.semitones);
-    if (settings.low > 69 || settings.high < 69) return [];
-    return logic.INTERVALS.filter(i=>settings.enabled.includes(i.semitones) &&
-      (69 - i.semitones >= settings.low || 69 + i.semitones <= settings.high)).map(i=>i.semitones);
+    if (settings.mode === 'melodic') {
+      return settings.enabled.filter(semitones => Boolean(recordedLibrary.intervals[String(semitones)]));
+    }
+    return logic.eligibleIntervals(settings.enabled,settings.low,settings.high).map(i=>i.semitones);
+  }
+  function makeRecordedQuestion(semitones) {
+    const group = recordedLibrary.intervals[String(semitones)];
+    if (!group) return null;
+    const direction = Math.random() < .5 ? 'up' : 'down';
+    const timbre = recordedInstruments[Math.floor(Math.random() * recordedInstruments.length)];
+    const asset = group[direction][timbre];
+    if (!asset) throw Error(`录音缺失：${semitones}/${direction}/${timbre}`);
+    const interval = logic.INTERVALS[semitones];
+    return {semitones, name: interval.name, direction: direction==='up'?1:-1, timbre,
+      recordingUrl: asset, low: null, high: null};
   }
   function newQuestion() {
     const candidates=eligibleForCurrentMode();
-    if(!candidates.length) {toast(settings.mode==='melodic' && settings.melodicFirst==='a440' ?
-      '固定 A4 需要音区包含 A4（440 Hz）；请在设置中调整音区' : '音区过窄，无法生成当前音程');return false;}
+    if(!candidates.length) {toast(settings.mode==='melodic' ? '请至少启用一种有录音的音程' : '音区过窄，无法生成当前音程');return false;}
     const chosen=review.choose(candidates,state.previous?.semitones);
     const result=settings.mode==='melodic' ?
-      logic.makeMelodicQuestion([chosen],settings.low,settings.high,settings.melodicFirst,state.previous) :
+      makeRecordedQuestion(chosen) :
       logic.makeQuestion([chosen],settings.low,settings.high,state.previous);
     if(!result) {toast('无法生成符合当前设置的音程');return false;}
     stopVoices();
-    if(settings.mode==='melodic') result.timbre=timbres[Math.floor(Math.random()*timbres.length)];
-    else result.timbre='piano';
+    if(settings.mode!=='melodic') result.timbre='piano';
     state.current=result;state.previous=result;currentQuestionMode=settings.mode;
     sessions[settings.mode].questionNo++;
     state.selected=null;state.submitted=false;state.notesShown=false;state.hasPlayed=false;
@@ -309,7 +324,7 @@
     state.options=logic.INTERVALS.filter(i=>candidates.includes(i.semitones));
     $('feedback').className='feedback hidden';$('feedback').textContent='';
     $('notes-result').classList.add('hidden');$('notes-result').textContent='';
-    $('reveal-notes').classList.add('hidden');$('reveal-notes').textContent='查看音名';
+    $('reveal-notes').classList.add('hidden');$('reveal-notes').textContent=settings.mode==='melodic'?'查看本题信息':'查看音名';
     $('reveal-notes').setAttribute('aria-expanded','false');
     $('next-question').innerHTML='跳过 <span aria-hidden="true">→</span>';
     $('next-question').classList.add('is-skip');$('play-label').textContent='播放';
@@ -333,7 +348,7 @@
     review.record({ actual: state.current.semitones, chosen: state.selected,
       hinted: hintUsed, low: state.current.low, high: state.current.high,
       direction: settings.mode === 'melodic' ? state.current.direction : null,
-      firstMode: settings.mode === 'melodic' ? settings.melodicFirst : null,
+      firstMode: settings.mode === 'melodic' ? 'user-recording' : null,
       timbre: settings.mode === 'melodic' ? state.current.timbre : null,
       responseMs: firstPlayAt === null ? null : Math.max(0, Date.now() - firstPlayAt) });
     if (!review.storageAvailable) toast('当前设备无法持久保存学习记录，请检查存储权限');
@@ -347,21 +362,23 @@
     state.notesShown = !state.notesShown;
     const el = $('notes-result');
     if (state.notesShown) {
-      const [lo, hi] = settings.mode === 'melodic' ? state.current.orderedNotes : state.current.notes;
       el.replaceChildren();
-      el.append(settings.mode === 'melodic' ? '第一音 ' : '低音 ');
-      const lowStrong = document.createElement('strong'); lowStrong.textContent = lo;
-      el.append(lowStrong, settings.mode === 'melodic' ? '  →  第二音 ' : '  +  高音 ');
-      const highStrong = document.createElement('strong'); highStrong.textContent = hi;
-      el.append(highStrong, `  ·  相差 ${state.current.semitones} 个半音`);
-      if(settings.mode === 'melodic') {
-        el.append(` · ${state.current.direction===1?'上行':state.current.direction===-1?'下行':'同音'} · ${timbreNames[state.current.timbre]}`);
+      if (settings.mode === 'melodic') {
+        // These user-supplied complete recordings have no reliable note-name metadata.
+        el.textContent = `本题录音：${state.current.direction===1?'上行':'下行'} · ${timbreNames[state.current.timbre]} · ${state.current.name}。原始音源未标注两个音的具体音名。`;
+      } else {
+        const [lo, hi] = state.current.notes;
+        el.append('低音 ');
+        const lowStrong = document.createElement('strong'); lowStrong.textContent = lo;
+        el.append(lowStrong, '  +  高音 ');
+        const highStrong = document.createElement('strong'); highStrong.textContent = hi;
+        el.append(highStrong, `  ·  相差 ${state.current.semitones} 个半音`);
       }
       el.classList.remove('hidden');
-      $('reveal-notes').textContent = '收起音名';
+      $('reveal-notes').textContent = '收起本题信息';
     } else {
       el.classList.add('hidden');
-      $('reveal-notes').textContent = '查看音名';
+      $('reveal-notes').textContent = settings.mode==='melodic'?'查看本题信息':'查看音名';
     }
     $('reveal-notes').setAttribute('aria-expanded', String(state.notesShown));
   }
@@ -412,6 +429,29 @@
     voice.onended=()=>{activeVoices.delete(voice);try{voice.disconnect();envelope.disconnect();}catch{}};
     activeVoices.add(voice);voice.start(at);voice.stop(at+duration+.02);
   }
+  async function loadRecording(url) {
+    if (recordingBuffers.has(url)) return recordingBuffers.get(url);
+    if (!recordingLoading.has(url)) recordingLoading.set(url, (async () => {
+      const response = await fetch(new URL(url, document.baseURI));
+      if (!response.ok) throw Error(`音源下载失败（${response.status}）`);
+      const bytes = await response.arrayBuffer();
+      const ctx = await getAudioContext();
+      return await ctx.decodeAudioData(bytes);
+    })());
+    try {
+      const buffer = await recordingLoading.get(url);
+      recordingBuffers.set(url,buffer);
+      return buffer;
+    } finally { recordingLoading.delete(url); }
+  }
+  function scheduleRecording(buffer, at) {
+    const voice=audioCtx.createBufferSource();voice.buffer=buffer;
+    const gain=audioCtx.createGain();gain.gain.value=3;
+    voice.connect(gain);gain.connect(masterGain);
+    voice.onended=()=>{activeVoices.delete(voice);try{voice.disconnect();gain.disconnect();}catch{}};
+    activeVoices.add(voice);
+    voice.start(at);voice.stop(at+buffer.duration);
+  }
   async function play(kind) {
     if(!state.current)return;
     stopVoices();const token=state.playToken;
@@ -419,64 +459,49 @@
       setAudioStatus('正在准备音源…');await getAudioContext();
       const current=state.current;
       const melodic=settings.mode==='melodic';
-      const timbre=current.timbre||'piano';
-      const firstNote=melodic?current.first:current.low;
-      const secondNote=melodic?current.second:current.high;
-      const [first,second]=await Promise.all([loadSample(timbre,firstNote),loadSample(timbre,secondNote)]);
-      if(token!==state.playToken)return;
-      const t=audioCtx.currentTime+.06;
       let total=0;
       if(melodic){
-        // Always strictly sequential; hint slows down and increases the separation.
-        const duration=kind==='hint'?Math.min(2.5,Math.max(1,settings.duration*.9)):
-          Math.max(.65,settings.duration*.7);
-        const gap=kind==='hint'?.75:.18;
-        const instGain={piano:.85,violin:.9,guitar:1.65,sax:.87,flute:.85}[timbre]||.85;
-        scheduleTone(first,t,duration,instGain);
-        scheduleTone(second,t+duration+gap,duration,instGain);
-        total=duration*2+gap;
-        setAudioStatus(kind==='hint'?'正在慢速顺序播放':'正在播放旋律音程');
+        // A supplied recording already contains both notes in the correct order.
+        // Do not transpose, synthesize, or infer unprovided pitches.
+        const buffer=await loadRecording(current.recordingUrl);
+        if(token!==state.playToken)return;
+        scheduleRecording(buffer,audioCtx.currentTime+.06);
+        total=buffer.duration;
+        setAudioStatus('正在播放原始旋律录音');
         if(kind==='hint')hintUsed=true;
-      }else if(kind==='hint'){
-        const duration=Math.min(1.25,Math.max(.65,settings.duration*.56)),gap=.14;
-        scheduleTone(first,t,duration,.9);
-        scheduleTone(second,t+duration+gap,duration,.9);
-        total=duration*2+gap;setAudioStatus('先低音，再高音');hintUsed=true;
-      }else{
-        const gain=current.low===current.high?.54:.72;
-        scheduleTone(first,t,settings.duration,gain);scheduleTone(second,t,settings.duration,gain);
-        total=settings.duration;setAudioStatus('正在播放和声音程');
+      } else {
+        const [first,second]=await Promise.all([loadSample('piano',current.low),loadSample('piano',current.high)]);
+        if(token!==state.playToken)return;
+        const t=audioCtx.currentTime+.06;
+        if(kind==='hint') {
+          const duration=Math.min(1.25,Math.max(.65,settings.duration*.56)),gap=.14;
+          scheduleTone(first,t,duration,.9);
+          scheduleTone(second,t+duration+gap,duration,.9);
+          total=duration*2+gap;setAudioStatus('先低音，再高音');hintUsed=true;
+        } else {
+          const gain=current.low===current.high?.54:.72;
+          scheduleTone(first,t,settings.duration,gain);
+          scheduleTone(second,t,settings.duration,gain);
+          total=settings.duration;setAudioStatus('正在播放和声音程');
+        }
       }
       state.playingTimeout=setTimeout(()=>{if(token===state.playToken){document.body.classList.remove('playing');setAudioStatus('');}},(total+.1)*1000);
       document.body.classList.add('playing');state.hasPlayed=true;
       if(firstPlayAt===null)firstPlayAt=Date.now();
       $('play-label').textContent='重听';
     } catch(err){
-      if(token===state.playToken){setAudioStatus('音频播放失败，请检查浏览器');toast(`播放失败：${err.message}`);}
+      if(token===state.playToken){setAudioStatus('音频播放失败，请检查网络或浏览器音频支持');toast(`播放失败：${err.message}`);}
       console.error('Audio playback error:',err);
     }
   }
   function syncModeControls(){
     $('practice-mode-title').textContent = settings.mode==='melodic'?'旋律音程':'和声音程';
-    $('melodic-submode').classList.toggle('hidden',currentScreen!=='practice' || settings.mode!=='melodic');
-    for(const option of ['a440','random']) {
-      const active=settings.melodicFirst===option;
-      $('first-'+option).classList.toggle('active',active);
-      $('first-'+option).setAttribute('aria-pressed',String(active));
-    }
-    $('hint').textContent=settings.mode==='melodic'?'慢速听':'分开听';
+    $('hint').classList.toggle('hidden',settings.mode==='melodic');
+    $('audio-range-section').classList.toggle('hidden',settings.mode==='melodic');
+    $('duration-label').classList.toggle('hidden',settings.mode==='melodic');
+    $('duration').classList.toggle('hidden',settings.mode==='melodic');
     $('stats-title').textContent='练习统计';
-  }
-  function ensureA440InRange(){
-    if(settings.mode!=='melodic' || settings.melodicFirst!=='a440')return;
-    let changed=false;
-    if(settings.low>69){settings.low=60;changed=true;}
-    if(settings.high<69){settings.high=72;changed=true;}
-    if(changed){
-      $('note-low').value=String(settings.low);$('note-high').value=String(settings.high);
-      toast('固定 A4 模式已自动调整音区，使其包含 440 Hz');
-      persist();
-    }
+    drawToggles();
   }
   function showHome(){
     // Leaving a module is navigation, not a wrong answer or a skipped question.
@@ -496,7 +521,6 @@
       state.previous=null;
       persist();
     }
-    ensureA440InRange();
     // Do not start any audio or create a question before selecting a module.
     if (created && !newQuestion()) return;
     currentScreen='practice';
@@ -508,11 +532,6 @@
     if(created && settings.autoPlayNext)
       void play('main');
   }
-  function setFirstMode(mode){
-    if(settings.melodicFirst===mode)return;
-    settings.melodicFirst=mode;ensureA440InRange();state.previous=null;persist();syncModeControls();
-    if(settings.mode==='melodic' && newQuestion() && settings.autoPlayNext)void play('main');
-  }
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
     $('home-harmonic').addEventListener('click',()=>enterPractice('harmonic'));
@@ -520,15 +539,13 @@
     $('back-home').addEventListener('click',showHome);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
-    $('first-a440').addEventListener('click',()=>setFirstMode('a440'));
-    $('first-random').addEventListener('click',()=>setFirstMode('random'));
     syncModeControls();
     $('hint').addEventListener('click', () => play('hint'));
     $('submit-answer').addEventListener('click', submitAnswer);
     $('reveal-notes').addEventListener('click', revealNotes);
     $('next-question').addEventListener('click', advanceQuestion);
   }
-  setupSettings(); setupInteractions(); ensureA440InRange(); showHome();
+  setupSettings(); setupInteractions(); showHome();
   if (!storage.available) {
     toast('当前浏览器无法保存练习数据。请使用 HTTPS 安装应用，或检查存储权限。');
   } else if (storage.migrated) {
