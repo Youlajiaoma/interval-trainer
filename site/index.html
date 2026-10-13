@@ -23,16 +23,33 @@
       </button>
     </header>
 
-    <nav class="mode-tabs" aria-label="训练类型">
-      <button id="mode-harmonic" class="mode-tab active" type="button" aria-pressed="true">和声音程</button>
-      <button id="mode-melodic" class="mode-tab" type="button" aria-pressed="false">旋律音程</button>
+    <main class="home-screen" id="home-screen" aria-labelledby="home-title">
+      <div class="home-intro"><h2 id="home-title">选择训练</h2><p>选择一个模块，开始练习</p></div>
+      <div class="home-modules">
+        <button class="home-module" id="home-harmonic" type="button">
+          <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M14 8v32M25 13v22M36 8v32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="24" r="5" fill="currentColor"/><circle cx="25" cy="24" r="5" fill="currentColor"/><circle cx="36" cy="24" r="5" fill="currentColor"/></svg></span>
+          <span class="home-module-text"><strong>和声音程</strong><small>两个音同时发声</small></span>
+          <span class="home-module-arrow" aria-hidden="true">→</span>
+        </button>
+        <button class="home-module" id="home-melodic" type="button">
+          <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M12 34V12l22-4v23" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="8" cy="35" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 8 35)"/><ellipse cx="30" cy="32" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 30 32)"/></svg></span>
+          <span class="home-module-text"><strong>旋律音程</strong><small>两个音先后发声 · 上行 / 下行</small></span>
+          <span class="home-module-arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+      <button class="home-stats-link" id="home-stats" type="button">查看练习统计 <span aria-hidden="true">↗</span></button>
+    </main>
+
+    <nav class="practice-navigation hidden" id="practice-navigation" aria-label="练习页面导航">
+      <button class="home-back" id="back-home" type="button" aria-label="返回主页">← HOME</button>
+      <span class="practice-mode-title" id="practice-mode-title">和声音程</span>
     </nav>
     <div id="melodic-submode" class="melodic-submode hidden" role="group" aria-label="旋律音程首音模式">
       <button id="first-a440" class="submode-button active" type="button" aria-pressed="true">固定 A4 · 440 Hz</button>
       <button id="first-random" class="submode-button" type="button" aria-pressed="false">随机首音</button>
     </div>
 
-    <main class="practice" id="practice">
+    <main class="practice hidden" id="practice">
       <div class="practice-meta" aria-label="本次练习统计">
         <span>第 <strong id="question-number">01</strong> 题</span>
         <span>答对 <strong id="correct-number">0</strong>/<strong id="answered-number">0</strong> · <strong id="accuracy-number">—</strong></span>
@@ -96,7 +113,7 @@
   <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
     <div class="stats-shell">
       <header class="stats-header">
-        <button id="close-stats" class="stats-back" type="button" aria-label="返回练习">← <span>返回练习</span></button>
+        <button id="close-stats" class="stats-back" type="button" aria-label="返回上一页面">← <span>返回</span></button>
         <h2 id="stats-title">练习统计</h2>
         <span class="stats-header-spacer" aria-hidden="true"></span>
       </header>

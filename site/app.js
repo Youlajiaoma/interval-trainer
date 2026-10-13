@@ -48,6 +48,8 @@
   const loading = new Map();
   const activeVoices = new Set();
   let toastTimeout = null;
+  let currentScreen = 'home';
+  let currentQuestionMode = null;
 
   function persist() {
     try { storage.setItem('interval-trainer-settings', JSON.stringify(settings)); }
@@ -134,7 +136,9 @@
     $('reset-stats').addEventListener('click', () => {
       if (!window.confirm('确定清空成绩并从第一题重新开始吗？')) return;
       const sess=sessions[settings.mode];sess.questionNo=0;sess.correct=0;sess.answered=0; state.previous = null;
-      newQuestion(); $('settings-dialog').close(); toast('本次计数已清零，历史记录保留');
+      if(currentScreen==='practice') newQuestion();
+      else {state.current=null;currentQuestionMode=null;}
+      $('settings-dialog').close(); toast('本次计数已清零，历史记录保留');
     });
     const dialog = $('settings-dialog');
     $('open-settings').addEventListener('click', () => dialog.showModal());
@@ -298,7 +302,7 @@
     stopVoices();
     if(settings.mode==='melodic') result.timbre=timbres[Math.floor(Math.random()*timbres.length)];
     else result.timbre='piano';
-    state.current=result;state.previous=result;
+    state.current=result;state.previous=result;currentQuestionMode=settings.mode;
     sessions[settings.mode].questionNo++;
     state.selected=null;state.submitted=false;state.notesShown=false;state.hasPlayed=false;
     hintUsed=false;firstPlayAt=null;
@@ -453,12 +457,8 @@
     }
   }
   function syncModeControls(){
-    for(const mode of ['harmonic','melodic']){
-      const active=settings.mode===mode;
-      $('mode-'+mode).classList.toggle('active',active);
-      $('mode-'+mode).setAttribute('aria-pressed',String(active));
-    }
-    $('melodic-submode').classList.toggle('hidden',settings.mode!=='melodic');
+    $('practice-mode-title').textContent = settings.mode==='melodic'?'旋律音程':'和声音程';
+    $('melodic-submode').classList.toggle('hidden',currentScreen!=='practice' || settings.mode!=='melodic');
     for(const option of ['a440','random']) {
       const active=settings.melodicFirst===option;
       $('first-'+option).classList.toggle('active',active);
@@ -478,11 +478,35 @@
       persist();
     }
   }
-  function switchMode(mode){
-    if(settings.mode===mode)return;
-    settings.mode=mode;review=mode==='melodic'?melodicReview:harmonicReview;
-    ensureA440InRange();state.previous=null;persist();syncModeControls();
-    if(newQuestion() && settings.autoPlayNext)void play('main');
+  function showHome(){
+    // Leaving a module is navigation, not a wrong answer or a skipped question.
+    stopVoices();
+    currentScreen='home';
+    $('home-screen').classList.remove('hidden');
+    $('practice-navigation').classList.add('hidden');
+    $('practice').classList.add('hidden');
+    syncModeControls();
+  }
+  function enterPractice(mode){
+    const changed=settings.mode!==mode;
+    const created=changed || !state.current || currentQuestionMode!==mode;
+    if(changed){
+      settings.mode=mode;
+      review=mode==='melodic'?melodicReview:harmonicReview;
+      state.previous=null;
+      persist();
+    }
+    ensureA440InRange();
+    // Do not start any audio or create a question before selecting a module.
+    if (created && !newQuestion()) return;
+    currentScreen='practice';
+    $('home-screen').classList.add('hidden');
+    $('practice-navigation').classList.remove('hidden');
+    $('practice').classList.remove('hidden');
+    syncModeControls();
+    // Returning to an unfinished question leaves the current answer and notes untouched.
+    if(created && settings.autoPlayNext)
+      void play('main');
   }
   function setFirstMode(mode){
     if(settings.melodicFirst===mode)return;
@@ -491,7 +515,11 @@
   }
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
-    for(const mode of ['harmonic','melodic']) $('mode-'+mode).addEventListener('click',()=>switchMode(mode));
+    $('home-harmonic').addEventListener('click',()=>enterPractice('harmonic'));
+    $('home-melodic').addEventListener('click',()=>enterPractice('melodic'));
+    $('back-home').addEventListener('click',showHome);
+    // The existing statistics dialog is shared with the home screen.
+    $('home-stats').addEventListener('click',()=> $('open-stats').click());
     $('first-a440').addEventListener('click',()=>setFirstMode('a440'));
     $('first-random').addEventListener('click',()=>setFirstMode('random'));
     syncModeControls();
@@ -500,7 +528,7 @@
     $('reveal-notes').addEventListener('click', revealNotes);
     $('next-question').addEventListener('click', advanceQuestion);
   }
-  setupSettings(); setupInteractions(); ensureA440InRange(); newQuestion();
+  setupSettings(); setupInteractions(); ensureA440InRange(); showHome();
   if (!storage.available) {
     toast('当前浏览器无法保存练习数据。请使用 HTTPS 安装应用，或检查存储权限。');
   } else if (storage.migrated) {

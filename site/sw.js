@@ -1,5 +1,5 @@
-/* v1.7 offline app shell, piano and four additional melodic timbres. */
-const CACHE_NAME = 'interval-trainer-pwa-v1.7.0';
+/* v1.8 offline app shell, melodic timbres and user-confirmed PWA updates. */
+const CACHE_NAME = 'interval-trainer-pwa-v1.8.0';
 const ROOT = self.registration.scope;
 const FILES = [
   './', './index.html', './styles.css', './logic.js', './assets/piano-samples.js',
@@ -8,9 +8,13 @@ const FILES = [
   './update.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './UPSTREAM_AUDIO_COPYRIGHT.txt', './LICENSE_AUDIO_GPL2.txt'
 ];
+const ROOT_PATH = new URL(ROOT).pathname;
+const NETWORK_FIRST = new Set(['pwa-register.js', 'update.html']);
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(FILES.map(file => new URL(file, ROOT)))));
-  // Do not force activation over an open practice session.
+  event.waitUntil(caches.open(CACHE_NAME).then(cache =>
+    cache.addAll(FILES.map(file => new URL(file, ROOT)))));
+  // Wait for user confirmation rather than interrupting an active practice session.
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
@@ -27,14 +31,26 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (url.origin !== new URL(ROOT).origin || !url.pathname.startsWith(new URL(ROOT).pathname)) return;
+  if (url.origin !== new URL(ROOT).origin || !url.pathname.startsWith(ROOT_PATH)) return;
+  const relative = url.pathname.slice(ROOT_PATH.length);
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
+    if (NETWORK_FIRST.has(relative)) {
+      // Keep updater and recovery page fresh even under an already-installed SW.
+      try {
+        const response = await fetch(request, {cache: 'no-store'});
+        if (response.ok && response.type === 'basic') await cache.put(new URL(relative, ROOT), response.clone());
+        return response;
+      } catch (error) {
+        const cached = await cache.match(new URL(relative, ROOT));
+        if (cached) return cached;
+        throw error;
+      }
+    }
     const cached = await cache.match(request);
     if (cached) return cached;
     try {
       const response = await fetch(request);
-      // Cache only files within our own static directory, never unrelated endpoints.
       if (response.ok && response.type === 'basic') await cache.put(request, response.clone());
       return response;
     } catch (error) {
