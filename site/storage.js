@@ -10,7 +10,11 @@
   const REVIEW_KEY = 'interval-trainer-review-v1';
   const SETTINGS_KEY = 'interval-trainer-settings';
   const MELODY_KEY = 'interval-trainer-review-melodic-v1';
-  const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY];
+  const SIGHT_TREBLE_KEY = 'interval-trainer-review-sight-treble-v1';
+  const SIGHT_BASS_KEY = 'interval-trainer-review-sight-bass-v1';
+  const SIGHT_SETTINGS_KEY = 'interval-trainer-sight-settings-v1';
+  const SIGHT_SESSION_KEY = 'interval-trainer-sight-session-v1';
+  const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY];
 
   const req = request => new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -61,7 +65,7 @@
         if (!old) continue;
         try {
           const parsed = JSON.parse(old);
-          if (key === REVIEW_KEY || key === MELODY_KEY) root.IntervalReview.normalizeStore(parsed);
+          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed);
           if (key === SETTINGS_KEY && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) continue;
           legacy.push([key, old]);
         } catch { continue; }
@@ -118,6 +122,14 @@
         cache.set(SETTINGS_KEY, String(settingsJson));
         cache.set(REVIEW_KEY, String(reviewJson));
       },
+      async replaceWithSight(settingsJson, harmonicJson, melodicJson, trebleJson, bassJson, sightSettingsJson) {
+        if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
+        await this.flush();
+        const rows = [[SETTINGS_KEY,settingsJson],[REVIEW_KEY,harmonicJson],[MELODY_KEY,melodicJson],
+          [SIGHT_TREBLE_KEY,trebleJson],[SIGHT_BASS_KEY,bassJson],[SIGHT_SETTINGS_KEY,sightSettingsJson]];
+        await transact(db, 'readwrite', store => { for(const [key,value] of rows) store.put(String(value),key); });
+        for(const [key,value] of rows) cache.set(key,String(value));
+      },
       async replaceAll(settingsJson, harmonicJson, melodicJson) {
         if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
         await this.flush();
@@ -137,5 +149,5 @@
     }
     return adapter;
   }
-  root.IntervalPwaStorage = Object.freeze({initialize, REVIEW_KEY, MELODY_KEY, SETTINGS_KEY, DATABASE});
+  root.IntervalPwaStorage = Object.freeze({initialize, REVIEW_KEY, MELODY_KEY, SETTINGS_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, DATABASE});
 })(window);

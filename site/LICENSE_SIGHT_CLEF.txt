@@ -1,0 +1,9 @@
+五线谱谱号轮廓说明
+
+来源：Noto Music（Google Inc.，Copyright 2018 Google Inc. All Rights Reserved）
+授权：SIL Open Font License 1.1
+项目：https://github.com/notofonts/music
+许可证：https://openfontlicense.org/open-font-license-official-text/
+
+本程序仅将高音与低音谱号的部分字形轮廓转换为 SVG 路径，并未附带或分发字体文件。
+授权信息以 Noto Music 字体自身版权声明为准。

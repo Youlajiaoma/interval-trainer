@@ -224,6 +224,7 @@
     });
     const dialog = $('settings-dialog');
     $('open-settings').addEventListener('click', () => {
+      if (window.SightTrainer?.isActive()) { window.SightTrainer.openSettings(); return; }
       if (currentScreen !== 'practice') return;
       syncSettingsForm();
       dialog.showModal();
@@ -236,14 +237,15 @@
   }
   const intervalName = semi => logic.INTERVALS[semi]?.name || `音程 ${semi}`;
   function createBackup() {
-    return JSON.stringify({ format: 'interval-trainer-backup', version: 2,
+    return JSON.stringify({ format: 'interval-trainer-backup', version: 3,
       exportedAt: new Date().toISOString(), settings: JSON.parse(JSON.stringify({schema: 2, activeModule: activeMode, modules: moduleSettings})),
-      harmonic: harmonicReview.snapshot(), melodic: melodicReview.snapshot() }, null, 2);
+      harmonic: harmonicReview.snapshot(), melodic: melodicReview.snapshot(),
+      sight: window.SightTrainer?.backup() || null }, null, 2);
   }
   async function restoreBackup(data) {
     const obj = JSON.parse(data);
     if (!obj || obj.format !== 'interval-trainer-backup' ||
-      ![1,2].includes(obj.version) || !obj.settings ||
+      ![1,2,3].includes(obj.version) || !obj.settings ||
       !(Array.isArray(obj.settings.enabled) ||
         (obj.settings.modules && Array.isArray(obj.settings.modules.harmonic?.enabled) && Array.isArray(obj.settings.modules.melodic?.enabled)))) throw Error('备份格式不正确');
     const selected = obj.settings.modules
@@ -259,7 +261,13 @@
     } else {
       const harmonic = window.IntervalReview.normalizeStore(obj.harmonic);
       const melodic = window.IntervalReview.normalizeStore(obj.melodic);
-      await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
+      if (obj.version === 3 && obj.sight) {
+        const treble = window.IntervalReview.normalizeStore(obj.sight.treble);
+        const bass = window.IntervalReview.normalizeStore(obj.sight.bass);
+        const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? obj.sight.settings : {clef:'both'};
+        await storage.replaceWithSight(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic),
+          JSON.stringify(treble), JSON.stringify(bass), JSON.stringify(config));
+      } else await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
     }
     window.location.reload();
   }
@@ -562,6 +570,7 @@
     syncHintButton();
   }
   function showHome(){
+    if (window.SightTrainer?.isActive()) window.SightTrainer.leave();
     // Leaving a module is navigation, not a wrong answer or a skipped question.
     if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
@@ -601,6 +610,7 @@
     $('play-harmonic').addEventListener('click', () => play('main'));
     $('home-harmonic').addEventListener('click',()=>enterPractice('harmonic'));
     $('home-melodic').addEventListener('click',()=>enterPractice('melodic'));
+    $('home-sight').addEventListener('click',()=>window.SightTrainer?.enter());
     $('back-home').addEventListener('click',showHome);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
@@ -623,6 +633,10 @@
         $('stats-dialog').close();
       } else if ($('settings-dialog').open) {
         $('settings-dialog').close();
+      } else if (window.SightTrainer?.isActive()) {
+        window.SightTrainer.leave();
+        lastBack = Date.now();
+        toast('再按一次返回退出');
       } else if (currentScreen === 'practice') {
         showHome();
         lastBack = Date.now();
@@ -650,4 +664,5 @@
     toast('已自动迁移旧版练习记录与设置');
   }
   window.IntervalAppReady = true;
+  window.dispatchEvent(new Event('interval-trainer-ready'));
 })();
