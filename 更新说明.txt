@@ -1,0 +1,9 @@
+音程听辨 v1.6 · 已部署 GitHub Pages 的更新方法
+
+1. 解压本压缩包（不要直接上传 ZIP）。
+2. 打开 GitHub 仓库 Youlajiaoma/interval-trainer，进入仓库的 site 文件夹。
+3. 点击 Add file → Upload files，选择解压出的 4 个文件（app.js、index.html、styles.css、sw.js），确认目标位置是 site/，提交到 main 分支。
+4. 等待 Actions 自动部署成功，然后手机联网重新打开 PWA。若仍显示旧布局，完整退出 App 再打开，等待 Service Worker 更新激活。
+5. 练习记录存储在原网站来源的 IndexedDB，保持网址不变，不需要重建数据库。更新前仍建议手动导出 JSON 备份。
+
+改动：7 行指定按钮布局 + 增四度（减五度）作为最后额外整行；移除全局空格/H/N 快捷键及说明。
