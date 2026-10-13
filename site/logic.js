@@ -69,5 +69,26 @@
     }
     return { low: note, high: note + interval.semitones, semitones: interval.semitones, name: interval.name, notes: spellPair(note, interval) };
   }
-  root.IntervalLogic = Object.freeze({ INTERVALS, makeQuestion, eligibleIntervals, spellPair });
+  function makeMelodicQuestion(selected, low, high, firstMode, previous, random = Math.random) {
+    const fixed = firstMode === 'a440';
+    if (fixed && (low > 69 || high < 69)) return null;
+    const possible = INTERVALS.filter(i => selected.includes(i.semitones) &&
+      (fixed ? (69 - i.semitones >= low || 69 + i.semitones <= high) : low + i.semitones <= high));
+    if (!possible.length) return null;
+    let choices = possible.length > 1 && previous ? possible.filter(i => i.semitones !== previous.semitones) : possible;
+    if (!choices.length) choices = possible;
+    const interval = pickRandom(choices, random);
+    const directions = interval.semitones === 0 ? [0] : [1,-1].filter(dir =>
+      fixed ? (69 + dir * interval.semitones >= low && 69 + dir * interval.semitones <= high) : true);
+    const direction = pickRandom(directions, random);
+    const first = fixed ? 69 : (direction >= 0 ?
+      low + Math.floor(random() * (high - low - interval.semitones + 1)) :
+      low + interval.semitones + Math.floor(random() * (high - low - interval.semitones + 1)));
+    const second = first + direction * interval.semitones;
+    const lower = Math.min(first,second),upper=Math.max(first,second);
+    const notes = spellPair(lower, interval);
+    return { low:lower,high:upper,first,second,direction,semitones:interval.semitones,
+      name:interval.name, notes, orderedNotes: first <= second ? notes : [notes[1],notes[0]] };
+  }
+  root.IntervalLogic = Object.freeze({ INTERVALS, makeQuestion, makeMelodicQuestion, eligibleIntervals, spellPair });
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -23,6 +23,15 @@
       </button>
     </header>
 
+    <nav class="mode-tabs" aria-label="训练类型">
+      <button id="mode-harmonic" class="mode-tab active" type="button" aria-pressed="true">和声音程</button>
+      <button id="mode-melodic" class="mode-tab" type="button" aria-pressed="false">旋律音程</button>
+    </nav>
+    <div id="melodic-submode" class="melodic-submode hidden" role="group" aria-label="旋律音程首音模式">
+      <button id="first-a440" class="submode-button active" type="button" aria-pressed="true">固定 A4 · 440 Hz</button>
+      <button id="first-random" class="submode-button" type="button" aria-pressed="false">随机首音</button>
+    </div>
+
     <main class="practice" id="practice">
       <div class="practice-meta" aria-label="本次练习统计">
         <span>第 <strong id="question-number">01</strong> 题</span>
@@ -65,7 +74,7 @@
         <div class="range-row"><label for="note-low">最低音<select id="note-low"></select></label><span class="range-separator">至</span><label for="note-high">最高音<select id="note-high"></select></label></div>
       </section>
       <section class="settings-section">
-        <label class="slider-label" for="volume">钢琴音量 <strong id="volume-value">65%</strong></label><input id="volume" type="range" min="0" max="100" value="65" step="1">
+        <label class="slider-label" for="volume">播放音量 <strong id="volume-value">65%</strong></label><input id="volume" type="range" min="0" max="100" value="65" step="1">
         <label class="slider-label second-slider" for="duration">音程时长 <strong id="duration-value">2.0 秒</strong></label><input id="duration" type="range" min="0.8" max="4.0" value="2.0" step="0.1">
       </section>
       <section class="settings-section optional-section">
@@ -92,7 +101,11 @@
         <span class="stats-header-spacer" aria-hidden="true"></span>
       </header>
       <div class="stats-content">
-        <div class="stats-intro"><div><h3>练习概览</h3><p>每次作答自动记录，仅保存在当前设备</p></div>
+        <nav class="stats-mode-switch" role="group" aria-label="统计类型">
+          <button id="stats-harmonic" type="button" class="active" aria-pressed="true">和声统计</button>
+          <button id="stats-melodic" type="button" aria-pressed="false">旋律统计</button>
+        </nav>
+        <div class="stats-intro"><div><h3>练习概览</h3><p>两类音程独立统计 · 仅保存在当前设备</p></div>
         <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
         <div id="stats-summary" class="stats-summary-grid"></div>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3><span>每日表现</span></div><div id="stats-trend"></div></section>
@@ -113,6 +126,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="logic.js"></script>
   <script src="assets/piano-samples.js"></script>
+  <script src="assets/melody-samples.js"></script>
   <script src="review.js"></script>
   <script src="statistics.js"></script>
   <script src="storage.js"></script>

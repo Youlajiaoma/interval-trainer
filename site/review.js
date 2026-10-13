@@ -68,7 +68,10 @@
       if (!h || !valid(h.actual) || !valid(h.chosen)) continue;
       data.history.push({at: num(h.at, 0, 8640000000000000), actual: h.actual, chosen: h.chosen,
         hinted: !!h.hinted, low: num(h.low, 0, 127), high: num(h.high, 0, 127),
-        responseMs: Number.isFinite(h.responseMs) ? num(h.responseMs, 0, 3600000) : null});
+        responseMs: Number.isFinite(h.responseMs) ? num(h.responseMs, 0, 3600000) : null,
+        direction: [-1,0,1].includes(h.direction) ? h.direction : null,
+        firstMode: h.firstMode === 'a440' ? 'a440' : h.firstMode === 'random' ? 'random' : null,
+        timbre: ['piano','violin','guitar','sax','flute'].includes(h.timbre) ? h.timbre : null});
     }
     if (raw.daily && typeof raw.daily === 'object' && !Array.isArray(raw.daily)) {
       for (const [key, item] of Object.entries(raw.daily).filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().slice(-MAX_DAYS))
@@ -90,20 +93,20 @@
     try { const key = STORAGE_KEY + '-test'; storage.setItem(key, '1'); storage.removeItem(key); return true; }
     catch { return false; }
   }
-  function createReviewManager(storage) {
+  function createReviewManager(storage, key = STORAGE_KEY) {
     let available = storageAvailable(storage);
     let data = newStore();
     let storageWarning = '';
     if (available) {
-      try { const saved = storage.getItem(STORAGE_KEY); if (saved) data = normalizeStore(JSON.parse(saved)); }
+      try { const saved = storage.getItem(key); if (saved) data = normalizeStore(JSON.parse(saved)); }
       catch { storageWarning = '检测到损坏的旧记录，原始存储没有被自动删除。请先导出备份再继续练习。'; available = false; }
     }
     function save() {
       if (!available) return false;
-      try { storage.setItem(STORAGE_KEY, JSON.stringify(data)); return true; }
+      try { storage.setItem(key, JSON.stringify(data)); return true; }
       catch { available = false; storageWarning = '存储失败，请导出记录并检查浏览器存储空间。'; return false; }
     }
-    function record({ actual, chosen, hinted = false, low, high, responseMs = null, now = Date.now() }) {
+    function record({ actual, chosen, hinted = false, low, high, direction = null, firstMode = null, timbre = null, responseMs = null, now = Date.now() }) {
       if (!valid(actual) || !valid(chosen)) throw Error('无效的音程');
       now = num(now, 0, 8640000000000000);
       const correct = actual === chosen;
@@ -127,7 +130,7 @@
       c.dueAt = addCalendarDays(now, c.intervalDays);
       data.cards[actual] = c;
       const ms = Number.isFinite(responseMs) ? num(responseMs, 0, 3600000) : null;
-      data.history.push({at: now, actual, chosen, hinted: !!hinted, low, high, responseMs:ms});
+      data.history.push({at: now, actual, chosen, hinted: !!hinted, low, high, responseMs:ms, direction, firstMode, timbre});
       if (data.history.length > MAX_HISTORY) data.history.splice(0, data.history.length - MAX_HISTORY);
       const today = dayKey(now);
       const d = data.daily[today] || blankDay();

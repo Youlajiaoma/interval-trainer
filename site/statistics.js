@@ -121,15 +121,19 @@
       const correct=h.actual===h.chosen;
       const line=create('div','stats-history-row');
       line.append(create('span','stats-history-at',new Date(h.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})));
-      line.append(create('span','stats-history-names',correct?names[h.actual]:`${names[h.actual]} → ${names[h.chosen]}`));
+      const dir = h.direction === 1 ? '↑ ' : h.direction === -1 ? '↓ ' : '';
+      const timbre = ({piano:'钢琴',violin:'小提琴',guitar:'吉他',sax:'萨克斯',flute:'长笛'})[h.timbre] || '';
+      const label = correct ? names[h.actual] : `${names[h.actual]} → ${names[h.chosen]}`;
+      line.append(create('span','stats-history-names',`${dir}${label}${timbre ? ' · '+timbre : ''}`));
       line.append(create('span',correct?'stats-history-ok':'stats-history-bad',correct?'正确':'错误'));
       wrap.append(line);
     }
     replace('stats-history',wrap);
   }
-  function init(review,getEnabled){
+  function init(getReview,getEnabled){
     const select=$('stats-period');
     function render(){
+      const review=getReview();
       const now=Date.now();const value=select.value;
       const s=review.statistics(value==='all'?'all':Number(value),now);
       s.last49=review.statistics(49,now).trend;

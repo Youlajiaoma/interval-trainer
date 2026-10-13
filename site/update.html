@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>音程听辨 · 安全更新</title>
+  <style>
+    :root{color-scheme:light;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f6f7f9;color:#18202b;min-height:100dvh;display:grid;place-items:center;padding:20px}
+    main{width:min(440px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:24px;box-shadow:0 8px 34px #16243a0a}
+    h1{font-size:22px;margin:0 0 12px} p{font-size:14px;line-height:1.8;color:#4b5563}
+    button,a.primary{display:block;width:100%;text-align:center;border:0;border-radius:12px;background:#2563eb;color:white;padding:14px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none}
+    button:disabled{opacity:.65;cursor:wait}
+    a.secondary{display:block;text-align:center;margin-top:16px;color:#475569;font-size:14px}
+    #status{margin:16px 0;font-size:14px;line-height:1.7;min-height:24px;white-space:pre-wrap}
+    .tip{font-size:12px;color:#64748b;margin-top:18px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>音程听辨 · 安全更新</h1>
+  <p>这个页面只更新离线程序缓存，不删除练习统计、错题记录或 IndexedDB 数据库。请在<strong>普通模式的 Chrome</strong> 中打开，不要使用无痕模式。</p>
+  <button id="run" type="button">检查并应用新版</button>
+  <div id="status" role="status" aria-live="polite">尚未开始</div>
+  <a class="secondary" href="./">返回音程听辨</a>
+  <p class="tip">更新成功后建议关闭旧的音程听辨窗口，再从桌面图标打开。如果出现错误，请把页面上的错误信息发给开发者；不要点击“清除网站数据”。</p>
+</main>
+<script>
+(() => {
+  'use strict';
+  const button = document.getElementById('run');
+  const status = document.getElementById('status');
+  const setStatus = message => { status.textContent = message; };
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const openApp = () => { window.location.replace('./?updated=' + Date.now()); };
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      if (!('serviceWorker' in navigator)) throw new Error('当前浏览器不支持 Service Worker。');
+      if (!window.isSecureContext) throw new Error('请通过 HTTPS 的 GitHub Pages 地址打开。');
+      setStatus('正在检查离线程序版本……');
+      let registration = await navigator.serviceWorker.getRegistration('./');
+      if (!registration) registration = await navigator.serviceWorker.register('./sw.js', {scope: './', updateViaCache:'none'});
+      // One-time update is explicit and occurs only after the user presses the button.
+      await registration.update();
+      // A newly installed Service Worker can take a short time to enter waiting state.
+      for (let i=0; i<50 && !registration.waiting && registration.installing; i++) await sleep(200);
+      if (registration.waiting) {
+        setStatus('已找到新版，正在切换离线缓存……');
+        const changed = new Promise(resolve => {
+          const listener = () => {
+            navigator.serviceWorker.removeEventListener('controllerchange', listener);
+            resolve(true);
+          };
+          navigator.serviceWorker.addEventListener('controllerchange', listener);
+          setTimeout(() => {
+            navigator.serviceWorker.removeEventListener('controllerchange', listener);
+            resolve(false);
+          }, 12000);
+        });
+        registration.waiting.postMessage({type:'SKIP_WAITING'});
+        const switched = await changed;
+        if (!switched) {
+          setStatus('新版已收到激活请求，但尚未完成接管。请关闭所有音程听辨窗口后，重新打开本页面再试。');
+          return;
+        }
+        setStatus('更新完成，正在重新打开程序……');
+        await sleep(700);
+        openApp();
+        return;
+      }
+      const cacheNames = await (window.caches ? caches.keys() : Promise.resolve([]));
+      const versions = cacheNames.filter(name => name.startsWith('interval-trainer-pwa-'));
+      setStatus('未发现等待激活的新版本。当前离线缓存：' + (versions.join('、') || '暂无') + '\n正在重新打开程序检查页面……');
+      await sleep(1200);
+      openApp();
+    } catch (error) {
+      setStatus('更新失败：' + (error?.message || String(error)) + '\n请保持联网并重试；不要清除网站数据。');
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

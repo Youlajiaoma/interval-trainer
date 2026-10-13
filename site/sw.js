@@ -1,10 +1,11 @@
-/* v1.5 offline app shell and piano samples. Increment cache version for releases. */
-const CACHE_NAME = 'interval-trainer-pwa-v1.6.0';
+/* v1.7 offline app shell, piano and four additional melodic timbres. */
+const CACHE_NAME = 'interval-trainer-pwa-v1.7.0';
 const ROOT = self.registration.scope;
 const FILES = [
   './', './index.html', './styles.css', './logic.js', './assets/piano-samples.js',
+  './assets/melody-samples.js',
   './review.js', './statistics.js', './storage.js', './app.js', './pwa-register.js',
-  './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
+  './update.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './UPSTREAM_AUDIO_COPYRIGHT.txt', './LICENSE_AUDIO_GPL2.txt'
 ];
 self.addEventListener('install', event => {
