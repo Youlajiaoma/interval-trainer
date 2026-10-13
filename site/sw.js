@@ -1,5 +1,5 @@
-/* v2.3 offline PWA app shell; score module added. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.3.0';
+/* v2.4 offline PWA app shell; sight-reading notation and piano feedback updated. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.4.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

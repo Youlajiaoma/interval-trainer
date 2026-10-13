@@ -6,14 +6,13 @@
 .sight-practice{max-width:780px}
 .sight-meta{display:flex;justify-content:space-between;color:#a3a5ba;margin:0 0 10px;font-size:12px}
 .sight-meta strong{color:#d8caff}
-.sight-score{display:grid;gap:7px;min-width:0}
-.sight-staff{display:block;width:100%;height:auto;border-radius:11px;overflow:hidden}
+.sight-score{display:grid;gap:0;min-width:0;background:#f6f5f0;border-radius:16px;padding:8px 0;overflow:hidden}
+.sight-staff{display:block;width:100%;height:auto;overflow:visible}
 .sight-keyboard{margin-top:16px;padding:5px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;background:#1b1d2a;border:1px solid #444357;border-radius:13px;touch-action:manipulation}
 .sight-key{min-width:0;min-height:97px;background:linear-gradient(#fff,#efedf2);border:1px solid #b5b3bf;border-bottom:5px solid #b1b0bb;border-radius:5px 5px 9px 9px;color:#23684c;font-size:16px;font-weight:750;touch-action:manipulation}
 .sight-key:active{background:#d2c3f9}
 .sight-key.is-correct,.sight-key.is-correct:disabled{background:#baf3d1;border-color:#65b38e;color:#124b36;opacity:1}
-.sight-key.is-wrong,.sight-key.is-wrong:disabled{background:#f6bfcb;color:#8a2345;opacity:1}
-.sight-key:disabled{opacity:.8}
+.sight-key:disabled{opacity:.9}
 .sight-reveal{display:block;margin:10px auto 0;border:0;background:transparent;color:#aeb0c6;font-size:12px;padding:9px 16px}
 .sight-reveal:disabled{opacity:.4}
 .sight-complete{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0;padding:20px;border:1px solid #414158;border-radius:13px;background:#202233}
@@ -38,13 +37,13 @@
 .sight-review-plan{font-size:12px;color:#a8a7bb;margin:14px 0}
 @media(max-width:620px){
  .home-modules{grid-template-columns:1fr}.home-module{min-height:100px;padding:17px 16px}
- .sight-score{gap:4px}.sight-staff{border-radius:8px}
+ .sight-score{gap:0}
  .sight-key{min-height:82px;font-size:15px}
  .sight-keyboard{margin-top:10px;gap:2px}
  .sight-meta{font-size:11px;margin-bottom:8px}
  .stats-mode-switch button{font-size:11px}
 }
-@media(max-width:360px){.sight-key{min-height:72px}.sight-score{gap:2px}}
+@media(max-width:360px){.sight-key{min-height:72px}.sight-score{gap:0}}
 
 .sight-warning{font-size:12px;color:#efb4c3;margin:4px 0}.sight-warning:empty{display:none}
 
