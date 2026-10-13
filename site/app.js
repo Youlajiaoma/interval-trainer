@@ -76,6 +76,42 @@
   let currentScreen = 'home';
   let currentQuestionMode = null;
 
+  // v2.2: prevent useless vertical drag/bounce when the entire practice fits.
+  // On short screens, allow ordinary scrolling so no answer is ever clipped.
+  let practiceScrollFrame = 0;
+  function refreshPracticeScrolling() {
+    if (currentScreen !== 'practice' || $('practice').classList.contains('hidden')) {
+      document.documentElement.classList.remove('practice-scroll-locked');
+      return;
+    }
+    const viewport = window.visualViewport;
+    const bottomEdge = (viewport ? viewport.height + viewport.offsetTop : window.innerHeight);
+    // Ignore decorative bottom padding. The actual controls must all be visible.
+    const controlsBottom = $('practice').getBoundingClientRect().bottom + window.scrollY;
+    const fits = controlsBottom + 8 <= bottomEdge;
+    document.documentElement.classList.toggle('practice-scroll-locked', fits);
+    if (fits && window.scrollY) window.scrollTo(0, 0);
+  }
+  function schedulePracticeScrollCheck() {
+    if (practiceScrollFrame) return;
+    practiceScrollFrame = requestAnimationFrame(() => {
+      practiceScrollFrame = 0;
+      refreshPracticeScrolling();
+    });
+  }
+  function setupPracticeScrolling() {
+    window.addEventListener('resize', schedulePracticeScrollCheck);
+    window.addEventListener('orientationchange', schedulePracticeScrollCheck);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', schedulePracticeScrollCheck);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(schedulePracticeScrollCheck);
+      ro.observe($('practice'));
+      ro.observe(document.querySelector('.app-shell'));
+    }
+    if (document.fonts?.ready) document.fonts.ready.then(schedulePracticeScrollCheck);
+  }
+
+
   function persist() {
     try {
       storage.setItem(settingsKey, JSON.stringify({ schema: 2, activeModule: activeMode, modules: moduleSettings }));
@@ -530,6 +566,7 @@
     if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
     currentScreen='home';
+    document.documentElement.classList.remove('practice-scroll-locked');
     $('home-screen').classList.remove('hidden');
     $('open-settings').classList.add('hidden');
     $('practice-navigation').classList.add('hidden');
@@ -549,11 +586,13 @@
     // Do not start any audio or create a question before selecting a module.
     if (created && !newQuestion()) return;
     currentScreen='practice';
+    window.scrollTo(0, 0);
     $('home-screen').classList.add('hidden');
     $('open-settings').classList.remove('hidden');
     $('practice-navigation').classList.remove('hidden');
     $('practice').classList.remove('hidden');
     syncModeControls();
+    refreshPracticeScrolling();
     // Returning to an unfinished question leaves the current answer and notes untouched.
     if(created && settings.autoPlayNext)
       void play('main');
@@ -599,7 +638,7 @@
       history.pushState(marker, '', location.href);
     });
   }
-  setupSettings(); setupInteractions(); showHome(); setupBackProtection();
+  setupSettings(); setupInteractions(); setupPracticeScrolling(); showHome(); setupBackProtection();
   // One-time, idempotent upgrade from the flat v2.0 settings format.
   try {
     const raw = JSON.parse(storage.getItem(settingsKey) || '{}');
