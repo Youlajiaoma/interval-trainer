@@ -1,4 +1,4 @@
-/* Tonaloom v2.16: reliable staff-based stem directions for interval chords. */
+/* Tonaloom v2.17: verified VexFlow 5 stem directions and silent feedback. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -106,15 +106,22 @@ async function drawScore(){
    const host=document.createElement('div');
    host.className='staff-interval-system';
    const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
-   renderer.resize(width,166);
+   renderer.resize(width,122);
    const ctx=renderer.getContext();
-   const stave=new VF.Stave(7,26,width-14).addClef(clef);
+   const stave=new VF.Stave(7,18,width-14).addClef(clef);
    const chords=set.questions.slice(row*5,row*5+5).map(q=>{
     const p=q.notes.map(formatNote);
     const stemDir=staffStemDirection(q.notes,clef);
-    // Explicit VexFlow directions: avoid auto_stem silently drawing every chord up.
-    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef,
-     stem_direction:stemDir<0?VF.StaveNote.STEM_DOWN:VF.StaveNote.STEM_UP});
+    // VexFlow 5 defines UP / DOWN on VF.Stem, NOT on VF.StaveNote.
+    // Its StaveNote.STEM_DOWN is undefined; passing it defaults every stem up.
+    if(VF.Stem.DOWN!==-1||VF.Stem.UP!==1)throw Error('不兼容的五线谱符干方向常量');
+    const note=new VF.StaveNote({
+     keys:p.map(x=>x.key),duration:'q',clef,
+     stem_direction:stemDir // VF.Stem.DOWN (-1) or VF.Stem.UP (1)
+    });
+    if(note.getStemDirection()!==stemDir)
+     throw Error('符干方向设置没有生效：'+q.notes.join(','));
+
     p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
     return note;
    });
@@ -183,14 +190,10 @@ function render(){
  void drawScore();
  if(completed){
   $('staff-interval-result').textContent='本组完成：首次答对 '+countCorrect()+' / 10';
-  $('staff-interval-feedback').textContent='';
-   $('staff-interval-reveal').classList.add('hidden');
+  $('staff-interval-reveal').classList.add('hidden');
   $('staff-interval-options').replaceChildren();
   return;
  }
- $('staff-interval-feedback').textContent=q.done
-  ?(q.revealed?'正确答案：'+OPTIONS[q.semitones].name:'正确 · 正在播放钢琴和声')
-  :'';
  $('staff-interval-reveal').classList.toggle('hidden',q.done);
  renderOptions();
 }
@@ -236,7 +239,7 @@ async function playCorrect(q){
    source.onended=()=>{voices.delete(source);try{source.disconnect();gain.disconnect();}catch{}};
    source.start(t);source.stop(t+1.09);
   }
- }catch(err){console.error('钢琴音程播放失败',err);$('staff-interval-feedback').textContent='回答正确，但钢琴播放失败：'+err.message;}
+ }catch(err){console.error('钢琴音程播放失败',err);}
 }
 function choose(semi,button){
  const q=current();if(!active||!q||q.done)return;
@@ -244,7 +247,6 @@ function choose(semi,button){
   if(!q.mistake)q.firstWrong=semi;
   q.mistake=true;save();
   flashing=set.pos;void drawScore();
-  $('staff-interval-feedback').textContent='不正确，请重新选择';
   clearTimeout(flashTimer);flashTimer=setTimeout(()=>{flashing=-1;if(active)void drawScore();},340);
   return;
  }
