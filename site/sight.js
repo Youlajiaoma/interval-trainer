@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.7. Uses native VexFlow SVG note glyphs for feedback. */
+/* Five-line staff sight-reading module, v2.8. Notehead-centered position marker. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -251,49 +251,48 @@ function drawLine(VF,group,width){
  });
  return {host:lineHost,entries:byIndex};
 }
-function unionBounds(b,x1,y1,x2,y2){
- if(![x1,y1,x2,y2].every(Number.isFinite))return b;
- const lowX=Math.min(x1,x2),highX=Math.max(x1,x2);
- const lowY=Math.min(y1,y2),highY=Math.max(y1,y2);
- if(!b)return {x:lowX,y:lowY,right:highX,bottom:highY};
- return {x:Math.min(b.x,lowX),y:Math.min(b.y,lowY),right:Math.max(b.right,highX),bottom:Math.max(b.bottom,highY)};
-}
-function noteInkBounds(entry){
- // VexFlow .vf-note comprises the original notehead, stem and flag.
- // For beamed notes the beam engine sometimes draws the stem in a sibling
- // group, so additionally union the note's computed stem extents.
- const glyph=entry.el?.querySelector?.('.vf-note')||entry.el;
- let b=null;
- if(glyph&&typeof glyph.getBBox==='function'){
+function noteheadBounds(entry){
+ // Keep the marker anchored to the note HEAD, not the stem, beam, flag,
+ // accidental, or ledger lines. These can project into a neighboring system.
+ const note=entry.note;
+ const cx=note.getAbsoluteX?.(), cy=note.getYs?.()?.[0];
+ if(!Number.isFinite(cx)||!Number.isFinite(cy))return null;
+
+ // When available, VexFlow's own rendered notehead bounds are more precise.
+ // Fall back to notehead-centered geometry for versions without this SVG class.
+ let centerX=cx, centerY=cy, halfWidth=9.5, halfHeight=6.5;
+ const head=entry.el?.querySelector?.('.vf-notehead');
+ if(head&&typeof head.getBBox==='function'){
   try{
-   const box=glyph.getBBox();
-   if([box.x,box.y,box.width,box.height].every(Number.isFinite) && box.width>0 && box.height>0)
-    b=unionBounds(b,box.x,box.y,box.x+box.width,box.y+box.height);
-  }catch(_){ /* Hidden or not-yet-attached SVG: use VexFlow note geometry. */ }
+   const b=head.getBBox();
+   const hx=b.x+b.width/2, hy=b.y+b.height/2;
+   // Reject transforms/abnormal boxes (some engraver versions add ledger
+   // lines or use a separate coordinate system within notehead groups).
+   if(b.width>=8&&b.width<=23&&b.height>=6&&b.height<=17&&
+      Math.abs(hx-cx)<16&&Math.abs(hy-cy)<14){
+    centerX=hx;centerY=hy;
+    halfWidth=b.width/2;halfHeight=b.height/2;
+   }
+  }catch(_){ /* Use VexFlow note geometry. */ }
  }
- const n=entry.note;
- const cx=n.getAbsoluteX?.(),cy=n.getYs?.()?.[0];
- if(Number.isFinite(cx)&&Number.isFinite(cy))b=unionBounds(b,cx-8,cy-5.5,cx+8,cy+5.5);
- try{
-  const stem=n.getStemExtents?.(),stemX=n.getStemX?.();
-  if(stem&&Number.isFinite(stemX))b=unionBounds(b,stemX-1.1,stem.topY,stemX+1.1,stem.baseY);
- }catch(_){ }
- return b;
+ const horizontalPad=5,verticalPad=6;
+ const width=Math.max(27,2*(halfWidth+horizontalPad));
+ const height=Math.max(23,2*(halfHeight+verticalPad));
+ return {x:centerX-width/2,y:centerY-height/2,width,height};
 }
 function markCurrent(){
  const container=$('sight-score');
  for(const indicator of container.querySelectorAll('.sight-position-highlight')) indicator.classList.remove('visible');
  const info=engravings.get(session.pos);
  if(!info)return;
- const bounds=noteInkBounds(info);
+ const bounds=noteheadBounds(info);
  if(bounds){
-   // Compact padding around the ACTUAL engraved geometry, not a fixed-height column.
-   const px=6,py=5;
+   // Tight marker: the notehead plus a small margin, irrespective of stem length.
    const marker=info.highlight;
-   marker.setAttribute('x',String(bounds.x-px));
-   marker.setAttribute('y',String(bounds.y-py));
-   marker.setAttribute('width',String(Math.max(20,bounds.right-bounds.x+px*2)));
-   marker.setAttribute('height',String(Math.max(18,bounds.bottom-bounds.y+py*2)));
+   marker.setAttribute('x',String(bounds.x));
+   marker.setAttribute('y',String(bounds.y));
+   marker.setAttribute('width',String(bounds.width));
+   marker.setAttribute('height',String(bounds.height));
    marker.classList.add('visible');
  }
  const rect=info.host.getBoundingClientRect(),outer=container.getBoundingClientRect();

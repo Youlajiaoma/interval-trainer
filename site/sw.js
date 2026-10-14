@@ -1,5 +1,5 @@
 /* v2.7 PWA app shell; native SVG sight-reading feedback. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.7.0';
+const CACHE_NAME = 'interval-trainer-pwa-v2.8.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
