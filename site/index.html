@@ -40,6 +40,11 @@
           <span class="home-module-text"><strong>五线谱识谱</strong></span>
           <span class="home-module-arrow" aria-hidden="true">→</span>
         </button>
+        <button class="home-module" id="home-staff-interval" type="button">
+    <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M6 9H42M6 17H42M6 25H42M6 33H42M6 41H42" stroke="currentColor" stroke-width="2"/><ellipse cx="16" cy="28" rx="5.8" ry="3.8" fill="currentColor" transform="rotate(-18 16 28)"/><path d="M22 28V7" stroke="currentColor" stroke-width="2.8"/><ellipse cx="34" cy="16" rx="5.8" ry="3.8" fill="currentColor" transform="rotate(-18 34 16)"/><path d="M40 16V4" stroke="currentColor" stroke-width="2.8"/></svg></span>
+    <span class="home-module-text"><strong>五线谱音程识别</strong></span>
+    <span class="home-module-arrow" aria-hidden="true">→</span>
+  </button>
       </div>
       <button class="home-stats-link" id="home-stats" type="button">查看练习统计 <span aria-hidden="true">↗</span></button>
     </main>
@@ -86,6 +91,22 @@
       <div id="sight-complete" class="sight-complete hidden" aria-live="polite">
         <strong id="sight-complete-score"></strong>
         <button id="sight-next-set" type="button">下一组 →</button>
+      </div>
+    </main>
+    <main id="staff-interval-practice" class="staff-interval-practice hidden" aria-label="五线谱音程识别">
+      <div class="staff-interval-meta"><span>第 <strong id="staff-interval-count">01</strong> / 10 题</span><span>首次答对 <strong id="staff-interval-correct">0</strong></span></div>
+      <div id="staff-interval-work">
+        <div id="staff-interval-score" class="staff-interval-score" aria-label="五线谱上的两个音符"></div>
+        <div id="staff-interval-feedback" class="staff-interval-feedback" aria-live="polite">观察两个音符并判断音程</div>
+        <div id="staff-interval-options" class="staff-interval-options" role="group" aria-label="选择音程名称"></div>
+        <div class="staff-interval-actions">
+          <button id="staff-interval-reveal" class="staff-interval-reveal" type="button">显示答案</button>
+          <button id="staff-interval-next" class="next-button hidden" type="button">下一题 →</button>
+        </div>
+      </div>
+      <div id="staff-interval-summary" class="sight-complete hidden" aria-live="polite">
+        <strong id="staff-interval-result"></strong>
+        <button id="staff-interval-next-set" type="button">下一组 →</button>
       </div>
     </main>
   </div>
@@ -138,6 +159,21 @@
     </div>
     <div class="settings-footer"><button class="settings-done" id="sight-settings-done" type="button">完成</button></div>
   </dialog>
+  <dialog class="settings-dialog sight-settings" id="staff-interval-settings" aria-labelledby="staff-interval-settings-title">
+    <div class="settings-header"><h2 id="staff-interval-settings-title">五线谱音程识别设置</h2><button id="staff-interval-settings-close" class="close-button" type="button" aria-label="关闭设置">×</button></div>
+    <div class="settings-content">
+      <section class="settings-section"><h3>练习谱号</h3>
+        <div class="sight-clef-options" role="group" aria-label="谱面音程谱号">
+          <button type="button" data-staff-clef="treble">高音谱号</button>
+          <button type="button" data-staff-clef="bass">低音谱号</button>
+          <button type="button" data-staff-clef="both">两个谱号</button>
+        </div>
+        <p class="staff-interval-setting-note">修改谱号后，从下一组起应用；每组固定 10 题。</p>
+      </section>
+      <details class="more-details"><summary>其他</summary><button id="staff-interval-reset" class="reset-link" type="button">重新开始本组10题</button></details>
+    </div>
+    <div class="settings-footer"><button id="staff-interval-settings-done" class="settings-done" type="button">完成</button></div>
+  </dialog>
   <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
     <div class="stats-shell">
       <header class="stats-header">
@@ -180,6 +216,7 @@
   <script src="app.js"></script>
   <script src="vendor/vexflow-loader.js"></script>
   <script src="sight.js"></script>
+  <script src="staff-interval.js"></script>
   <script src="pwa-register.js"></script>
 </body>
 </html>

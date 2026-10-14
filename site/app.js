@@ -224,6 +224,7 @@
     });
     const dialog = $('settings-dialog');
     $('open-settings').addEventListener('click', () => {
+      if (window.StaffIntervalTrainer?.isActive()) { window.StaffIntervalTrainer.openSettings(); return; }
       if (window.SightTrainer?.isActive()) { window.SightTrainer.openSettings(); return; }
       if (currentScreen !== 'practice') return;
       syncSettingsForm();
@@ -240,7 +241,8 @@
     return JSON.stringify({ format: 'interval-trainer-backup', version: 3,
       exportedAt: new Date().toISOString(), settings: JSON.parse(JSON.stringify({schema: 2, activeModule: activeMode, modules: moduleSettings})),
       harmonic: harmonicReview.snapshot(), melodic: melodicReview.snapshot(),
-      sight: window.SightTrainer?.backup() || null }, null, 2);
+      sight: window.SightTrainer?.backup() || null,
+      staffInterval: window.StaffIntervalTrainer?.backup() || null }, null, 2);
   }
   async function restoreBackup(data) {
     const obj = JSON.parse(data);
@@ -269,6 +271,7 @@
           JSON.stringify(treble), JSON.stringify(bass), JSON.stringify(config));
       } else await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
     }
+    if (obj.staffInterval) window.StaffIntervalTrainer?.restoreBackup(obj.staffInterval);
     window.location.reload();
   }
   window.acceptNativeBackup = async function (content) {
@@ -571,6 +574,7 @@
   }
   function showHome(){
     if (window.SightTrainer?.isActive()) window.SightTrainer.leave();
+    if (window.StaffIntervalTrainer?.isActive()) window.StaffIntervalTrainer.leave();
     // Leaving a module is navigation, not a wrong answer or a skipped question.
     if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
@@ -613,6 +617,7 @@
     $('home-harmonic').addEventListener('click',()=>enterPractice('harmonic'));
     $('home-melodic').addEventListener('click',()=>enterPractice('melodic'));
     $('home-sight').addEventListener('click',()=>window.SightTrainer?.enter());
+    $('home-staff-interval').addEventListener('click',()=>window.StaffIntervalTrainer?.enter());
     $('back-home').addEventListener('click',showHome);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
@@ -635,6 +640,10 @@
         $('stats-dialog').close();
       } else if ($('settings-dialog').open) {
         $('settings-dialog').close();
+      } else if (window.StaffIntervalTrainer?.isActive()) {
+        showHome();
+        lastBack = Date.now();
+        toast('再按一次返回退出');
       } else if (window.SightTrainer?.isActive()) {
         window.SightTrainer.leave();
         lastBack = Date.now();

@@ -1,5 +1,5 @@
 /* Sight-reading module, v2.9. Original-note green/red feedback; no position box. */
-.home-modules{grid-template-columns:repeat(3,minmax(0,1fr))}
+.home-modules{grid-template-columns:repeat(2,minmax(0,1fr))}
 .home-module{padding:19px 14px;gap:11px;min-height:137px}
 .home-module-symbol{width:45px;height:45px;flex:none}
 .home-module-text strong{font-size:16px}
@@ -57,3 +57,25 @@
 @media(max-width:360px){.sight-key.sight-white{min-height:76px}}
 @media(max-height:680px){.sight-system,.sight-system>svg{height:133px}.sight-score{max-height:calc(100dvh - 235px);overflow-y:auto}.sight-key.sight-white{min-height:70px}}
 @media(max-height:520px){.sight-system,.sight-system>svg{height:120px}.sight-score{max-height:calc(100dvh - 222px)}}
+
+/* v2.12: horizontal two-note interval reading; original 13-answer layout. */
+.staff-interval-practice{max-width:780px;margin:0 auto}
+.staff-interval-meta{display:flex;justify-content:space-between;color:#a3a5ba;font-size:12px;margin-bottom:10px}
+.staff-interval-meta strong{color:#dfd4ff}
+.staff-interval-score{min-height:190px;display:flex;align-items:center;justify-content:center;padding:4px;background:#f6f5f0;border-radius:15px;overflow:hidden}
+.staff-interval-score>div{width:100%;min-height:188px}
+.staff-interval-score svg{display:block;width:100%;max-width:100%;height:188px;overflow:visible}
+.staff-interval-feedback{font-size:13px;text-align:center;min-height:27px;margin:10px 0 8px;color:#a9a9bc}
+.staff-interval-options{display:grid;gap:7px}
+.staff-interval-options .answer-row{gap:8px}
+.staff-interval-options .answer-button{min-height:43px;padding:7px 3px;font-size:13px}
+.staff-interval-actions{display:flex;justify-content:center;min-height:40px;margin-top:8px}
+.staff-interval-reveal{background:none;color:#adaabe;border:0;font-size:12px;padding:8px 15px}
+.staff-interval-actions .next-button{min-height:38px;padding:8px 28px}
+.staff-interval-setting-note{font-size:12px;color:#a7a6ba;margin:12px 0 0}
+@media(max-width:620px){
+ .staff-interval-score{min-height:190px;padding:2px}
+ .staff-interval-score>div{min-height:188px}
+ .staff-interval-score svg{height:188px}
+ .staff-interval-options .answer-button{min-height:40px;font-size:12px}
+}

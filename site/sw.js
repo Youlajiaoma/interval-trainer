@@ -1,10 +1,10 @@
-/* v2.11.0: Tonaloom brand, full-purple icon, compact module navigation. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.11.0';
+/* v2.12.0: staff interval recognition and piano answer playback. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.12.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
   './','./index.html','./styles.css','./sight.css','./logic.js',
-  './review.js','./statistics.js','./storage.js','./app.js','./sight.js','./vendor/vexflow-loader.js',
+  './review.js','./statistics.js','./storage.js','./app.js','./sight.js','./staff-interval.js','./vendor/vexflow-loader.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',

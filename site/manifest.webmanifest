@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Tonaloom",
   "short_name": "Tonaloom",
-  "description": "Tonaloom · 和声音程、旋律音程和五线谱识谱，支持自动针对性复习",
+  "description": "Tonaloom · 和声音程、旋律音程、五线谱识谱与谱面音程识别",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
