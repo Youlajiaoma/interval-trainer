@@ -264,7 +264,7 @@
       if (obj.version === 3 && obj.sight) {
         const treble = window.IntervalReview.normalizeStore(obj.sight.treble);
         const bass = window.IntervalReview.normalizeStore(obj.sight.bass);
-        const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? obj.sight.settings : {clef:'both'};
+        const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? {clef:obj.sight.settings.clef,accidentals:obj.sight.settings.accidentals===true} : {clef:'both',accidentals:false};
         await storage.replaceWithSight(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic),
           JSON.stringify(treble), JSON.stringify(bass), JSON.stringify(config));
       } else await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));

@@ -65,7 +65,7 @@
         if (!old) continue;
         try {
           const parsed = JSON.parse(old);
-          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed);
+          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed, [SIGHT_TREBLE_KEY,SIGHT_BASS_KEY].includes(key)?62:12);
           if (key === SETTINGS_KEY && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) continue;
           legacy.push([key, old]);
         } catch { continue; }

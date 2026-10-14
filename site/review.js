@@ -18,7 +18,7 @@
     const d = new Date(time);
     return new Date(d.getFullYear(), d.getMonth(), d.getDate() + count, 0, 0, 0).getTime();
   }
-  const newStore = () => ({version: 1, totalAnswers: 0, cards: {}, confusions: {}, history: [], daily: {},
+  const newStore = () => ({version: 1, cardRange:13, totalAnswers: 0, cards: {}, confusions: {}, history: [], daily: {},
     directionalInitialized:false, directionalCards:{}, directionalDaily:{}});
   const directionKey = (semi, direction) => `${semi}:${direction === 1 ? 'up' : 'down'}`;
   const validDirectionKey = key => /^(?:[0-9]|1[0-2]):(?:up|down)$/.test(key);
@@ -56,7 +56,7 @@
     i.answered++; if (correct) i.correct++;
     d.intervals[actual] = i;
   }
-  function cleanDay(v) {
+  function cleanDay(v,maxIndex=12) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) return blankDay();
     const result = blankDay();
     result.answered = num(v.answered, 0, 1000000);
@@ -66,26 +66,28 @@
     result.responseCount = num(v.responseCount, 0, result.answered);
     result.responseTotal = num(v.responseTotal, 0, 1e12);
     for (const [k, i] of Object.entries(v.intervals || {})) {
-      if (!/^\d{1,2}$/.test(k) || !valid(Number(k)) || !i) continue;
+      if (!/^\d{1,2}$/.test(k) || !(Number(k)>=0 && Number(k)<=maxIndex) || !i) continue;
       const answered = num(i.answered, 0, 1000000);
       result.intervals[k] = {answered, correct: num(i.correct, 0, answered)};
     }
     return result;
   }
-  function normalizeStore(raw) {
+  function normalizeStore(raw, maxIndex = 12) {
     if (!raw || raw.version !== 1 || typeof raw !== 'object' || Array.isArray(raw)) throw Error('不支持的记录格式');
     const data = newStore();
-    for (let n = 0; n <= 12; n++) {
+    data.cardRange = [13, 21, 63].includes(raw.cardRange) ? raw.cardRange : 13;
+    const isValid = n => Number.isInteger(n) && n >= 0 && n <= maxIndex;
+    for (let n = 0; n <= maxIndex; n++) {
       const c = raw.cards?.[n]; if (!c || typeof c !== 'object') continue;
       data.cards[n] = normalizedCard(c);
     }
     for (const [k, count] of Object.entries(raw.confusions || {})) {
       const pair = k.split('>');
-      if (pair.length !== 2 || pair.some(x => !/^\d{1,2}$/.test(x) || !valid(Number(x))) || pair[0] === pair[1]) continue;
+      if (pair.length !== 2 || pair.some(x => !/^\d{1,2}$/.test(x) || !isValid(Number(x))) || pair[0] === pair[1]) continue;
       data.confusions[k] = num(count, 0, 1000000);
     }
     for (const h of (Array.isArray(raw.history) ? raw.history.slice(-MAX_HISTORY) : [])) {
-      if (!h || !valid(h.actual) || !(valid(h.chosen) || (h.chosen === null && h.revealed === true))) continue;
+      if (!h || !isValid(h.actual) || !(isValid(h.chosen) || (h.chosen === null && h.revealed === true))) continue;
       data.history.push({at: num(h.at, 0, 8640000000000000), actual: h.actual, chosen: h.chosen, revealed: h.revealed===true,
         hinted: !!h.hinted, low: num(h.low, 0, 127), high: num(h.high, 0, 127),
         responseMs: Number.isFinite(h.responseMs) ? num(h.responseMs, 0, 3600000) : null,
@@ -95,7 +97,7 @@
     }
     if (raw.daily && typeof raw.daily === 'object' && !Array.isArray(raw.daily)) {
       for (const [key, item] of Object.entries(raw.daily).filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().slice(-MAX_DAYS))
-        data.daily[key] = cleanDay(item);
+        data.daily[key] = cleanDay(item, maxIndex);
     } else {
       // 无缝迁移 v1.3：用旧记录构建过去的逐日数据（仅覆盖历史保留范围）。
       for (const h of data.history) {
@@ -128,12 +130,13 @@
     try { const key = STORAGE_KEY + '-test'; storage.setItem(key, '1'); storage.removeItem(key); return true; }
     catch { return false; }
   }
-  function createReviewManager(storage, key = STORAGE_KEY, {directional = false} = {}) {
+  function createReviewManager(storage, key = STORAGE_KEY, {directional = false, maxIndex = 12} = {}) {
+    const isValid = n => Number.isInteger(n) && n >= 0 && n <= maxIndex;
     let available = storageAvailable(storage);
-    let data = newStore();
+    let data = newStore(); data.cardRange = maxIndex+1;
     let storageWarning = '';
     if (available) {
-      try { const saved = storage.getItem(key); if (saved) data = normalizeStore(JSON.parse(saved)); }
+      try { const saved = storage.getItem(key); if (saved) data = normalizeStore(JSON.parse(saved), maxIndex); }
       catch { storageWarning = '检测到损坏的旧记录，原始存储没有被自动删除。请先导出备份再继续练习。'; available = false; }
     }
     if (directional && !data.directionalInitialized) {
@@ -158,7 +161,7 @@
       catch { available = false; storageWarning = '存储失败，请导出记录并检查浏览器存储空间。'; return false; }
     }
     function record({ actual, chosen, revealed = false, hinted = false, low, high, direction = null, firstMode = null, timbre = null, responseMs = null, now = Date.now() }) {
-      if (!valid(actual) || !(valid(chosen) || (revealed && chosen === null))) throw Error('无效的音程');
+      if (!isValid(actual) || !(isValid(chosen) || (revealed && chosen === null))) throw Error('无效的音程');
       if(directional && direction!==1 && direction!==-1)throw Error('旋律音程缺少方向');
       now=num(now,0,8640000000000000);
       const correct=!revealed && actual===chosen;
@@ -166,7 +169,7 @@
       const c=schedule(data.cards[actual]||blankCard(),correct,hinted,now,data.totalAnswers);
       data.cards[actual]=c;
       // "Show answer" is a wrong attempt but not a confusion with another interval.
-      if(!correct && valid(chosen)) {
+      if(!correct && isValid(chosen)) {
         const pair=`${actual}>${chosen}`;
         data.confusions[pair]=(data.confusions[pair]||0)+1;
       }
@@ -199,8 +202,8 @@
     }
     function choose(eligible, previous = null, {now = Date.now(), random = Math.random} = {}) {
       let choices=directional
-        ? [...new Set(eligible.filter(valid).flatMap(semi=>[`${semi}:up`,`${semi}:down`]))]
-        : [...new Set(eligible.filter(valid))];
+        ? [...new Set(eligible.filter(isValid).flatMap(semi=>[`${semi}:up`,`${semi}:down`]))]
+        : [...new Set(eligible.filter(isValid))];
       if(!choices.length)return null;
       if(choices.length>1)choices=choices.filter(s=>s!==previous);
       const cards=directional?data.directionalCards:data.cards;
@@ -224,8 +227,8 @@
           (c.pendingAfter!==null&&c.pendingAfter!==undefined&&data.totalAnswers>=c.pendingAfter?12:0);
       },random);
     }
-    function analysis(enabled = Array.from({length:13},(_,i)=>i), now=Date.now()) {
-      const cards = Array.from({length:13},(_,semi)=>({semi,...(data.cards[semi] || {attempts:0,correct:0,wrong:0,dueAt:0,pendingAfter:null})}));
+    function analysis(enabled = Array.from({length:maxIndex+1},(_,i)=>i), now=Date.now()) {
+      const cards = Array.from({length:maxIndex+1},(_,semi)=>({semi,...(data.cards[semi] || {attempts:0,correct:0,wrong:0,dueAt:0,pendingAfter:null})}));
       const inScope = cards.filter(c => enabled.includes(c.semi));
       const directionCards=directional?enabled.flatMap(semi=>[1,-1].map(dir=>{
         const k=directionKey(semi,dir);return {key:k,semi,direction:dir,...(data.directionalCards[k]||blankCard())};
@@ -250,8 +253,8 @@
       const minKey = days === null ? '0000-01-01' : dayKey(addCalendarDays(now,1-days));
       const keys = Object.keys(data.daily).filter(k=>k>=minKey&&k<=todayKey).sort();
       const totals={answered:0,correct:0,skipped:0,hints:0,responseTotal:0,responseCount:0};
-      const byInterval=Array.from({length:13},(_,semi)=>({semi,answered:0,correct:0}));
-      const byDirection=directional?Array.from({length:13},(_,semi)=>[1,-1].map(direction=>({semi,direction,answered:0,correct:0}))).flat():null;
+      const byInterval=Array.from({length:maxIndex+1},(_,semi)=>({semi,answered:0,correct:0}));
+      const byDirection=directional?Array.from({length:maxIndex+1},(_,semi)=>[1,-1].map(direction=>({semi,direction,answered:0,correct:0}))).flat():null;
       for (const key of keys) {
         const d = data.daily[key];
         for (const field of Object.keys(totals)) totals[field] += d[field] || 0;
@@ -273,10 +276,10 @@
       const filteredHistory=data.history.filter(h=>dayKey(h.at)>=minKey && dayKey(h.at)<=todayKey);
       const history=filteredHistory.slice(-80).reverse();
       const confusions= days===null ? analysis().confusions : Object.entries(filteredHistory.reduce((acc,h)=>{
-        if(!h.revealed && valid(h.chosen) && h.actual!==h.chosen){const key=`${h.actual}>${h.chosen}`;acc[key]=(acc[key]||0)+1;} return acc;
+        if(!h.revealed && isValid(h.chosen) && h.actual!==h.chosen){const key=`${h.actual}>${h.chosen}`;acc[key]=(acc[key]||0)+1;} return acc;
       },{})).map(([key,count])=>{const [actual,chosen]=key.split('>').map(Number);return {actual,chosen,count};}).sort((a,b)=>b.count-a.count);
       const directionConfusions=directional?Object.entries(filteredHistory.reduce((acc,h)=>{
-        if(!h.revealed&&valid(h.chosen)&&h.actual!==h.chosen&&(h.direction===1||h.direction===-1)){
+        if(!h.revealed&&isValid(h.chosen)&&h.actual!==h.chosen&&(h.direction===1||h.direction===-1)){
           const k=`${h.direction}:${h.actual}>${h.chosen}`;acc[k]=(acc[k]||0)+1;}return acc;
       },{})).map(([key,count])=>{const [dir,pair]=key.split(':');const [actual,chosen]=pair.split('>').map(Number);
         return {direction:Number(dir),actual,chosen,count};}).sort((a,b)=>b.count-a.count):null;
@@ -291,7 +294,7 @@
         due:analysis(undefined,now).due.length};
     }
     function importJson(json) {
-      const next=normalizeStore(JSON.parse(json)); const prev=data;
+      const next=normalizeStore(JSON.parse(json), maxIndex); const prev=data;
       data=next; if (directional && !data.directionalInitialized){
         let p=Math.max(0,data.totalAnswers-data.history.length);
         for(const h of [...data.history].sort((a,b)=>a.at-b.at)){p++;if(h.direction!==1&&h.direction!==-1)continue;
@@ -302,7 +305,7 @@
       } if (!save()) {data=prev;throw Error('无法保存导入的记录');}
       return analysis();
     }
-    function reset() {data=newStore();if(directional)data.directionalInitialized=true;save();}
+    function reset() {data=newStore();data.cardRange=maxIndex+1;if(directional)data.directionalInitialized=true;save();}
     return {record,skip,choose,analysis,statistics,importJson,reset,
       exportJson:()=>JSON.stringify(data,null,2), snapshot:()=>JSON.parse(JSON.stringify(data)),
       get storageAvailable(){return available;}

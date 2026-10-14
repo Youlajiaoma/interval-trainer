@@ -1,5 +1,5 @@
-/* v2.5 PWA app shell; adaptive VexFlow sight-reading score. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.5.0';
+/* v2.6 PWA app shell; adaptive VexFlow sight-reading score. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.6.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

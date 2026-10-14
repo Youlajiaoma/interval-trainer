@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.5. Shares IndexedDB and review engine. */
+/* Five-line staff sight-reading module, v2.6. Shares IndexedDB and review engine. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -22,16 +22,47 @@ const RHYTHMS=[
 const DURATION_CODES={'2':'h','1.5':'qd','1':'q','0.5':'8','0.25':'16'};
 const SEMITONES=[0,2,4,5,7,9,11];
 const POOLS={
- treble:[...Array.from({length:13},(_,i)=>28+i)],
- bass:[...Array.from({length:13},(_,i)=>17+i)]
+ treble:[...Array.from({length:21},(_,i)=>24+i)],
+ bass:[...Array.from({length:21},(_,i)=>12+i)]
 };
 const CLEF_BASE={treble:30,bass:18};
 const SEMI=SEMITONES;
-let storage, review, settings={clef:'both'}, session=null, active=false, busy=false;
+const ACCIDENTALS={0:'',1:'#',2:'b'};
+const PITCH_SIGN={0:'',1:'♯',2:'♭'};
+const REVIEW_MAX=62;
+const OLD_POOL_START={treble:28,bass:17};
+const ALLOWED_SHARP=new Set([0,1,3,4,5]);
+const ALLOWED_FLAT=new Set([1,2,4,5,6]);
+const WHITE_KEYS=[0,2,4,5,7,9,11];
+const BLACK_KEYS=[{semi:1,boundary:1,name:'C♯/D♭'},{semi:3,boundary:2,name:'D♯/E♭'},
+ {semi:6,boundary:4,name:'F♯/G♭'},{semi:8,boundary:5,name:'G♯/A♭'},{semi:10,boundary:6,name:'A♯/B♭'}];
+function accidentalPossibilities(letter,include=Boolean(settings.accidentals)){
+ return include?[0,...(ALLOWED_SHARP.has(letter)?[1]:[]),...(ALLOWED_FLAT.has(letter)?[2]:[])]:[0];
+}
+function reviewUnit(note){return (note.index-POOLS[note.clef][0])*3+(note.alter||0);}
+function noteSemitone(note){return (SEMI[note.letter]+(note.alter===1?1:note.alter===2?-1:0)+12)%12;}
+function noteMidi(note){return diatonicToMidi(note.index)+(note.alter===1?1:note.alter===2?-1:0);}
+function reviewLabel(clef,unit){
+ const di=Math.floor(unit/3), alter=unit%3;
+ return pitchLabel(clef,di)+PITCH_SIGN[alter];
+}
+function candidateReviewUnits(clef,include=Boolean(settings.accidentals)){
+ return POOLS[clef].flatMap((index,di)=>accidentalPossibilities(letterFromIndex(index),include).map(alter=>di*3+alter));
+}
+function recordChosenUnit(note,chosenSemi){
+ const actual=reviewUnit(note);
+ const result=candidateReviewUnits(note.clef,true).filter(u=>{
+  const di=Math.floor(u/3),alter=u%3,index=POOLS[note.clef][di];
+  return ((SEMI[letterFromIndex(index)]+(alter===1?1:alter===2?-1:0)+12)%12)===chosenSemi && u!==actual;
+ }).sort((a,b)=>Math.abs(Math.floor(a/3)-(actual/3)) - Math.abs(Math.floor(b/3)-(actual/3)));
+ return result.length?result[0]:(actual===0?1:0);
+}
+
+let storage, review, settings={clef:'both',accidentals:false}, session=null, active=false, busy=false;
 let initialized=false, pendingTimer=null, flashWrongPos=-1;
 let drawing=0, lastLayoutWidth=0, resizeTimer=null;
 const engravings=new Map();
-const LAYOUT={minNote:41, firstBarExtra:78, otherBarExtra:20, maxPerLine:12};
+const LAYOUT={minNote:34, firstBarExtra:60, otherBarExtra:10, maxPerLine:9};
 let audioCtx=null, audioGain=null;
 const buffers=new Map(), loading=new Map();
 const random=(n)=>Math.floor(Math.random()*n);
@@ -53,26 +84,24 @@ function save(key,item){try{storage.setItem(key,JSON.stringify(item));}catch(err
 function getReview(clef){return clef==='bass'?review.bass:review.treble;}
 function currentNote(){return session && session.pos<20 ? session.notes[session.pos] : null;}
 function measurePlans(){
- const candidates=RHYTHMS.map((beats)=>({beats,count:beats.length}));
- const possible=Array(21).fill(false); possible[0]=true;
- for(let n=1;n<=20;n++) possible[n]=candidates.some(p=>p.count<=n&&possible[n-p.count]);
- const bars=[]; let remaining=20;
- while(remaining>0){
-  const valid=candidates.filter(p=>p.count<=remaining&&possible[remaining-p.count]);
-  if(!valid.length) throw Error('无法构造20个音符');
-  const plan=valid[random(valid.length)];
-  bars.push({duration:plan.beats.slice(),start:20-remaining,end:20-remaining+plan.count,clef:null});
-  remaining-=plan.count;
- }
- const clefs=[];
- if(settings.clef==='both'){
-  // Group adjacent measures by clef. Each notated line has exactly one clef.
-  for(let k=0;k<bars.length;k++) clefs.push(k%2===1?clefs[k-1]:(random(2)?'treble':'bass'));
-  if(!clefs.includes('treble'))clefs[0]='treble';
-  if(!clefs.includes('bass'))clefs[clefs.length-1]='bass';
- } else for(let k=0;k<bars.length;k++) clefs.push(settings.clef);
- bars.forEach((b,i)=>b.clef=clefs[i]);
- return bars;
+ // Three standard 4/4 bars, rendered as exactly three systems.
+ // Note counts vary (6 / 7 / 7), not five per line.
+ const noteCounts=shuffle([6,7,7]);
+ const rhythmicShapes={
+  6:[[.5,.5,.5,.5,1,1],[1,1,.5,.5,.5,.5],[.25,.25,.5,1,1,1],
+     [.25,.25,.5,.5,.5,2],[2,.5,.5,.5,.25,.25]],
+  7:[[1,.5,.5,.5,.5,.5,.5],[.5,.5,1,.5,.5,.5,.5],
+     [.25,.25,.5,.5,.5,1,1],[1,1,.5,.5,.5,.25,.25],
+     [.5,.5,.5,1,.5,.5,.5]]
+ };
+ const clefs=settings.clef==='both'?shuffle(['treble','bass',random(2)?'treble':'bass']):Array(3).fill(settings.clef);
+ let start=0;
+ return noteCounts.map((count,i)=>{
+  const possible=rhythmicShapes[count].filter(a=>Math.abs(a.reduce((sum,x)=>sum+x,0)-4)<1e-9);
+  if(!possible.length)throw Error('节奏时值无效');
+  const duration=shuffle(possible)[0].slice();
+  const bar={start,end:start+count,clef:clefs[i],duration};start+=count;return bar;
+ });
 }
 function makeGroup(){
  const container=$('sight-score');if(container)delete container.dataset.layout;
@@ -80,34 +109,33 @@ function makeGroup(){
  for(const bar of bars)for(const duration of bar.duration){
   const clef=bar.clef, pool=POOLS[clef], candidates=pool.map((_,i)=>i);
   const last=notes.at(-1), previous=last?.clef===clef?last.index-pool[0]:null;
-  const chosen=getReview(clef).choose(candidates,previous);
-  const index=pool[chosen===null?random(pool.length):chosen];
-  notes.push({clef,letter:letterFromIndex(index),index,duration,result:null,mistakeChosen:null});
+  const eligible=candidateReviewUnits(clef);
+  const chosen=getReview(clef).choose(eligible,previous===null?null:previous*3);
+  const selected=chosen===null?eligible[random(eligible.length)]:chosen;
+  const index=pool[Math.floor(selected/3)],alter=selected%3;
+  notes.push({clef,letter:letterFromIndex(index),index,alter,duration,result:null,mistakeChosen:null});
  }
- session={version:3,pos:0,notes,bars,startedAt:Date.now(),correct:0};
+ session={version:4,pos:0,notes,bars,startedAt:Date.now(),correct:0};
  engravings.clear();save(SESSION_KEY,session);
 }
 function validatedSession(x){
- if(!x||!Number.isInteger(x.pos)||x.pos<0||x.pos>20||!Array.isArray(x.notes)||x.notes.length!==20||!Number.isInteger(x.correct))return null;
- const notes=x.notes;
- for(const n of notes){
-  if(!n||!['treble','bass'].includes(n.clef)||!Number.isInteger(n.index)||!POOLS[n.clef].includes(n.index)||n.letter!==letterFromIndex(n.index))return null;
-  if(![.25,.5,1,1.5,2].includes(n.duration))return null;
-  if(n.mistakeChosen===undefined)n.mistakeChosen=null;
- }
- if(!Array.isArray(x.bars)||!x.bars.length){
-  // Upgrade v2.4's four 5-note systems without losing the unfinished session.
-  x.bars=Array.from({length:4},(_,i)=>({start:i*5,end:i*5+5,clef:notes[i*5].clef,duration:notes.slice(i*5,i*5+5).map(n=>n.duration)}));
- }
+ // Older unfinished groups used 13-pitch pools and variable line counts;
+ // keep their submitted review history but start a fresh 3-line group.
+ if(!x||x.version!==4||!Number.isInteger(x.pos)||x.pos<0||x.pos>20||
+   !Array.isArray(x.notes)||x.notes.length!==20||!Number.isInteger(x.correct)||
+   !Array.isArray(x.bars)||x.bars.length!==3)return null;
  let cursor=0;
  for(const bar of x.bars){
-  if(!Number.isInteger(bar.start)||!Number.isInteger(bar.end)||bar.start!==cursor||bar.end<=cursor||bar.end>20||!['treble','bass'].includes(bar.clef))return null;
-  if(notes.slice(bar.start,bar.end).some(n=>n.clef!==bar.clef))return null;
+  if(!Number.isInteger(bar.start)||!Number.isInteger(bar.end)||bar.start!==cursor||
+     bar.end<=cursor||bar.end>20||!['treble','bass'].includes(bar.clef))return null;
+  const notes=x.notes.slice(bar.start,bar.end);
+  if(notes.some(n=>!n||n.clef!==bar.clef||!POOLS[n.clef].includes(n.index)||
+     n.letter!==letterFromIndex(n.index)||![0,1,2].includes(n.alter)||
+     ![.25,.5,1,1.5,2].includes(n.duration)))return null;
+  if(Math.abs(notes.reduce((v,n)=>v+n.duration,0)-4)>1e-8)return null;
   cursor=bar.end;
  }
- if(cursor!==20)return null;
- x.version=3;
- return x;
+ return cursor===20?x:null;
 }
 function packLines(bars,width){
  const limit=Math.max(240,width-24),lines=[];
@@ -140,7 +168,7 @@ function applyDots(note,VF){
  else if(typeof note.addDotToAll==='function')note.addDotToAll();
  else throw Error('当前记谱引擎不支持附点音符');
 }
-function noteKey(diIndex){return `${NAMES[letterFromIndex(diIndex)].toLowerCase()}/${Math.floor(diIndex/7)}`;}
+function noteKey(diIndex,alter=0){return `${NAMES[letterFromIndex(diIndex)].toLowerCase()}${ACCIDENTALS[alter]}/${Math.floor(diIndex/7)}`;}
 function addBarlines(host,bars,allNotes){
  if(bars.length<2)return;
  const svg=host.querySelector('svg');if(!svg)return;
@@ -158,17 +186,21 @@ function addBarlines(host,bars,allNotes){
 function drawLine(VF,group,width){
  const lineHost=document.createElement('div');lineHost.className='sight-system';
  lineHost.dataset.from=String(group[0].start);lineHost.dataset.to=String(group.at(-1).end);
- const w=Math.max(240,width-4),height=123;
+ const w=Math.max(240,width-4),height=149;
  const renderer=new VF.Renderer(lineHost,VF.Renderer.Backends.SVG);
  renderer.resize(w,height);
  const ctx=renderer.getContext(),clef=group[0].clef;
- const stave=new VF.Stave(8,30,w-16).addClef(clef);
+ const stave=new VF.Stave(8,45,w-16).addClef(clef);
  const voiceNotes=[],barSlices=[];
  for(const bar of group){
   const bNotes=[];
   for(let i=bar.start;i<bar.end;i++){
    const n=session.notes[i];
-   const note=new VF.StaveNote({keys:[noteKey(n.index)],duration:DURATION_CODES[String(n.duration)],clef});
+   const note=new VF.StaveNote({keys:[noteKey(n.index,n.alter)],duration:DURATION_CODES[String(n.duration)],clef});
+   if(n.alter){
+     const accidental=new VF.Accidental(ACCIDENTALS[n.alter]);
+     note.addModifier(accidental,0);
+   }
    if(n.duration===1.5)applyDots(note,VF);
    bNotes.push(note);voiceNotes.push(note);
   }
@@ -191,7 +223,17 @@ function drawLine(VF,group,width){
   const index=group[0].start+i;
   const el=typeof note.getSVGElement==='function'?note.getSVGElement():null;
   if(el){el.classList.add('sight-vex-note');el.dataset.sightIndex=String(index);}
-  byIndex.push({index,x:note.getAbsoluteX(),el,note,host:lineHost,highlight});
+  const svg=lineHost.querySelector('svg');
+  let redHead=null;
+  if(svg){
+    redHead=document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+    redHead.setAttribute('cx',String(note.getAbsoluteX()));
+    redHead.setAttribute('cy',String(note.getYs?.()?.[0]??85));
+    redHead.setAttribute('rx','11');redHead.setAttribute('ry','7');
+    redHead.setAttribute('class','sight-flash-head');
+    svg.appendChild(redHead);
+  }
+  byIndex.push({index,x:note.getAbsoluteX(),el,note,host:lineHost,highlight,redHead});
  });
  return {host:lineHost,entries:byIndex};
 }
@@ -212,9 +254,8 @@ function markCurrent(){
 function flashCurrent(){
  const entry=engravings.get(session.pos);
  if(!entry)return;
- if(entry.el){entry.el.classList.remove('sight-note-error');void entry.el.getBoundingClientRect();entry.el.classList.add('sight-note-error');}
- else {entry.highlight.classList.add('note-error');}
- setTimeout(()=>{entry.el?.classList.remove('sight-note-error');entry.highlight.classList.remove('note-error');},360);
+ if(entry.redHead){entry.redHead.classList.remove('is-flashing');void entry.redHead.getBoundingClientRect();entry.redHead.classList.add('is-flashing');}
+ setTimeout(()=>{entry.redHead?.classList.remove('is-flashing');},460);
 }
 async function renderScore(force=false){
  const container=$('sight-score');if(!container||!session)return;
@@ -223,7 +264,7 @@ async function renderScore(force=false){
  try{vf=await ensureEngraver();}catch(err){if(token===drawing){container.textContent='乐谱无法加载';$('sight-warning').textContent=err.message;}return;}
  if(token!==drawing||!session||!active)return;
  const width=Math.floor(container.getBoundingClientRect().width||container.clientWidth||340);
- const groups=packLines(session.bars,width),signature=scoreLayoutSignature(groups,width);
+ const groups=session.bars.map(bar=>[bar]),signature=scoreLayoutSignature(groups,width);
  if(!force&&container.dataset.layout===signature){markCurrent();return;}
  container.replaceChildren();engravings.clear();
  try{
@@ -244,8 +285,8 @@ async function getAudioContext(){
  return audioCtx;
 }
 async function loadSample(midi){
- const anchor=midi; const key=String(anchor);
- if(buffers.has(key)) return {buffer:buffers.get(key), rate:1};
+ const anchor=clamp(midi,36,96); const key=String(anchor);
+ if(buffers.has(key)) return {buffer:buffers.get(key), rate:Math.pow(2,(midi-anchor)/12)};
  if(!loading.has(key)){
    const sample=root.PIANO_SAMPLES?.[String(anchor)];
    if(!sample) throw Error(`缺少钢琴音源：${anchor}`);
@@ -256,7 +297,7 @@ async function loadSample(midi){
      return await ctx.decodeAudioData(bytes.buffer);
    })());
  }
- try{ const buffer=await loading.get(key); buffers.set(key,buffer); return {buffer,rate:1}; }
+ try{ const buffer=await loading.get(key); buffers.set(key,buffer); return {buffer,rate:Math.pow(2,(midi-anchor)/12)}; }
  finally{ loading.delete(key); }
 }
 function scheduleTone(sample,at,duration,gainMultiplier=.7){
@@ -266,22 +307,29 @@ function scheduleTone(sample,at,duration,gainMultiplier=.7){
  src.connect(g); g.connect(audioGain); src.start(at); src.stop(at+duration+.03);
  src.onended=()=>{ try{src.disconnect(); g.disconnect();}catch{} };
 }
-async function playKeyPitch(letter){
+async function playCorrectPitch(note){
+ if(!note)return;
  try{
   const ctx=await getAudioContext();
-  // The keyboard is pitch-class only. C4–B4 stays constant and never leaks octave hints.
-  const midi=60+SEMI[letter];
+  const midi=noteMidi(note);
   const sample=await loadSample(midi);
-  scheduleTone(sample,ctx.currentTime+.01,.92,.72);
- }catch(err){console.error('Sight key playback error:',err);}
+  scheduleTone(sample,ctx.currentTime+.01,.85,.72);
+ }catch(err){ console.error('Sight correct-note playback error:',err); }
 }
 function renderKeyboard(){
- const area=$('sight-keys'); area.replaceChildren();
+ const area=$('sight-keys');area.replaceChildren();
  for(let i=0;i<7;i++){
-  const btn=document.createElement('button'); btn.type='button'; btn.className='sight-key'; btn.textContent=NAMES[i]; btn.dataset.note=String(i);
+  const btn=document.createElement('button');btn.type='button';btn.className='sight-key sight-white';
+  btn.textContent=NAMES[i];btn.dataset.semitone=String(WHITE_KEYS[i]);
   btn.disabled=busy||session.pos>=20;
-  btn.addEventListener('click',()=>{ void playKeyPitch(i); answer(i,false); });
-  area.append(btn);
+  btn.addEventListener('click',()=>answer(WHITE_KEYS[i],false));area.append(btn);
+ }
+ for(const black of BLACK_KEYS){
+  const btn=document.createElement('button');btn.type='button';btn.className='sight-key sight-black';
+  btn.textContent=black.name;btn.dataset.semitone=String(black.semi);
+  btn.style.left=`${black.boundary/7*100}%`;
+  btn.disabled=busy||session.pos>=20;
+  btn.addEventListener('click',()=>answer(black.semi,false));area.append(btn);
  }
 }
 function render(){
@@ -303,20 +351,20 @@ function blinkWrong(){
 }
 function commitNote(outcome){
  const n=currentNote(); if(!n) return;
- const actualIndex=n.index-POOLS[n.clef][0];
+ const actualIndex=reviewUnit(n);
  if(outcome==='correct'){
    if(n.mistakeChosen===null){
      session.correct++;
      getReview(n.clef).record({actual:actualIndex,chosen:actualIndex,revealed:false,hinted:false,low:0,high:0,responseMs:null});
    } else {
-     const chosenIndex=nearestChosenPosition(n.clef,n.index,n.mistakeChosen);
+     const chosenIndex=recordChosenUnit(n,n.mistakeChosen);
      getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:false,hinted:false,low:0,high:0,responseMs:null});
    }
    n.mistakeChosen=null;
    session.pos++; save(SESSION_KEY,session); busy=false; render(); return;
  }
  if(outcome==='reveal'){
-   const chosenIndex=n.mistakeChosen===null?null:nearestChosenPosition(n.clef,n.index,n.mistakeChosen);
+   const chosenIndex=n.mistakeChosen===null?null:recordChosenUnit(n,n.mistakeChosen);
    getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:true,hinted:false,low:0,high:0,responseMs:null});
    n.mistakeChosen=null;
    session.pos++; save(SESSION_KEY,session);
@@ -330,14 +378,15 @@ function answer(chosen,revealed){
  if(revealed){
    busy=true;
    const keys=[...$('sight-keys').querySelectorAll('button')];
-   for(const key of keys){ key.disabled=true; if(Number(key.dataset.note)===n.letter) key.classList.add('is-correct'); }
+   for(const key of keys){ key.disabled=true; if(Number(key.dataset.semitone)===noteSemitone(n)) key.classList.add('is-correct'); }
    pendingTimer=setTimeout(()=>{ commitNote('reveal'); if(pendingTimer){clearTimeout(pendingTimer); pendingTimer=null;} render(); },420);
    return;
  }
- if(chosen===n.letter){
+ if(chosen===noteSemitone(n)){
    busy=true;
+   void playCorrectPitch(n);
    const keys=[...$('sight-keys').querySelectorAll('button')];
-   for(const key of keys){ key.disabled=true; if(Number(key.dataset.note)===n.letter) key.classList.add('is-correct'); }
+   for(const key of keys){ key.disabled=true; if(Number(key.dataset.semitone)===noteSemitone(n)) key.classList.add('is-correct'); }
    pendingTimer=setTimeout(()=>{ commitNote('correct'); if(pendingTimer){clearTimeout(pendingTimer); pendingTimer=null;} },280);
    return;
  }
@@ -356,7 +405,7 @@ function renderStats(){
  for(const [title,s] of [['高音谱号',t],['低音谱号',b]]){
    const section=document.createElement('section');section.className='stats-panel';
    const h=document.createElement('h3');h.textContent=title;section.append(h);
-   for(let i=0;i<13;i++){const d=s.byInterval[i];section.append(statRow(pitchLabel(title==='高音谱号'?'treble':'bass',i),d.answered,d.correct));}
+   for(let i=0;i<21;i++){const rows=s.byInterval.slice(i*3,i*3+3);const answered=rows.reduce((sum,n)=>sum+(n?.answered||0),0),correct=rows.reduce((sum,n)=>sum+(n?.correct||0),0);section.append(statRow(pitchLabel(title==='高音谱号'?'treble':'bass',i),answered,correct));}
    container.append(section);
  }
  const daily=new Map();
@@ -364,9 +413,9 @@ function renderStats(){
  const dates=[...daily.keys()].sort().slice(-7);
  if(dates.length){ const section=document.createElement('section');section.className='stats-panel'; section.append(Object.assign(document.createElement('h3'),{textContent:'最近练习'})); for(const date of dates){const d=daily.get(date);section.append(statRow(date.slice(5),d.answered,d.correct));} container.append(section); }
  const recent=[...t.history.map(h=>({...h,clef:'高音谱号'})),...b.history.map(h=>({...h,clef:'低音谱号'}))].sort((a,b)=>b.at-a.at).slice(0,10);
- if(recent.length){ const section=document.createElement('section');section.className='stats-panel'; section.append(Object.assign(document.createElement('h3'),{textContent:'最近答题'})); for(const h of recent){ const row=document.createElement('div');row.className='sight-confusion'; const wrong=h.revealed||h.actual!==h.chosen; const clef=h.clef==='高音谱号'?'treble':'bass'; const name=`${h.clef} · ${pitchLabel(clef,h.actual)}`; const chosen=h.revealed?'显示答案':wrong?`→ ${NAMES[letterFromIndex(POOLS[clef][h.chosen])]}`:'✓'; row.append(Object.assign(document.createElement('span'),{textContent:name}),Object.assign(document.createElement('strong'),{textContent:chosen})); section.append(row);} container.append(section); }
+ if(recent.length){ const section=document.createElement('section');section.className='stats-panel'; section.append(Object.assign(document.createElement('h3'),{textContent:'最近答题'})); for(const h of recent){ const row=document.createElement('div');row.className='sight-confusion'; const wrong=h.revealed||h.actual!==h.chosen; const clef=h.clef==='高音谱号'?'treble':'bass'; const name=`${h.clef} · ${reviewLabel(clef,h.actual)}`; const chosen=h.revealed?'显示答案':wrong?`→ ${reviewLabel(clef,h.chosen)}`:'✓'; row.append(Object.assign(document.createElement('span'),{textContent:name}),Object.assign(document.createElement('strong'),{textContent:chosen})); section.append(row);} container.append(section); }
  const confused=[];
- for(const [clef,r] of [['高音谱号',review.treble],['低音谱号',review.bass]]){ for(const c of r.analysis(Array.from({length:13},(_,i)=>i)).confusions.slice(0,8))confused.push({label:`${clef} · ${pitchLabel(clef==='高音谱号'?'treble':'bass',c.actual)} → ${pitchLabel(clef==='高音谱号'?'treble':'bass',c.chosen)}`,count:c.count}); }
+ for(const [clef,r] of [['高音谱号',review.treble],['低音谱号',review.bass]]){ for(const c of r.analysis(Array.from({length:63},(_,i)=>i)).confusions.slice(0,8))confused.push({label:`${clef} · ${reviewLabel(clef==='高音谱号'?'treble':'bass',c.actual)} → ${reviewLabel(clef==='高音谱号'?'treble':'bass',c.chosen)}`,count:c.count}); }
  confused.sort((a,b)=>b.count-a.count);
  if(confused.length){ const section=document.createElement('section');section.className='stats-panel'; const h=document.createElement('h3');h.textContent='常见误认';section.append(h); for(const item of confused.slice(0,10)){ const row=document.createElement('div');row.className='sight-confusion'; row.append(Object.assign(document.createElement('span'),{textContent:item.label}),Object.assign(document.createElement('strong'),{textContent:item.count+' 次'})); section.append(row); } container.append(section); }
 }
@@ -378,7 +427,7 @@ function switchStats(on){
  if(on)renderStats();
 }
 function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); if(!$('stats-dialog').open)$('home-stats').click(); switchStats(true); }
-function openSettings(){ if(!active)return; for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
+function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
@@ -386,13 +435,38 @@ function enter(){
  $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent='五线谱识谱'; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('back-home').onclick=e=>{e.stopImmediatePropagation();leave();}; $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
 function leave(){ if(!active)return; active=false; if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
-function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef}};}
+function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
+function migrateReviewRange(clef,key){
+ const old=getJson(key);
+ if(!old||old.cardRange===63)return;
+ const oldStart=OLD_POOL_START[clef], offset=oldStart-POOLS[clef][0];
+ const scale=x=>(Number(x)+offset)*3;
+ function transformFields(map){
+  const out={};for(const [k,v] of Object.entries(map||{})){
+   if(!/^\d+$/.test(k))continue;
+   const ix=scale(k);if(ix>=0&&ix<=REVIEW_MAX)out[ix]=v;
+  }return out;
+ }
+ const copy=JSON.parse(JSON.stringify(old));
+ copy.cards=transformFields(old.cards);
+ const confused={};for(const [key,value] of Object.entries(old.confusions||{})){
+  const pair=key.split('>');if(pair.length!==2)continue;
+  const x=scale(pair[0]),y=scale(pair[1]);if(x>=0&&x<=REVIEW_MAX&&y>=0&&y<=REVIEW_MAX)confused[`${x}>${y}`]=value;
+ }copy.confusions=confused;
+ for(const h of copy.history||[]){h.actual=scale(h.actual);if(h.chosen!==null)h.chosen=scale(h.chosen);}
+ for(const d of Object.values(copy.daily||{}))d.intervals=transformFields(d.intervals);
+ copy.cardRange=63;
+ save(key,copy);
+}
 function init(){
  if(initialized)return;
  storage=root.IntervalPwaStorageAdapter;if(!storage)return;
- review={treble:root.IntervalReview.createReviewManager(storage,TREBLE_KEY),bass:root.IntervalReview.createReviewManager(storage,BASS_KEY)};
- const existing=getJson(SETTINGS_KEY); if(['treble','bass','both'].includes(existing?.clef))settings.clef=existing.clef;
+ migrateReviewRange('treble',TREBLE_KEY); migrateReviewRange('bass',BASS_KEY);
+ review={treble:root.IntervalReview.createReviewManager(storage,TREBLE_KEY,{maxIndex:REVIEW_MAX}),
+         bass:root.IntervalReview.createReviewManager(storage,BASS_KEY,{maxIndex:REVIEW_MAX})};
+ const existing=getJson(SETTINGS_KEY); if(['treble','bass','both'].includes(existing?.clef))settings.clef=existing.clef; settings.accidentals=existing?.accidentals===true;
  session=validatedSession(getJson(SESSION_KEY));
+ $('sight-accidentals').addEventListener('change',e=>{settings.accidentals=e.target.checked;save(SETTINGS_KEY,settings);});
  $('sight-reveal').addEventListener('click',()=>answer(null,true));
  $('sight-next-set').addEventListener('click',()=>{makeGroup();render();});
  $('sight-close-settings').addEventListener('click',()=>$('sight-settings-dialog').close());
