@@ -6,7 +6,7 @@ const logic=root.IntervalLogic;
 const KEY='tonaloom-staff-interval-v1', OPTIONS=logic.INTERVALS;
 const ROWS=[[0],[1,2],[3,4],[5,6,7],[8,9],[10,11],[12]];
 const ACC={'♯':'#','♭':'b','𝄪':'##','𝄫':'bb'};
-const MODES=['treble','bass','both'];
+const MODES=['both'];
 const store=()=>root.IntervalPwaStorageAdapter;
 let active=false,initialized=false,drawSerial=0;
 let setting={clef:'both'},set=null,previous=-1;
@@ -18,9 +18,9 @@ function save(){
  catch(err){console.error('谱面音程进度保存失败',err);}
 }
 function valid(s){
- return !!s&&Array.isArray(s.questions)&&s.questions.length===10&&
+ return !!s&&s.layoutVersion===2&&Array.isArray(s.questions)&&s.questions.length===10&&
  Number.isInteger(s.pos)&&s.pos>=0&&s.pos<=10&&
- s.questions.every(q=>q&&Number.isInteger(q.semitones)&&q.semitones>=0&&q.semitones<=12&&
+ s.questions.every((q,i)=>q&&q.clef===(i<5?'treble':'bass')&&Number.isInteger(q.semitones)&&q.semitones>=0&&q.semitones<=12&&
  ['treble','bass'].includes(q.clef)&&Array.isArray(q.notes)&&q.notes.length===2&&
  q.notes.every(n=>typeof n==='string'&&n.length<=10)&&typeof q.done==='boolean'&&
  typeof q.mistake==='boolean');
@@ -31,13 +31,13 @@ function makeSet(){
   const eligible=OPTIONS.filter(t=>t.semitones!==previous);
   const interval=eligible[random(eligible.length)];
   previous=interval.semitones;
-  const clef=setting.clef==='both'?(Math.random()<.5?'treble':'bass'):setting.clef;
+  const clef=i<5?'treble':'bass';
   // Choose stable, readable ranges for each clef (and their ledger lines).
-  const low=(clef==='treble'?60:48)+random(12);
+  const low=(clef==='treble'?62:50)+random(9);
   questions.push({semitones:interval.semitones,clef,low,high:low+interval.semitones,
    notes:logic.spellPair(low,interval),done:false,mistake:false,revealed:false});
  }
- set={pos:0,questions};save();
+ set={layoutVersion:2,pos:0,questions};save();
 }
 function current(){return set?.questions[set.pos]||null;}
 function formatNote(label){
@@ -46,36 +46,61 @@ function formatNote(label){
  return {key:m[1].toLowerCase()+'/'+m[3],accidental:ACC[m[2]]||null};
 }
 async function drawScore(){
- const rootEl=$('staff-interval-score'),q=current();
- if(!q||!rootEl)return;
+ const rootEl=$('staff-interval-score');
+ if(!rootEl||!set)return;
  const token=++drawSerial;
- rootEl.replaceChildren();
  try{
   const VF=await root.SightVexFlowReady;
-  if(!active||token!==drawSerial||!VF)return;
+  if(!active||token!==drawSerial||!VF)throw Error('乐谱组件未就绪');
   if(typeof VF.setFonts==='function')VF.setFonts('Bravura','Academico');
-  const width=Math.max(280,Math.floor(rootEl.clientWidth||340)-4),height=188;
-  const host=document.createElement('div');
-  const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
-  renderer.resize(width,height);
-  const ctx=renderer.getContext();
-  const stave=new VF.Stave(12,39,width-24).addClef(q.clef);
-  const notes=q.notes.map(label=>{
-   const p=formatNote(label);
-   const note=new VF.StaveNote({keys:[p.key],duration:'q',clef:q.clef});
-   if(p.accidental)note.addModifier(new VF.Accidental(p.accidental),0);
-   return note;
-  });
-  const voice=new VF.Voice({num_beats:2,beat_value:4});
-  voice.addTickables(notes);
-  // The exercise only contains a two-note excerpt, not a full measure.
-  // Formatter checks strict voice completion and otherwise throws IncompleteVoice.
-  voice.setStrict(false);
-  new VF.Formatter().joinVoices([voice]).formatToStave([voice],stave);
-  stave.setContext(ctx).draw();voice.draw(ctx,stave);
-  if(active&&token===drawSerial)rootEl.replaceChildren(host);
+  const width=Math.max(300,Math.floor(rootEl.clientWidth||340)-4);
+  const ns='http://www.w3.org/2000/svg';
+  const frag=document.createDocumentFragment();
+  for(let row=0;row<2;row++){
+   const clef=row===0?'treble':'bass';
+   const host=document.createElement('div');
+   host.className='staff-interval-system';
+   const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
+   renderer.resize(width,166);
+   const ctx=renderer.getContext();
+   const stave=new VF.Stave(7,26,width-14).addClef(clef);
+   const chords=set.questions.slice(row*5,row*5+5).map(q=>{
+    const p=q.notes.map(formatNote);
+    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef});
+    p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
+    return note;
+   });
+   const voice=new VF.Voice({num_beats:5,beat_value:4});
+   voice.setStrict(false); // VexFlow 5 accepts five chords as an unbarred exercise.
+   voice.addTickables(chords);
+   new VF.Formatter().joinVoices([voice]).formatToStave([voice],stave);
+   stave.setContext(ctx).draw();
+   voice.draw(ctx,stave);
+   const svg=host.querySelector('svg');
+   if(!svg)throw Error('五线谱 SVG 未生成');
+   const overlay=document.createElementNS(ns,'g');
+   chords.forEach((note,i)=>{
+    const idx=row*5+i,q=set.questions[idx];
+    const x=note.getAbsoluteX()+note.getNoteHeadBeginX()-note.getAbsoluteX()+8;
+    const active=idx===set.pos&&set.pos<10;
+    const num=document.createElementNS(ns,'text');
+    num.setAttribute('x',String(x));num.setAttribute('y','154');
+    num.setAttribute('text-anchor','middle');
+    num.setAttribute('font-family','sans-serif');num.setAttribute('font-size','13');
+    num.setAttribute('font-weight',active?'800':'600');
+    num.setAttribute('fill',active?'#159b6c':q.done?'#8f8f99':'#676579');
+    num.textContent=String(idx+1)+(q.done?' ✓':'');
+    overlay.appendChild(num);
+    const node=note.getSVGElement?.()||svg.querySelectorAll('.vf-stavenote')[i];
+    if(node&&active)node.setAttribute('style','filter: brightness(0) saturate(100%) invert(49%) sepia(52%) saturate(623%) hue-rotate(102deg) brightness(88%) contrast(88%)');
+   });
+   svg.appendChild(overlay);
+   frag.appendChild(host);
+  }
+  if(active&&token===drawSerial)rootEl.replaceChildren(frag);
  }catch(err){
-  if(token===drawSerial&&active){rootEl.textContent='谱面绘制失败，请检查网络后重试';console.error(err);}
+  console.error('五线谱和声音程绘制错误',err);
+  if(active&&token===drawSerial)rootEl.textContent='谱面绘制失败：'+err.message;
  }
 }
 function countCorrect(){return set.questions.filter(q=>q.done&&!q.mistake&&!q.revealed).length;}
@@ -107,10 +132,14 @@ function render(){
  $('staff-interval-count').textContent=String(Math.min(10,set.pos+1)).padStart(2,'0');
  $('staff-interval-correct').textContent=String(countCorrect());
  $('staff-interval-summary').classList.toggle('hidden',!completed);
- $('staff-interval-work').classList.toggle('hidden',completed);
+ $('staff-interval-work').classList.remove('hidden');
+ void drawScore();
  if(completed){
   $('staff-interval-result').textContent='本组完成：首次答对 '+countCorrect()+' / 10';
   $('staff-interval-feedback').textContent='';
+  $('staff-interval-next').classList.add('hidden');
+  $('staff-interval-reveal').classList.add('hidden');
+  $('staff-interval-options').replaceChildren();
   return;
  }
  $('staff-interval-feedback').textContent=q.done
@@ -119,7 +148,6 @@ function render(){
  $('staff-interval-next').classList.toggle('hidden',!q.done);
  $('staff-interval-reveal').classList.toggle('hidden',q.done);
  renderOptions();
- void drawScore();
 }
 function audioContext(){
  const Constructor=root.AudioContext||root.webkitAudioContext;
@@ -222,7 +250,7 @@ function init(){
  if(initialized)return;
  let saved=null;
  try{saved=JSON.parse(store()?.getItem(KEY)||'null');}catch{}
- if(saved&&MODES.includes(saved.setting?.clef))setting.clef=saved.setting.clef;
+ setting.clef='both';
  if(valid(saved?.set))set=saved.set;
  $('staff-interval-next').addEventListener('click',next);
  $('staff-interval-reveal').addEventListener('click',reveal);
@@ -243,7 +271,7 @@ function init(){
 function backup(){return {setting:{clef:setting.clef},set:valid(set)?set:null};}
 function restoreBackup(snapshot){
  if(!snapshot||typeof snapshot!=='object')return;
- if(MODES.includes(snapshot.setting?.clef))setting.clef=snapshot.setting.clef;
+ setting.clef='both';
  set=valid(snapshot.set)?snapshot.set:null;
  save();
 }

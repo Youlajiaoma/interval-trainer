@@ -79,3 +79,13 @@
  .staff-interval-score svg{height:188px}
  .staff-interval-options .answer-button{min-height:40px;font-size:12px}
 }
+
+/* v2.13: all ten harmonic-interval chords are visible on two staves. */
+.staff-interval-score{display:flex;flex-direction:column;gap:1px;align-items:stretch;justify-content:flex-start;min-height:338px;padding:0 3px}
+.staff-interval-system{height:166px;min-width:0}
+.staff-interval-system>svg{width:100%;height:166px;display:block;overflow:visible}
+@media(max-width:620px){
+ .staff-interval-score{min-height:338px;padding:0 1px;gap:0}
+ .staff-interval-system{height:166px}
+ .staff-interval-system>svg{height:166px}
+}

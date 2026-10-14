@@ -1,5 +1,5 @@
-/* v2.12.1: fix VexFlow IncompleteVoice staff rendering. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.12.1';
+/* v2.13: two-row ten-chord sheet-music interval recognition. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.13.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

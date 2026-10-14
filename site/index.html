@@ -96,7 +96,7 @@
     <main id="staff-interval-practice" class="staff-interval-practice hidden" aria-label="五线谱音程识别">
       <div class="staff-interval-meta"><span>第 <strong id="staff-interval-count">01</strong> / 10 题</span><span>首次答对 <strong id="staff-interval-correct">0</strong></span></div>
       <div id="staff-interval-work">
-        <div id="staff-interval-score" class="staff-interval-score" aria-label="五线谱上的两个音符"></div>
+        <div id="staff-interval-score" class="staff-interval-score" aria-label="两行五线谱，每行五个和声音程"></div>
         <div id="staff-interval-feedback" class="staff-interval-feedback" aria-live="polite">观察两个音符并判断音程</div>
         <div id="staff-interval-options" class="staff-interval-options" role="group" aria-label="选择音程名称"></div>
         <div class="staff-interval-actions">
@@ -162,14 +162,7 @@
   <dialog class="settings-dialog sight-settings" id="staff-interval-settings" aria-labelledby="staff-interval-settings-title">
     <div class="settings-header"><h2 id="staff-interval-settings-title">五线谱音程识别设置</h2><button id="staff-interval-settings-close" class="close-button" type="button" aria-label="关闭设置">×</button></div>
     <div class="settings-content">
-      <section class="settings-section"><h3>练习谱号</h3>
-        <div class="sight-clef-options" role="group" aria-label="谱面音程谱号">
-          <button type="button" data-staff-clef="treble">高音谱号</button>
-          <button type="button" data-staff-clef="bass">低音谱号</button>
-          <button type="button" data-staff-clef="both">两个谱号</button>
-        </div>
-        <p class="staff-interval-setting-note">修改谱号后，从下一组起应用；每组固定 10 题。</p>
-      </section>
+      <p class="staff-interval-setting-note">每组 10 题：上行高音谱号 5 题，下行低音谱号 5 题。音符上下叠放表示和声音程。</p>
       <details class="more-details"><summary>其他</summary><button id="staff-interval-reset" class="reset-link" type="button">重新开始本组10题</button></details>
     </div>
     <div class="settings-footer"><button id="staff-interval-settings-done" class="settings-done" type="button">完成</button></div>
