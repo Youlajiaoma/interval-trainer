@@ -1,5 +1,5 @@
-/* v2.7 PWA app shell; native SVG sight-reading feedback. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.8.1';
+/* v2.9.0 PWA app shell: green current note, red incorrect note, improved score position. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.9.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
