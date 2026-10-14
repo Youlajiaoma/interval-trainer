@@ -1,5 +1,5 @@
-/* v2.12.0: staff interval recognition and piano answer playback. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.12.0';
+/* v2.12.1: fix VexFlow IncompleteVoice staff rendering. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.12.1';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

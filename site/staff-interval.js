@@ -68,6 +68,9 @@ async function drawScore(){
   });
   const voice=new VF.Voice({num_beats:2,beat_value:4});
   voice.addTickables(notes);
+  // The exercise only contains a two-note excerpt, not a full measure.
+  // Formatter checks strict voice completion and otherwise throws IncompleteVoice.
+  voice.setStrict(false);
   new VF.Formatter().joinVoices([voice]).formatToStave([voice],stave);
   stave.setContext(ctx).draw();voice.draw(ctx,stave);
   if(active&&token===drawSerial)rootEl.replaceChildren(host);
