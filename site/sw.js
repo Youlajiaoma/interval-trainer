@@ -1,5 +1,5 @@
-/* v2.15: VexFlow auto stems and simplified accidentals. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.15.0';
+/* v2.16: explicit staff-based chord stems; cache refreshed. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.16.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
