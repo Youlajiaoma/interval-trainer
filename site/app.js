@@ -420,16 +420,13 @@
     state.selected=null;state.submitted=false;state.revealed=false;state.hasPlayed=false;
     hintUsed=false;firstPlayAt=null;
     state.options=logic.INTERVALS.filter(i=>candidates.includes(i.semitones));
-    $('feedback').textContent='';
     $('next-question').textContent='显示答案';
     $('next-question').classList.add('is-skip');$('play-label').textContent='播放';
     setAudioStatus('');renderAnswerCaption();drawAnswerButtons();updateStats();syncHintButton();
     return true;
   }
   function renderFeedback() {
-    // 只通过答案按钮颜色显示结果。隐藏文本供屏幕阅读器使用。
-    $('feedback').textContent = state.revealed ? '已显示答案，计为错误' :
-      (state.selected === state.current.semitones ? '正确' : '错误');
+    // Answer buttons provide the result feedback directly.
     drawAnswerButtons();
   }
   function submitAnswer(revealed = false) {
@@ -531,7 +528,7 @@
     if (kind === 'hint' && (settings.mode !== 'harmonic' || !state.submitted)) return;
     stopVoices();const token=state.playToken;
     try {
-      setAudioStatus('正在准备音源…');await getAudioContext();
+      await getAudioContext();
       const current=state.current;
       const melodic=settings.mode==='melodic';
       let total=0;
@@ -542,7 +539,7 @@
         if(token!==state.playToken)return;
         scheduleRecording(buffer,audioCtx.currentTime+.06);
         total=buffer.duration;
-        setAudioStatus('正在播放原始旋律录音');
+
         if(kind==='hint')hintUsed=true;
       } else {
         const [first,second]=await Promise.all([loadSample('piano',current.low),loadSample('piano',current.high)]);
@@ -552,12 +549,12 @@
           const duration=Math.min(1.25,Math.max(.65,settings.duration*.56)),gap=.14;
           scheduleTone(first,t,duration,.9);
           scheduleTone(second,t+duration+gap,duration,.9);
-          total=duration*2+gap;setAudioStatus('先低音，再高音');hintUsed=true;
+          total=duration*2+gap;hintUsed=true;
         } else {
           const gain=current.low===current.high?.54:.72;
           scheduleTone(first,t,settings.duration,gain);
           scheduleTone(second,t,settings.duration,gain);
-          total=settings.duration;setAudioStatus('正在播放和声音程');
+          total=settings.duration;
         }
       }
       state.playingTimeout=setTimeout(()=>{if(token===state.playToken){document.body.classList.remove('playing');setAudioStatus('');}},(total+.1)*1000);

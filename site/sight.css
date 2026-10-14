@@ -58,7 +58,7 @@
 @media(max-height:680px){.sight-system,.sight-system>svg{height:133px}.sight-score{max-height:calc(100dvh - 235px);overflow-y:auto}.sight-key.sight-white{min-height:70px}}
 @media(max-height:520px){.sight-system,.sight-system>svg{height:120px}.sight-score{max-height:calc(100dvh - 222px)}}
 
-/* v2.17: compact two-stave score and deliberately separated answers. */
+/* v2.18: compact two-stave score and deliberately separated answers. */
 .staff-interval-practice{max-width:780px;margin:0 auto}
 .staff-interval-meta{display:flex;justify-content:space-between;color:#a3a5ba;font-size:12px;margin-bottom:10px}
 .staff-interval-meta strong{color:#dfd4ff}
@@ -68,18 +68,17 @@
  background:#f6f5f0;border-radius:15px;overflow:hidden
 }
 .staff-interval-score>div{width:100%;min-height:0}
-.staff-interval-system{height:122px;min-height:0;flex:0 0 122px;min-width:0}
-.staff-interval-system>svg{display:block;width:100%;max-width:100%;height:122px;overflow:visible}
-.staff-interval-options{display:grid;gap:7px;margin-top:26px}
+.staff-interval-system{height:112px;min-height:0;flex:0 0 112px;min-width:0}
+.staff-interval-system>svg{display:block;width:100%;max-width:100%;height:112px;overflow:visible}
+.staff-interval-options{display:grid;gap:7px;margin-top:36px}
 .staff-interval-options .answer-row{gap:8px}
 .staff-interval-options .answer-button{min-height:43px;padding:7px 3px;font-size:13px}
 .staff-interval-actions{display:flex;justify-content:center;min-height:40px;margin-top:8px}
 .staff-interval-reveal{background:none;color:#adaabe;border:0;font-size:12px;padding:8px 15px}
 .staff-interval-actions .next-button{min-height:38px;padding:8px 28px}
-.staff-interval-setting-note{font-size:12px;color:#a7a6ba;margin:12px 0 0}
 @media(max-width:620px){
  .staff-interval-score{padding:4px 1px 6px}
- .staff-interval-options{margin-top:23px}
+ .staff-interval-options{margin-top:32px}
  .staff-interval-options .answer-button{min-height:40px;font-size:12px}
 }
 

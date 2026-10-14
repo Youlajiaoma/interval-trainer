@@ -78,7 +78,6 @@
       <section class="answer-section" aria-label="选择音程名称">
         <div class="answer-grid" id="answer-grid"></div>
         <button class="confirm-button hidden" id="submit-answer" type="button" disabled>确认答案</button>
-        <div class="sr-only" id="feedback" role="status" aria-live="polite"></div>
         <div class="action-row">
           <button class="next-button is-skip" id="next-question" type="button">显示答案</button>
         </div>
@@ -162,7 +161,6 @@
   <dialog class="settings-dialog sight-settings" id="staff-interval-settings" aria-labelledby="staff-interval-settings-title">
     <div class="settings-header"><h2 id="staff-interval-settings-title">音程辨认设置</h2><button id="staff-interval-settings-close" class="close-button" type="button" aria-label="关闭设置">×</button></div>
     <div class="settings-content">
-      <p class="staff-interval-setting-note">每组 10 题：上行高音谱号 5 题，下行低音谱号 5 题。音符上下叠放表示和声音程。</p>
       <button id="staff-open-stats" class="open-stats-button" type="button"><strong>练习统计与复习</strong><span aria-hidden="true">›</span></button>
       <details class="more-details"><summary>其他</summary><button id="staff-interval-reset" class="reset-link" type="button">重新开始本组10题</button></details>
     </div>

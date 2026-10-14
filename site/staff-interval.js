@@ -1,4 +1,4 @@
-/* Tonaloom v2.17: verified VexFlow 5 stem directions and silent feedback. */
+/* Tonaloom v2.18: VexFlow 5 stemDirection and compact staff layout. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -99,25 +99,23 @@ async function drawScore(){
   if(!active||token!==drawSerial||!VF)throw Error('乐谱组件未就绪');
   if(typeof VF.setFonts==='function')VF.setFonts('Bravura','Academico');
   const width=Math.max(300,Math.floor(rootEl.clientWidth||340)-4);
-  const ns='http://www.w3.org/2000/svg';
   const frag=document.createDocumentFragment();
   for(let row=0;row<2;row++){
    const clef=row===0?'treble':'bass';
    const host=document.createElement('div');
    host.className='staff-interval-system';
    const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
-   renderer.resize(width,122);
+   renderer.resize(width,112);
    const ctx=renderer.getContext();
-   const stave=new VF.Stave(7,18,width-14).addClef(clef);
+   const stave=new VF.Stave(7,0,width-14).addClef(clef);
    const chords=set.questions.slice(row*5,row*5+5).map(q=>{
     const p=q.notes.map(formatNote);
     const stemDir=staffStemDirection(q.notes,clef);
-    // VexFlow 5 defines UP / DOWN on VF.Stem, NOT on VF.StaveNote.
-    // Its StaveNote.STEM_DOWN is undefined; passing it defaults every stem up.
+    // VexFlow 5 uses camelCase options; stem_direction is silently ignored.
     if(VF.Stem.DOWN!==-1||VF.Stem.UP!==1)throw Error('不兼容的五线谱符干方向常量');
     const note=new VF.StaveNote({
      keys:p.map(x=>x.key),duration:'q',clef,
-     stem_direction:stemDir // VF.Stem.DOWN (-1) or VF.Stem.UP (1)
+     stemDirection:stemDir // VF.Stem.DOWN (-1) or VF.Stem.UP (1)
     });
     if(note.getStemDirection()!==stemDir)
      throw Error('符干方向设置没有生效：'+q.notes.join(','));
@@ -125,7 +123,7 @@ async function drawScore(){
     p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
     return note;
    });
-   const voice=new VF.Voice({num_beats:5,beat_value:4});
+   const voice=new VF.Voice({numBeats:5,beatValue:4});
    voice.setStrict(false); // VexFlow 5 accepts five chords as an unbarred exercise.
    voice.addTickables(chords);
    new VF.Formatter().joinVoices([voice]).formatToStave([voice],stave);
