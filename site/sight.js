@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.8. Notehead-centered position marker. */
+/* Five-line staff sight-reading module, v2.10. Beamed-note stems use native SVG ink feedback. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -249,13 +249,44 @@ function drawLine(VF,group,width){
  svg.prepend(defs);
  const byIndex=[];
  const renderedGroups=[...svg.querySelectorAll('.vf-stavenote')];
+ // VexFlow 5 renders the stems of beamed notes as separate .vf-stem SVG
+ // groups, *outside* their .vf-stavenote groups. Each Stem.draw() uses
+ // the Stem object's ID, whereas getSVGElement() is often unset. Resolve
+ // the real group by its stable SVG ID; never color the shared .vf-beam.
+ const svgStems=[...svg.querySelectorAll('.vf-stem')];
+ const claimedStems=new Set();
+ function findDrawnStem(note){
+  const stem=note.getStem?.();
+  if(!stem)return null; // Whole notes and other stemless symbols.
+  const id=stem.getAttribute?.('id');
+  if(id){
+   const target=String(id).startsWith('vf-')?String(id):`vf-${id}`;
+   const byId=svgStems.find(el=>el.id===target&&!claimedStems.has(el));
+   if(byId){claimedStems.add(byId);return byId;}
+  }
+  // Compatibility fallback: correlate a rendered vertical stem to the
+  // associated VexFlow note's stem X coordinate. This does not use DOM
+  // order, which is unreliable when beam/voice drawing passes differ.
+  const x=note.getStemX?.();
+  if(!Number.isFinite(x))return null;
+  let best=null,delta=Infinity;
+  for(const el of svgStems){
+   if(claimedStems.has(el)||typeof el.getBBox!=='function')continue;
+   try{
+    const b=el.getBBox();
+    if(!Number.isFinite(b.x)||b.height<8||b.width>6)continue;
+    const distance=Math.abs((b.x+b.width/2)-x);
+    if(distance<delta){best=el;delta=distance;}
+   }catch(_){ /* Some SVG engines cannot measure detached shapes. */ }
+  }
+  if(best&&delta<=3){claimedStems.add(best);return best;}
+  return null;
+ }
  voiceNotes.forEach((note,i)=>{
   const index=group[0].start+i;
   const el=(typeof note.getSVGElement==='function'?note.getSVGElement():null)||renderedGroups[i]||null;
   if(el){el.classList.add('sight-vex-note');el.dataset.sightIndex=String(index);}
-  // Some VexFlow builds paint stems in a separate SVG group for beams.
-  const stem=note.getStem?.();
-  const stemEl=stem?.getSVGElement?.()||null;
+  const stemEl=findDrawnStem(note);
   byIndex.push({index,el,stemEl,note,host:lineHost,errorFilterId,currentFilterId});
  });
  return {host:lineHost,entries:byIndex};
@@ -263,6 +294,8 @@ function drawLine(VF,group,width){
 function inkElements(entry){
  if(!entry.el)return [];
  const els=[entry.el];
+ // Solo stems are already descendants of the note. A separate beam stem is
+ // added only if it belongs to THIS note. Beam bars remain untouched.
  if(entry.stemEl&&entry.stemEl!==entry.el&&!entry.el.contains(entry.stemEl))els.push(entry.stemEl);
  return els;
 }
