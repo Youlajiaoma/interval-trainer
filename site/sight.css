@@ -58,15 +58,19 @@
 @media(max-height:680px){.sight-system,.sight-system>svg{height:133px}.sight-score{max-height:calc(100dvh - 235px);overflow-y:auto}.sight-key.sight-white{min-height:70px}}
 @media(max-height:520px){.sight-system,.sight-system>svg{height:120px}.sight-score{max-height:calc(100dvh - 222px)}}
 
-/* v2.12: horizontal two-note interval reading; original 13-answer layout. */
+/* v2.17: compact two-stave score and deliberately separated answers. */
 .staff-interval-practice{max-width:780px;margin:0 auto}
 .staff-interval-meta{display:flex;justify-content:space-between;color:#a3a5ba;font-size:12px;margin-bottom:10px}
 .staff-interval-meta strong{color:#dfd4ff}
-.staff-interval-score{min-height:190px;display:flex;align-items:center;justify-content:center;padding:4px;background:#f6f5f0;border-radius:15px;overflow:hidden}
-.staff-interval-score>div{width:100%;min-height:188px}
-.staff-interval-score svg{display:block;width:100%;max-width:100%;height:188px;overflow:visible}
-.staff-interval-feedback{font-size:13px;text-align:center;min-height:27px;margin:10px 0 8px;color:#a9a9bc}
-.staff-interval-options{display:grid;gap:7px}
+.staff-interval-score{
+ display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+ gap:0;min-height:0;padding:5px 3px 7px;
+ background:#f6f5f0;border-radius:15px;overflow:hidden
+}
+.staff-interval-score>div{width:100%;min-height:0}
+.staff-interval-system{height:122px;min-height:0;flex:0 0 122px;min-width:0}
+.staff-interval-system>svg{display:block;width:100%;max-width:100%;height:122px;overflow:visible}
+.staff-interval-options{display:grid;gap:7px;margin-top:26px}
 .staff-interval-options .answer-row{gap:8px}
 .staff-interval-options .answer-button{min-height:43px;padding:7px 3px;font-size:13px}
 .staff-interval-actions{display:flex;justify-content:center;min-height:40px;margin-top:8px}
@@ -74,20 +78,9 @@
 .staff-interval-actions .next-button{min-height:38px;padding:8px 28px}
 .staff-interval-setting-note{font-size:12px;color:#a7a6ba;margin:12px 0 0}
 @media(max-width:620px){
- .staff-interval-score{min-height:190px;padding:2px}
- .staff-interval-score>div{min-height:188px}
- .staff-interval-score svg{height:188px}
+ .staff-interval-score{padding:4px 1px 6px}
+ .staff-interval-options{margin-top:23px}
  .staff-interval-options .answer-button{min-height:40px;font-size:12px}
-}
-
-/* v2.13: all ten harmonic-interval chords are visible on two staves. */
-.staff-interval-score{display:flex;flex-direction:column;gap:1px;align-items:stretch;justify-content:flex-start;min-height:338px;padding:0 3px}
-.staff-interval-system{height:166px;min-width:0}
-.staff-interval-system>svg{width:100%;height:166px;display:block;overflow:visible}
-@media(max-width:620px){
- .staff-interval-score{min-height:338px;padding:0 1px;gap:0}
- .staff-interval-system{height:166px}
- .staff-interval-system>svg{height:166px}
 }
 
 /* v2.14: classified home and four statistics tabs. */
@@ -97,5 +90,3 @@
 .stats-mode-switch{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:620px){.home-category .home-modules{grid-template-columns:1fr}.stats-mode-switch button{font-size:10px;padding:10px 2px}}
 
-/* v2.15: hide unused feedback region without suppressing error messages. */
-.staff-interval-feedback:empty{display:none}
