@@ -14,7 +14,9 @@
   const SIGHT_BASS_KEY = 'interval-trainer-review-sight-bass-v1';
   const SIGHT_SETTINGS_KEY = 'interval-trainer-sight-settings-v1';
   const SIGHT_SESSION_KEY = 'interval-trainer-sight-session-v1';
-  const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY];
+  const STAFF_REVIEW_KEY = 'tonaloom-staff-interval-review-v1';
+  const STAFF_SESSION_KEY = 'tonaloom-staff-interval-v1';
+  const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, STAFF_REVIEW_KEY, STAFF_SESSION_KEY];
 
   const req = request => new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -65,7 +67,7 @@
         if (!old) continue;
         try {
           const parsed = JSON.parse(old);
-          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed, [SIGHT_TREBLE_KEY,SIGHT_BASS_KEY].includes(key)?62:12);
+          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, STAFF_REVIEW_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed, [SIGHT_TREBLE_KEY,SIGHT_BASS_KEY].includes(key)?62:12);
           if (key === SETTINGS_KEY && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) continue;
           legacy.push([key, old]);
         } catch { continue; }
@@ -149,5 +151,5 @@
     }
     return adapter;
   }
-  root.IntervalPwaStorage = Object.freeze({initialize, REVIEW_KEY, MELODY_KEY, SETTINGS_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, DATABASE});
+  root.IntervalPwaStorage = Object.freeze({initialize, REVIEW_KEY, MELODY_KEY, SETTINGS_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, STAFF_REVIEW_KEY, STAFF_SESSION_KEY, DATABASE});
 })(window);

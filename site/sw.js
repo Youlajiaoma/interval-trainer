@@ -1,5 +1,5 @@
-/* v2.13: two-row ten-chord sheet-music interval recognition. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.13.0';
+/* v2.14: module categories, staff chord highlighting, independent review. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.14.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

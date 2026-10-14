@@ -271,7 +271,7 @@
           JSON.stringify(treble), JSON.stringify(bass), JSON.stringify(config));
       } else await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
     }
-    if (obj.staffInterval) window.StaffIntervalTrainer?.restoreBackup(obj.staffInterval);
+    if (obj.staffInterval) { window.StaffIntervalTrainer?.restoreBackup(obj.staffInterval); await storage.flush(); }
     window.location.reload();
   }
   window.acceptNativeBackup = async function (content) {
@@ -287,15 +287,19 @@
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
   function setupStatsControls() {
-    statsUi = window.IntervalStats.init(() => statisticsMode === 'melodic' ? melodicReview : harmonicReview, () => moduleSettings[statisticsMode].enabled);
+    statsUi = window.IntervalStats.init(
+      () => statisticsMode === 'staff' ? window.StaffIntervalTrainer?.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview,
+      () => statisticsMode === 'staff' ? logic.INTERVALS.map(i=>i.semitones) : moduleSettings[statisticsMode].enabled);
     const statsDialog = $('stats-dialog');
-    for (const mode of ['harmonic','melodic']) {
+    for (const mode of ['harmonic','melodic','staff']) {
       $('stats-'+mode).addEventListener('click', () => {
-        statisticsMode=mode;syncStatisticsMode();statsUi.render();
+        statisticsMode=mode;syncStatisticsMode();
+        if(mode==='staff')window.SightTrainer?.hideStats();
+        statsUi.render();
       });
     }
     function syncStatisticsMode(){
-      for(const mode of ['harmonic','melodic']) {
+      for(const mode of ['harmonic','melodic','staff']) {
         const active=statisticsMode===mode;
         $('stats-'+mode).classList.toggle('active',active);
         $('stats-'+mode).setAttribute('aria-pressed',String(active));
@@ -321,7 +325,7 @@
     });
     $('clear-review').addEventListener('click', () => {
       if(!window.confirm('永久清空当前统计类别的全部练习统计和复习记录？建议先导出备份。')) return;
-      (statisticsMode === 'melodic' ? melodicReview : harmonicReview).reset();statsUi.render();toast('当前类别历史记录已清空');
+      (statisticsMode === 'staff' ? window.StaffIntervalTrainer.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview).reset();statsUi.render();toast('当前类别历史记录已清空');
     });
   }
   function renderAnswerCaption() {

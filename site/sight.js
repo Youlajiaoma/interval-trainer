@@ -507,7 +507,7 @@ function switchStats(on){
  const box=$('stats-dialog');box.classList.toggle('sight-stats-active',on);
  $('sight-stats-content').classList.toggle('hidden',!on);
  const sightBtn=$('stats-sight');sightBtn.classList.toggle('active',on);sightBtn.setAttribute('aria-pressed',String(on));
- if(on){for(const key of ['harmonic','melodic']){ const btn=$('stats-'+key);btn.classList.remove('active');btn.setAttribute('aria-pressed','false'); }}
+ if(on){for(const key of ['harmonic','melodic','staff']){ const btn=$('stats-'+key);btn.classList.remove('active');btn.setAttribute('aria-pressed','false'); }}
  if(on)renderStats();
 }
 function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); if(!$('stats-dialog').open)$('home-stats').click(); switchStats(true); }
@@ -516,7 +516,7 @@ function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
  active=true; document.body.classList.add('module-active'); document.documentElement.classList.remove('practice-scroll-locked');
- $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent='五线谱识谱'; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('back-home').onclick=e=>{e.stopImmediatePropagation();leave();}; $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
+ $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent='音符辨认'; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('back-home').onclick=e=>{e.stopImmediatePropagation();leave();}; $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
 function leave(){ if(!active)return; active=false; document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
 function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
@@ -561,11 +561,11 @@ function init(){
  function openSettingsRefresh(){ for(const b of document.querySelectorAll('.sight-clef-options button')){ const on=b.dataset.clef===settings.clef; b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on)); } }
  for(const btn of document.querySelectorAll('.sight-clef-options button'))btn.addEventListener('click',()=>{ settings.clef=btn.dataset.clef; save(SETTINGS_KEY,settings); openSettingsRefresh(); });
  $('stats-sight').addEventListener('click',()=>switchStats(true));
- for(const id of ['stats-harmonic','stats-melodic']) $(''+id).addEventListener('click',()=>switchStats(false));
+ for(const id of ['stats-harmonic','stats-melodic','stats-staff']) $(''+id).addEventListener('click',()=>switchStats(false));
  $('close-stats').addEventListener('click',()=>switchStats(false));
  $('stats-dialog').addEventListener('close',()=>switchStats(false));
  initialized=true;
 }
-root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats};
+root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,hideStats:()=>switchStats(false)};
 if(root.IntervalAppReady)init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);
