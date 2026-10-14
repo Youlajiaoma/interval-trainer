@@ -1,4 +1,4 @@
-/* Tonaloom v2.12: staff interval recognition, ten written intervals per set. */
+/* Tonaloom v2.16: reliable staff-based stem directions for interval chords. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -72,6 +72,19 @@ function makeSet(){
  set={layoutVersion:2,pos:0,questions};questionAt=Date.now();save();
 }
 function current(){return set?.questions[set.pos]||null;}
+// Decide stem direction from staff position for each two-note chord.
+// Whichever extreme lies farther from the staff middle controls the direction;
+// in a tie, use a down stem (as for a note on the middle line).
+function staffStemDirection(notes,clef){
+ const middle=clef==='treble'?34:clef==='bass'?22:null; // B4 / D3
+ if(middle===null)throw Error('未知谱号：'+clef);
+ const indices=notes.map(label=>{
+  const m=/^([A-G])(?:𝄫|𝄪|♭|♯)?(-?\d+)$/.exec(label);
+  if(!m)throw Error('音符无法确定符干方向：'+label);
+  return Number(m[2])*7+'CDEFGAB'.indexOf(m[1]);
+ });
+ return Math.min(...indices)+Math.max(...indices)>=2*middle?-1:1;
+}
 function formatNote(label){
  const m=/^([A-G])(𝄫|𝄪|♭|♯)?(-?\d+)$/.exec(label);
  if(!m)throw Error('音符无法记谱：'+label);
@@ -98,9 +111,10 @@ async function drawScore(){
    const stave=new VF.Stave(7,26,width-14).addClef(clef);
    const chords=set.questions.slice(row*5,row*5+5).map(q=>{
     const p=q.notes.map(formatNote);
-    // VexFlow's own chord-layout algorithm uses the staff-relative median,
-    // correctly sending high chords down and low chords up in both clefs.
-    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef,auto_stem:true});
+    const stemDir=staffStemDirection(q.notes,clef);
+    // Explicit VexFlow directions: avoid auto_stem silently drawing every chord up.
+    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef,
+     stem_direction:stemDir<0?VF.StaveNote.STEM_DOWN:VF.StaveNote.STEM_UP});
     p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
     return note;
    });
