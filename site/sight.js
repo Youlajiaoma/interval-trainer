@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.10. Beamed-note stems use native SVG ink feedback. */
+/* Five-line staff sight-reading module, v2.10.1. Beamed stems use stroke colors without clipping filters. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -291,28 +291,35 @@ function drawLine(VF,group,width){
  });
  return {host:lineHost,entries:byIndex};
 }
-function inkElements(entry){
- if(!entry.el)return [];
- const els=[entry.el];
- // Solo stems are already descendants of the note. A separate beam stem is
- // added only if it belongs to THIS note. Beam bars remain untouched.
- if(entry.stemEl&&entry.stemEl!==entry.el&&!entry.el.contains(entry.stemEl))els.push(entry.stemEl);
- return els;
+// A VexFlow beamed stem is a thin, independently drawn SVG stroke. Applying
+// an SVG filter to that separate <g> can collapse its zero-width filter box,
+// making the whole stem disappear. Color ONLY its original painted strokes.
+// The shared .vf-beam graphic is never modified.
+function colorSeparateStem(entry, color){
+ const stem=entry.stemEl;
+ if(!stem||!entry.el||entry.el.contains(stem))return;
+ // Clean up a stale filter left by an earlier render/state if present.
+ stem.style.removeProperty('filter');
+ for(const shape of stem.querySelectorAll('path,line,polyline')){
+  if(color)shape.style.setProperty('stroke',color,'important');
+  else shape.style.removeProperty('stroke');
+ }
 }
 function markCurrent(){
  const container=$('sight-score');
- // Always recompute all notes: after answering, the previous note must be
- // black, the new question green, and no other note should stay highlighted.
+ // Color the engraved notehead/group as before, but recolor beamed stems via
+ // their own CSS stroke rather than via a filter on a zero-width group.
  for(const entry of engravings.values()){
   const activeNote=entry.index===session.pos&&session.pos<20;
   const isWrongFlash=activeNote&&flashingIndex===entry.index;
   const filterId=isWrongFlash?entry.errorFilterId:(activeNote?entry.currentFilterId:null);
-  for(const el of inkElements(entry)){
-   el.classList.toggle('sight-note-current',activeNote&&!isWrongFlash);
-   el.classList.toggle('sight-note-error',isWrongFlash);
-   if(filterId)el.style.setProperty('filter',`url(#${filterId})`);
-   else el.style.removeProperty('filter');
+  if(entry.el){
+   entry.el.classList.toggle('sight-note-current',activeNote&&!isWrongFlash);
+   entry.el.classList.toggle('sight-note-error',isWrongFlash);
+   if(filterId)entry.el.style.setProperty('filter',`url(#${filterId})`);
+   else entry.el.style.removeProperty('filter');
   }
+  colorSeparateStem(entry,isWrongFlash?'#db364f':(activeNote?'#199763':null));
  }
  const info=engravings.get(session.pos);
  if(!info)return;

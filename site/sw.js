@@ -1,5 +1,5 @@
-/* v2.10.0 PWA app shell: beamed-note stem color and documentation. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.10.0';
+/* v2.10.1 hotfix: preserve separately painted VexFlow stems. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.10.1';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
