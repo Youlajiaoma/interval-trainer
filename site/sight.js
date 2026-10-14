@@ -277,7 +277,8 @@ function noteheadBounds(entry){
  }
  const horizontalPad=5,verticalPad=6;
  const width=Math.max(27,2*(halfWidth+horizontalPad));
- const height=Math.max(23,2*(halfHeight+verticalPad));
+ const baseHeight=Math.max(23,2*(halfHeight+verticalPad));
+ const height=baseHeight*3;
  return {x:centerX-width/2,y:centerY-height/2,width,height};
 }
 function markCurrent(){
