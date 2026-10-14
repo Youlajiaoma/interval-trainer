@@ -1,8 +1,10 @@
-# 音程听辨
+# Tonaloom
+
+**练耳 · 识谱 · 进步看得见**
 
 一款面向日常练耳与基础识谱的轻量练习工具。打开网页即可使用，也可以添加到手机桌面，像普通应用一样启动。无需注册账号。
 
-**[开始练习](https://youlajiaoma.github.io/interval-trainer/)**
+**[打开 Tonaloom，开始练习](https://youlajiaoma.github.io/interval-trainer/)**
 
 ## 三种练习
 
@@ -28,7 +30,7 @@
 
 ## 在手机上使用
 
-1. 打开 **[音程听辨](https://youlajiaoma.github.io/interval-trainer/)**。
+1. 打开 **[Tonaloom](https://youlajiaoma.github.io/interval-trainer/)**。
 2. 在首页选择想练习的模块。
 3. 通过练习界面右上角的齿轮调整设置；在首页进入统计页面查看学习记录。
 4. 如需桌面图标，可使用浏览器的「添加到主屏幕」或「安装应用」。

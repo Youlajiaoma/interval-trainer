@@ -515,10 +515,10 @@ function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boole
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
- active=true; document.documentElement.classList.remove('practice-scroll-locked');
+ active=true; document.body.classList.add('module-active'); document.documentElement.classList.remove('practice-scroll-locked');
  $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent='五线谱识谱'; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('back-home').onclick=e=>{e.stopImmediatePropagation();leave();}; $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
-function leave(){ if(!active)return; active=false; flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
+function leave(){ if(!active)return; active=false; document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
 function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
 function migrateReviewRange(clef,key){
  const old=getJson(key);

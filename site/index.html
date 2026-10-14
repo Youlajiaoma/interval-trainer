@@ -4,24 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>音程听辨</title>
+  <title>Tonaloom</title>
   <meta name="theme-color" content="#0c0d14">
-  <meta name="application-name" content="音程听辨">
+  <meta name="application-name" content="Tonaloom">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="sight.css">
 </head>
 <body>
   <div class="app-shell">
     <header class="app-header">
-      <h1>音程听辨</h1>
-      <button class="settings-trigger hidden" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.87l.06.06-1.88 1.88-.06-.06A1.7 1.7 0 0 0 16 18.4l-.15.06V21h-3v-.08a1.7 1.7 0 0 0-1.7-1.68l-.22.03-1.2.7-1.5-2.6.06-.04A1.7 1.7 0 0 0 8 15.48l-.1-.17L5.2 15v-3l.09-.01A1.7 1.7 0 0 0 6.9 10.4l-.02-.2-.68-1.2 2.6-1.5.06.06A1.7 1.7 0 0 0 10.71 7l.19-.1V4h3v.08a1.7 1.7 0 0 0 1.69 1.68l.2-.02 1.2-.69 1.5 2.6-.06.05a1.7 1.7 0 0 0-.34 1.87l.1.17 2.61.25v3l-.09.01A1.7 1.7 0 0 0 19.4 15Z" transform="translate(-.4,-.5) scale(.99)"/></svg>
-      </button>
+      <h1>Tonaloom</h1>
+
     </header>
 
     <main class="home-screen" id="home-screen" aria-labelledby="home-title">
@@ -49,6 +47,9 @@
     <nav class="practice-navigation hidden" id="practice-navigation" aria-label="练习页面导航">
       <button class="home-back" id="back-home" type="button" aria-label="返回主页">← HOME</button>
       <span class="practice-mode-title" id="practice-mode-title">和声音程</span>
+      <button class="settings-trigger hidden" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.87l.06.06-1.88 1.88-.06-.06A1.7 1.7 0 0 0 16 18.4l-.15.06V21h-3v-.08a1.7 1.7 0 0 0-1.7-1.68l-.22.03-1.2.7-1.5-2.6.06-.04A1.7 1.7 0 0 0 8 15.48l-.1-.17L5.2 15v-3l.09-.01A1.7 1.7 0 0 0 6.9 10.4l-.02-.2-.68-1.2 2.6-1.5.06.06A1.7 1.7 0 0 0 10.71 7l.19-.1V4h3v.08a1.7 1.7 0 0 0 1.69 1.68l.2-.02 1.2-.69 1.5 2.6-.06.05a1.7 1.7 0 0 0-.34 1.87l.1.17 2.61.25v3l-.09.01A1.7 1.7 0 0 0 19.4 15Z" transform="translate(-.4,-.5) scale(.99)"/></svg>
+      </button>
     </nav>
 
     <main class="practice hidden" id="practice">

@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "音程听辨 · 听辨与五线谱识谱",
-  "short_name": "音程听辨",
-  "description": "离线和声音程、旋律音程及五线谱识谱训练、练习统计与自动复习",
+  "name": "Tonaloom",
+  "short_name": "Tonaloom",
+  "description": "Tonaloom · 和声音程、旋律音程和五线谱识谱，支持自动针对性复习",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
@@ -12,13 +12,13 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "icons/icon-192.png?v=2.11.0",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/icon-512.png?v=2.11.0",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

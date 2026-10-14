@@ -1,5 +1,5 @@
-/* v2.10.1 hotfix: preserve separately painted VexFlow stems. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.10.1';
+/* v2.11.0: Tonaloom brand, full-purple icon, compact module navigation. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.11.0';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
@@ -7,7 +7,7 @@ const CORE_FILES = [
   './review.js','./statistics.js','./storage.js','./app.js','./sight.js','./vendor/vexflow-loader.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
-  './icons/icon-192.png','./icons/icon-512.png',
+  './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',
   './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt','./LICENSE_VEXFLOW_MIT.txt'
 ];
 const AUDIO_FILES = [

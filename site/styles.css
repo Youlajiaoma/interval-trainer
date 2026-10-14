@@ -211,3 +211,12 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 
 /* v2.1: post-answer demonstration only. Disabled state intentionally low-contrast. */
 .hint-button:disabled,.hint-button:disabled:hover{opacity:.38;cursor:not-allowed;color:#9293a6;border-color:#33364a;background:#1a1d2b}
+
+/* v2.11: Practice modules have one compact navigation row.
+   The separate branding bar is displayed only on HOME. */
+body.module-active .app-header{display:none}
+body.module-active .app-shell{padding-top:14px}
+.practice-navigation{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;align-items:center;gap:10px}
+.practice-mode-title{text-align:center;min-width:0}
+.practice-navigation .settings-trigger{width:34px;height:34px;min-width:34px;margin:0}
+@media(max-width:620px){body.module-active .app-shell{padding-top:10px}}

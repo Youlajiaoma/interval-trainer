@@ -575,6 +575,7 @@
     if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
     currentScreen='home';
+    document.body.classList.remove('module-active');
     document.documentElement.classList.remove('practice-scroll-locked');
     $('home-screen').classList.remove('hidden');
     $('open-settings').classList.add('hidden');
@@ -595,6 +596,7 @@
     // Do not start any audio or create a question before selecting a module.
     if (created && !newQuestion()) return;
     currentScreen='practice';
+    document.body.classList.add('module-active');
     window.scrollTo(0, 0);
     $('home-screen').classList.add('hidden');
     $('open-settings').classList.remove('hidden');
