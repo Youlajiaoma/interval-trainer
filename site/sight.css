@@ -96,3 +96,6 @@
 .home-category .home-modules{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stats-mode-switch{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:620px){.home-category .home-modules{grid-template-columns:1fr}.stats-mode-switch button{font-size:10px;padding:10px 2px}}
+
+/* v2.15: hide unused feedback region without suppressing error messages. */
+.staff-interval-feedback:empty{display:none}

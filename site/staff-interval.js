@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const logic=root.IntervalLogic;
 const KEY='tonaloom-staff-interval-v1', REVIEW_KEY='tonaloom-staff-interval-review-v1', OPTIONS=logic.INTERVALS;
 const ROWS=[[0],[1,2],[3,4],[5,6,7],[8,9],[10,11],[12]];
-const ACC={'♯':'#','♭':'b','𝄪':'##','𝄫':'bb'};
+const ACC={'♯':'#','♭':'b'};
 const MODES=['both'];
 const store=()=>root.IntervalPwaStorageAdapter;
 let active=false,initialized=false,drawSerial=0,advanceTimer=null,flashTimer=null,flashing=-1,review=null,questionAt=Date.now();
@@ -13,6 +13,36 @@ let setting={clef:'both'},set=null,previous=-1;
 let audio=null,master=null;
 const samples=new Map(),pending=new Map(),voices=new Set();
 const random=n=>Math.floor(Math.random()*n);
+// At most ONE ordinary sharp or flat may appear across both noteheads.
+// Filtering real pitch spellings keeps the notated and sounded intervals identical.
+function permitted(notes){
+ if(!Array.isArray(notes)||notes.length!==2)return false;
+ const all=notes.join('');
+ return !/[𝄪𝄫]/u.test(all)&&([...(all.matchAll(/[♯♭]/gu))].length<=1);
+}
+function candidateRoots(clef,interval){
+ const min=clef==='treble'?62:50;
+ const roots=[];
+ for(let low=min;low<min+9;low++){
+  const notes=logic.spellPair(low,interval);
+  if(permitted(notes))roots.push({low,notes});
+ }
+ return roots;
+}
+function repairExisting(s){
+ if(!valid(s))return false;
+ let changed=false;
+ for(let i=0;i<10;i++){
+  const q=s.questions[i];
+  if(permitted(q.notes))continue;
+  const roots=candidateRoots(q.clef,OPTIONS[q.semitones]);
+  if(!roots.length)return false;
+  const root=roots[random(roots.length)];
+  q.low=root.low;q.high=root.low+q.semitones;q.notes=root.notes;changed=true;
+ }
+ if(changed)save();
+ return true;
+}
 function save(){
  try{store()?.setItem(KEY,JSON.stringify({setting,set}));}
  catch(err){console.error('谱面音程进度保存失败',err);}
@@ -33,9 +63,11 @@ function makeSet(){
   previous=interval.semitones;
   const clef=i<5?'treble':'bass';
   // Choose stable, readable ranges for each clef (and their ledger lines).
-  const low=(clef==='treble'?62:50)+random(9);
-  questions.push({semitones:interval.semitones,clef,low,high:low+interval.semitones,
-   notes:logic.spellPair(low,interval),done:false,mistake:false,revealed:false});
+  const roots=candidateRoots(clef,interval);
+  if(!roots.length)throw Error('无可用音程音高：'+interval.name);
+  const root=roots[random(roots.length)];
+  questions.push({semitones:interval.semitones,clef,low:root.low,high:root.low+interval.semitones,
+   notes:root.notes,done:false,mistake:false,revealed:false});
  }
  set={layoutVersion:2,pos:0,questions};questionAt=Date.now();save();
 }
@@ -66,10 +98,9 @@ async function drawScore(){
    const stave=new VF.Stave(7,26,width-14).addClef(clef);
    const chords=set.questions.slice(row*5,row*5+5).map(q=>{
     const p=q.notes.map(formatNote);
-    const idxs=q.notes.map(label=>{const m=/^([A-G])(?:𝄫|𝄪|♭|♯)?(-?\d+)$/.exec(label);return Number(m[2])*7+'CDEFGAB'.indexOf(m[1]);});
-    const middle=clef==='treble'?(4*7+6):(3*7+1); // B4 for treble; D3 for bass
-    const dir=(idxs[0]+idxs[1])/2>=middle?-1:1;
-    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef,stem_direction:dir});
+    // VexFlow's own chord-layout algorithm uses the staff-relative median,
+    // correctly sending high chords down and low chords up in both clefs.
+    const note=new VF.StaveNote({keys:p.map(x=>x.key),duration:'q',clef,auto_stem:true});
     p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
     return note;
    });
@@ -145,7 +176,7 @@ function render(){
  }
  $('staff-interval-feedback').textContent=q.done
   ?(q.revealed?'正确答案：'+OPTIONS[q.semitones].name:'正确 · 正在播放钢琴和声')
-  :'观察绿色和弦，选择对应的音程';
+  :'';
  $('staff-interval-reveal').classList.toggle('hidden',q.done);
  renderOptions();
 }
@@ -257,6 +288,7 @@ function init(){
  try{saved=JSON.parse(store()?.getItem(KEY)||'null');}catch{}
  setting.clef='both';
  if(valid(saved?.set))set=saved.set;
+ if(set&&!repairExisting(set))set=null;
  review=root.IntervalReview.createReviewManager(store(),REVIEW_KEY);
  $('staff-interval-reveal').addEventListener('click',reveal);
  $('staff-interval-next-set').addEventListener('click',()=>{makeSet();render();});
