@@ -10,7 +10,8 @@ const keys = Object.freeze({
   harmonic: 'interval-trainer-review-v1', melodic: 'interval-trainer-review-melodic-v1',
   treble: 'interval-trainer-review-sight-treble-v1', bass: 'interval-trainer-review-sight-bass-v1',
   staff: 'tonaloom-staff-interval-review-v1', settings: 'interval-trainer-settings',
-  sightSession: 'interval-trainer-sight-session-v1'
+  sightSession: 'interval-trainer-sight-session-v1', sightSettings: 'interval-trainer-sight-settings-v1',
+  staffSession: 'tonaloom-staff-interval-v1'
 });
 
 function reviewStore({actual = 4, chosen = actual, maxIndex = 12, directional = false, count = 1} = {}) {
@@ -22,7 +23,7 @@ function reviewStore({actual = 4, chosen = actual, maxIndex = 12, directional = 
     direction: directional ? 1 : null, firstMode: directional ? 'user-recording' : null,
     timbre: directional ? 'piano' : null, low: maxIndex === 62 ? 0 : 60,
     high: maxIndex === 62 ? 0 : 60 + actual, now: NOW + i});
-  return review.snapshot();
+  return JSON.parse(JSON.stringify(review.snapshot()));
 }
 
 function seededDatabase() {

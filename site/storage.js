@@ -113,36 +113,26 @@
         await Promise.all(tasks);
         if (failure) throw new Error(failure);
       },
-      async replaceBoth(settingsJson, reviewJson) {
+      async replaceEntries(entries) {
         if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
-        // Caller validates content before write. Commit settings + review atomically.
+        // Callers prepare every entry first. Update the cache only after the whole
+        // transaction commits, so a rejected import leaves both copies unchanged.
+        const rows = entries.map(([key, value]) => [key, String(value)]);
         await this.flush();
         await transact(db, 'readwrite', store => {
-          store.put(String(settingsJson), SETTINGS_KEY);
-          store.put(String(reviewJson), REVIEW_KEY);
+          for (const [key, value] of rows) store.put(value, key);
         });
-        cache.set(SETTINGS_KEY, String(settingsJson));
-        cache.set(REVIEW_KEY, String(reviewJson));
+        for (const [key, value] of rows) cache.set(key, value);
+      },
+      async replaceBoth(settingsJson, reviewJson) {
+        return this.replaceEntries([[SETTINGS_KEY, settingsJson], [REVIEW_KEY, reviewJson]]);
       },
       async replaceWithSight(settingsJson, harmonicJson, melodicJson, trebleJson, bassJson, sightSettingsJson) {
-        if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
-        await this.flush();
-        const rows = [[SETTINGS_KEY,settingsJson],[REVIEW_KEY,harmonicJson],[MELODY_KEY,melodicJson],
-          [SIGHT_TREBLE_KEY,trebleJson],[SIGHT_BASS_KEY,bassJson],[SIGHT_SETTINGS_KEY,sightSettingsJson]];
-        await transact(db, 'readwrite', store => { for(const [key,value] of rows) store.put(String(value),key); });
-        for(const [key,value] of rows) cache.set(key,String(value));
+        return this.replaceEntries([[SETTINGS_KEY,settingsJson],[REVIEW_KEY,harmonicJson],[MELODY_KEY,melodicJson],
+          [SIGHT_TREBLE_KEY,trebleJson],[SIGHT_BASS_KEY,bassJson],[SIGHT_SETTINGS_KEY,sightSettingsJson]]);
       },
       async replaceAll(settingsJson, harmonicJson, melodicJson) {
-        if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
-        await this.flush();
-        await transact(db, 'readwrite', store => {
-          store.put(String(settingsJson), SETTINGS_KEY);
-          store.put(String(harmonicJson), REVIEW_KEY);
-          store.put(String(melodicJson), MELODY_KEY);
-        });
-        cache.set(SETTINGS_KEY, String(settingsJson));
-        cache.set(REVIEW_KEY, String(harmonicJson));
-        cache.set(MELODY_KEY, String(melodicJson));
+        return this.replaceEntries([[SETTINGS_KEY,settingsJson],[REVIEW_KEY,harmonicJson],[MELODY_KEY,melodicJson]]);
       }
     };
     // Persistent-storage request may be denied; app still works in best-effort mode.

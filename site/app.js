@@ -256,22 +256,31 @@
     if (!selected.every(x => Number.isInteger(x) && x >= 0 && x <= 12)) throw Error('音程设置不正确');
     const restoredSettings = JSON.stringify(normalizeSettings(obj.settings));
     if (!storage.available) throw Error('当前浏览器无法保存学习记录');
+    const keys = window.IntervalPwaStorage;
+    const entries = [[keys.SETTINGS_KEY, restoredSettings]];
     if (obj.version === 1) {
       // v1.5/1.6 legacy backup affects harmonic history only; preserve melodic history.
       const harmonic = window.IntervalReview.normalizeStore(obj.review);
-      await storage.replaceBoth(restoredSettings, JSON.stringify(harmonic));
+      entries.push([keys.REVIEW_KEY, JSON.stringify(harmonic)]);
     } else {
       const harmonic = window.IntervalReview.normalizeStore(obj.harmonic);
       const melodic = window.IntervalReview.normalizeStore(obj.melodic);
+      entries.push([keys.REVIEW_KEY, JSON.stringify(harmonic)], [keys.MELODY_KEY, JSON.stringify(melodic)]);
       if (obj.version === 3 && obj.sight) {
-        const treble = window.IntervalReview.normalizeStore(obj.sight.treble);
-        const bass = window.IntervalReview.normalizeStore(obj.sight.bass);
+        const treble = window.IntervalReview.normalizeStore(obj.sight.treble, 62);
+        const bass = window.IntervalReview.normalizeStore(obj.sight.bass, 62);
         const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? {clef:obj.sight.settings.clef,accidentals:obj.sight.settings.accidentals===true} : {clef:'both',accidentals:false};
-        await storage.replaceWithSight(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic),
-          JSON.stringify(treble), JSON.stringify(bass), JSON.stringify(config));
-      } else await storage.replaceAll(restoredSettings, JSON.stringify(harmonic), JSON.stringify(melodic));
+        entries.push([keys.SIGHT_TREBLE_KEY, JSON.stringify(treble)], [keys.SIGHT_BASS_KEY, JSON.stringify(bass)],
+          [keys.SIGHT_SETTINGS_KEY, JSON.stringify(config)]);
+      }
     }
-    if (obj.staffInterval) { window.StaffIntervalTrainer?.restoreBackup(obj.staffInterval); await storage.flush(); }
+    if (obj.staffInterval) {
+      const staff = window.StaffIntervalTrainer.normalizeBackup(obj.staffInterval);
+      entries.push([keys.STAFF_SESSION_KEY, JSON.stringify({setting:staff.setting, set:staff.set})]);
+      if (staff.review) entries.push([keys.STAFF_REVIEW_KEY, JSON.stringify(staff.review)]);
+    }
+    // Validate and serialize every module before changing any stored or live data.
+    await storage.replaceEntries(entries);
     window.location.reload();
   }
   window.acceptNativeBackup = async function (content) {
@@ -319,8 +328,9 @@
       const file = e.target.files?.[0]; e.target.value = '';
       if(!file) return;
       try {
-        if(file.size > 8 * 1024 * 1024) throw Error('备份超过 8 MB');
-        window.acceptNativeBackup(await file.text());
+        // The app's own retained history can exceed 8 MB; validate its content
+        // instead of rejecting a valid export solely because of its file size.
+        await window.acceptNativeBackup(await file.text());
       } catch(err) { toast(`导入失败：${err.message}`); }
     });
     $('clear-review').addEventListener('click', () => {

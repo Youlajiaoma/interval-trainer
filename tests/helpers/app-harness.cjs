@@ -92,23 +92,39 @@ class Element {
 
 function createMemoryDatabase(initial = new Map()) {
   const records = new Map(initial);
+  let nextWriteFailure = null;
   const db = {
     objectStoreNames: {contains: () => true},
     close() {},
-    transaction() {
+    transaction(_name, mode) {
       const operations = [];
+      const failure = mode === 'readwrite' ? nextWriteFailure : null;
+      if (mode === 'readwrite') nextWriteFailure = null;
+      let queuedWrites = 0;
+      const enqueue = op => {
+        if (failure?.synchronous && queuedWrites++ === failure.after) throw Error('模拟写入异常');
+        operations.push(op);
+      };
       const tx = {objectStore: () => ({
         get(key) { const request = {}; operations.push({type: 'get', key, request}); return request; },
-        put(value, key) { operations.push({type: 'put', key, value}); },
-        delete(key) { operations.push({type: 'delete', key}); }
+        put(value, key) { enqueue({type: 'put', key, value}); },
+        delete(key) { enqueue({type: 'delete', key}); }
       }), abort() { this.aborted = true; }};
       queueMicrotask(() => {
         if (tx.aborted) { tx.onabort?.(); return; }
         const staged = new Map(records);
+        let stagedWrites = 0;
         for (const op of operations) {
           if (op.type === 'get') { op.request.result = records.get(op.key); op.request.onsuccess?.(); }
-          else if (op.type === 'put') staged.set(op.key, op.value);
-          else staged.delete(op.key);
+          else {
+            if (failure && !failure.synchronous && stagedWrites++ === failure.after) {
+              tx.error = Error('模拟保存空间不足');
+              tx.onabort?.();
+              return;
+            }
+            if (op.type === 'put') staged.set(op.key, op.value);
+            else staged.delete(op.key);
+          }
         }
         // Commit the complete write set together, not one field at a time.
         for (const [key, value] of staged) records.set(key, value);
@@ -118,7 +134,9 @@ function createMemoryDatabase(initial = new Map()) {
       return tx;
     }
   };
-  return {records, indexedDB: {open() {
+  return {records, failNextWrite({after = 1, synchronous = false} = {}) {
+    nextWriteFailure = {after, synchronous};
+  }, indexedDB: {open() {
     const request = {};
     queueMicrotask(() => { request.result = db; request.onsuccess?.(); });
     return request;

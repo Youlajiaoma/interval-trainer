@@ -303,14 +303,19 @@ function init(){
  initialized=true;
 }
 function backup(){return {setting:{clef:setting.clef},set:valid(set)?set:null,review:review?.snapshot()||null};}
+function normalizeBackup(snapshot){
+ if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))throw Error('音程辨认备份格式不正确');
+ return {setting:{clef:'both'},set:valid(snapshot.set)?snapshot.set:null,
+  review:snapshot.review?root.IntervalReview.normalizeStore(snapshot.review):null};
+}
 function restoreBackup(snapshot){
  if(!snapshot||typeof snapshot!=='object')return;
- setting.clef='both';
- set=valid(snapshot.set)?snapshot.set:null;
- if(snapshot.review&&review)review.importJson(JSON.stringify(snapshot.review));
+ const next=normalizeBackup(snapshot);
+ if(next.review&&review)review.importJson(JSON.stringify(next.review));
+ setting=next.setting;set=next.set;
  save();
 }
-root.StaffIntervalTrainer={enter,leave,openSettings,isActive:()=>active,backup,restoreBackup,reviewManager:()=>review};
+root.StaffIntervalTrainer={enter,leave,openSettings,isActive:()=>active,backup,normalizeBackup,restoreBackup,reviewManager:()=>review};
 if(root.IntervalAppReady)init();
 else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);

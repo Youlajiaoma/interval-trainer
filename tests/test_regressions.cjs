@@ -59,9 +59,13 @@ test('A4 当前记录保留上限生成的大备份可以经文件入口重新�
   }
   const app = await openApp(t, {database});
   const text = await app.exportText();
+  const before = JSON.parse(text);
+  assert(Buffer.byteLength(text) > 8 * 1024 * 1024, '用例必须覆盖超过原有文件限制的备份');
   t.diagnostic('完整备份大小：' + (Buffer.byteLength(text) / 1024 / 1024).toFixed(2) + ' MiB');
   await app.importFile(text);
   assert.equal(app.window.reloads, 1, '程序自身导出的有效备份不应被文件大小限制拒绝');
+  const reloaded = await openApp(t, {database});
+  assert.deepEqual(await reloaded.backup(), before, '大备份恢复后的全部记录和设置应保持完整');
 });
 
 test('A5 两个窗口各答一题后，重新打开应保留两题', async t => {
