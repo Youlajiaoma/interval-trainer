@@ -510,6 +510,9 @@ function switchStats(on){
  if(on){for(const key of ['harmonic','melodic','staff']){ const btn=$('stats-'+key);btn.classList.remove('active');btn.setAttribute('aria-pressed','false'); }}
  if(on)renderStats();
 }
+function clearHistory(){
+ review.treble.reset();review.bass.reset();renderStats();
+}
 function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); if(!$('stats-dialog').open)$('home-stats').click(); switchStats(true); }
 function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
 function enter(){
@@ -566,6 +569,7 @@ function init(){
  $('stats-dialog').addEventListener('close',()=>switchStats(false));
  initialized=true;
 }
-root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,hideStats:()=>switchStats(false)};
+root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,hideStats:()=>switchStats(false),
+ isStatsActive:()=>$('stats-dialog').classList.contains('sight-stats-active'),clearHistory};
 if(root.IntervalAppReady)init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);

@@ -325,7 +325,13 @@
     });
     $('clear-review').addEventListener('click', () => {
       if(!window.confirm('永久清空当前统计类别的全部练习统计和复习记录？建议先导出备份。')) return;
-      (statisticsMode === 'staff' ? window.StaffIntervalTrainer.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview).reset();statsUi.render();toast('当前类别历史记录已清空');
+      // Note statistics have their own view; clear the category currently shown.
+      if (window.SightTrainer?.isStatsActive()) window.SightTrainer.clearHistory();
+      else {
+        (statisticsMode === 'staff' ? window.StaffIntervalTrainer.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview).reset();
+        statsUi.render();
+      }
+      toast('当前类别历史记录已清空');
     });
   }
   function renderAnswerCaption() {

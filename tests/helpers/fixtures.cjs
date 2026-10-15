@@ -13,12 +13,12 @@ const keys = Object.freeze({
   sightSession: 'interval-trainer-sight-session-v1'
 });
 
-function reviewStore({actual = 4, maxIndex = 12, directional = false, count = 1} = {}) {
+function reviewStore({actual = 4, chosen = actual, maxIndex = 12, directional = false, count = 1} = {}) {
   const values = new Map();
   const storage = {getItem: key => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key)};
   const review = api.createReviewManager(storage, 'fixture', {maxIndex, directional});
-  for (let i = 0; i < count; i++) review.record({actual, chosen: actual,
+  for (let i = 0; i < count; i++) review.record({actual, chosen,
     direction: directional ? 1 : null, firstMode: directional ? 'user-recording' : null,
     timbre: directional ? 'piano' : null, low: maxIndex === 62 ? 0 : 60,
     high: maxIndex === 62 ? 0 : 60 + actual, now: NOW + i});

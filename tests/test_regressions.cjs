@@ -20,9 +20,9 @@ test('A1 音符辨认页清空历史只影响音符记录', async t => {
   await app.click('stats-sight');
   await app.click('clear-review');
   const after = await app.backup();
-  assert.equal(after.harmonic.totalAnswers, before.harmonic.totalAnswers, '和声记录不应被清空');
-  assert.equal(after.melodic.totalAnswers, before.melodic.totalAnswers);
-  assert.equal(after.staffInterval.review.totalAnswers, before.staffInterval.review.totalAnswers);
+  assert.deepEqual(after.harmonic, before.harmonic, '和声记录不应被清空');
+  assert.deepEqual(after.melodic, before.melodic);
+  assert.deepEqual(after.staffInterval.review, before.staffInterval.review);
   assert.equal(after.sight.treble.totalAnswers + after.sight.bass.totalAnswers, 0);
 });
 
