@@ -198,13 +198,18 @@ function drawLine(VF,group,width){
  const voiceNotes=[],barSlices=[];
  for(const bar of group){
   const bNotes=[];
+  const alterations=new Map();
   for(let i=bar.start;i<bar.end;i++){
    const n=session.notes[i];
    const note=new VF.StaveNote({keys:[noteKey(n.index,n.alter)],duration:DURATION_CODES[String(n.duration)],clef,autoStem:true});
-   if(n.alter){
-     const accidental=new VF.Accidental(ACCIDENTALS[n.alter]);
+   // Accidentals apply to this staff position until the barline. Keep explicit
+   // sharps/flats as before, but cancel them when this pitch returns to natural.
+   const accidentalType=n.alter?ACCIDENTALS[n.alter]:(alterations.get(n.index)?'n':null);
+   if(accidentalType){
+     const accidental=new VF.Accidental(accidentalType);
      note.addModifier(accidental,0);
    }
+   alterations.set(n.index,n.alter);
    if(n.duration===1.5)applyDots(note,VF);
    bNotes.push(note);voiceNotes.push(note);
   }
