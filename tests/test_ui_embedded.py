@@ -2,10 +2,11 @@ from playwright.sync_api import sync_playwright
 from pathlib import Path
 import re
 import tempfile
+import os
 root=Path(__file__).resolve().parents[1]/'site'
-src=(root/'index.html').read_text()
-src=src.replace('<link rel="stylesheet" href="styles.css">','<style>'+(root/'styles.css').read_text()+'</style>')
-src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sight.css').read_text()+'</style>')
+src=(root/'index.html').read_text(encoding='utf-8')
+src=src.replace('<link rel="stylesheet" href="styles.css">','<style>'+(root/'styles.css').read_text(encoding='utf-8')+'</style>')
+src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sight.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="manifest" href="manifest.webmanifest">','')
 src=re.sub(r'<link rel="(?:icon|apple-touch-icon)"[^>]*>', '',src)
 # This in-page test uses a memory adapter. IndexedDB persistence is separately
@@ -19,16 +20,17 @@ window.IntervalPwaStorage={MELODY_KEY:'interval-trainer-review-melodic-v1',initi
  flush:async()=>{}})};
 </script>'''
 for script in ('logic.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js'):
-    src=src.replace(f'<script src="{script}"></script>',f'<script>\n{(root/script).read_text()}\n</script>')
+    src=src.replace(f'<script src="{script}"></script>',f'<script>\n{(root/script).read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="storage.js"></script>', adapter)
-src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text()}\n</script>')
+src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="pwa-register.js"></script>','')
 # This embedded-page test covers harmonic practice; notation has its own browser test.
 for script in ('vendor/vexflow-loader.js','sight.js','staff-interval.js'):
     src=src.replace(f'<script src="{script}"></script>','')
 screenshots=Path(tempfile.mkdtemp(prefix='tonaloom-ui-'))
 with sync_playwright() as pw:
-  browser=pw.chromium.launch(headless=True,**({'executable_path':'/usr/bin/chromium'} if Path('/usr/bin/chromium').exists() else {}),args=['--no-sandbox','--autoplay-policy=no-user-gesture-required'])
+  chromium=os.environ.get('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
+  browser=pw.chromium.launch(headless=True,executable_path=chromium,args=['--no-sandbox','--autoplay-policy=no-user-gesture-required'])
   for kind,viewport in [('phone',{'width':390,'height':844}),('tablet',{'width':900,'height':1000})]:
     page=browser.new_page(viewport=viewport)
     errors=[]

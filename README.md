@@ -50,3 +50,7 @@
 - [查看完整更新日志](CHANGELOG.md)
 - 五线谱使用 [VexFlow](https://github.com/0xfe/vexflow) 进行绘制。
 - 项目中包含第三方钢琴采样和旋律录音；相关授权说明请参阅 `site/` 目录中的许可与版权文件。
+
+## 本地开发与测试
+
+在项目根目录运行 `node tests/run.cjs`，可执行基础功能和回归检查。完整用法、浏览器检查条件及已知失败基线见 [本地测试说明](tests/README.md)。
