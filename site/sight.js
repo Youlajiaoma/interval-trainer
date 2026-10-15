@@ -479,7 +479,7 @@ function answer(chosen,revealed){
    pendingTimer=setTimeout(()=>{ commitNote('correct'); if(pendingTimer){clearTimeout(pendingTimer); pendingTimer=null;} },280);
    return;
  }
- if(n.mistakeChosen===null) n.mistakeChosen=chosen;
+ if(n.mistakeChosen===null){n.mistakeChosen=chosen;save(SESSION_KEY,session);}
  busy=true; blinkWrong();
 }
 function statsBox(label,val){const b=document.createElement('div');b.className='sight-kpi';b.append(Object.assign(document.createElement('span'),{textContent:label}),Object.assign(document.createElement('strong'),{textContent:val}));return b;}

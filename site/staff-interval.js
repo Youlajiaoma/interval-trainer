@@ -258,6 +258,11 @@ function openSettings(){
 function enter(){
  if(!initialized)return;
  if(!set||!valid(set))makeSet();
+ // Completion was saved before the feedback timer. Resume beyond completed
+ // questions if navigation or a reload interrupted that timer; never score again.
+ const previousPos=set.pos;
+ while(current()?.done)set.pos++;
+ if(set.pos!==previousPos){clearTimeout(advanceTimer);advanceTimer=null;questionAt=Date.now();save();}
  active=true;document.body.classList.add('module-active');
  document.documentElement.classList.remove('practice-scroll-locked');
  $('home-screen').classList.add('hidden');
