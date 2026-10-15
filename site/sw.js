@@ -1,5 +1,5 @@
-/* v2.18: VexFlow 5 downward stems, tighter two-system layout, silent feedback. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.18.0';
+/* v2.18.1: shared VexFlow adaptive stem directions for both notation modules. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.18.1';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [

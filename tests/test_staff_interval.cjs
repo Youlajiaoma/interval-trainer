@@ -50,6 +50,50 @@ const site=path.join(__dirname,'../site');
   if(await page.locator('#feedback').count())throw Error('feedback remains');
   if(errors.length)throw Error(errors.join('\n'));
   console.log('PASS staff direction, bounds, spacing, wrong-answer flash, auto-advance and silent feedback:',width)
+  if(width===390)for(const clef of ['treble','bass']){
+   // Persist deterministic notes, then let the production module restore and draw them.
+   await page.evaluate(async clef=>{
+    const middle=clef==='treble'?34:22;
+    const offsets=[-2,2,0,2,1,3,-3,-2,-2,-1,-3,1,3,-1,-2,-1,1,2,2,3];
+    const durations=[2,2,1,1,.5,.5,.25,.25,.25,.25,.5,.5,.5,.5,.5,.5,.25,.25,.25,.25];
+    const notes=offsets.map((offset,i)=>{
+     const index=middle+offset;
+     return {clef,index,letter:index%7,alter:i===3?1:0,duration:durations[i],result:null,mistakeChosen:null};
+    });
+    const storage=window.IntervalPwaStorageAdapter;
+    storage.setItem('interval-trainer-sight-session-v1',JSON.stringify({version:4,pos:0,correct:0,notes,
+     bars:[{start:0,end:2,clef},{start:2,end:10,clef},{start:10,end:20,clef}]}));
+    await storage.flush();
+   },clef);
+   await page.reload();
+   await page.waitForFunction(()=>window.IntervalAppReady&&window.SightTrainer);
+   await page.evaluate(async()=>{
+    const VF=await SightVexFlowReady;window.drawn=[];
+    const Original=VF.StaveNote;
+    VF.StaveNote=class extends Original{constructor(o){super(o);window.drawn.push(this)}};
+   });
+   await page.click('#home-sight');
+   await page.waitForFunction(()=>document.querySelectorAll('#sight-score svg').length===3);
+   const directions=await page.evaluate(()=>drawn.map(n=>n.getStemDirection()));
+   const expected=[1,-1,-1,-1,-1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,-1,-1,-1];
+   if(JSON.stringify(directions)!==JSON.stringify(expected))throw Error(clef+' sight stems '+JSON.stringify(directions));
+   // Move to a beamed note and verify that wrong-answer coloring keeps its stem visible.
+   for(const semi of [clef==='treble'?7:11,clef==='treble'?2:5,clef==='treble'?11:2,clef==='treble'?3:6]){
+    const pos=await page.evaluate(()=>Number(document.querySelector('#sight-count').textContent));
+    await page.click('#sight-keys [data-semitone="'+semi+'"]');
+    await page.waitForFunction(pos=>Number(document.querySelector('#sight-count').textContent)===pos+1,pos);
+   }
+   await page.click('#sight-keys [data-semitone="1"]');
+   const stemVisible=await page.evaluate(()=>{
+    const stem=drawn[4].getStem(),id=String(stem.getAttribute('id'));
+    const el=document.getElementById(id.startsWith('vf-')?id:'vf-'+id);
+    return !!el&&el.getBBox().height>8&&el.style.filter===''&&
+     [...el.querySelectorAll('path,line,polyline')].some(s=>s.style.stroke==='rgb(219, 54, 79)'||s.style.stroke==='#db364f');
+   });
+   if(!stemVisible)throw Error(clef+' beamed stem lost during wrong-answer flash');
+   if(errors.length)throw Error(errors.join('\n'));
+   console.log('PASS sight adaptive half/quarter stems, middle line, accidental, beam groups and visible error stems:',clef);
+  }
  }
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

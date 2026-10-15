@@ -1,4 +1,4 @@
-/* Tonaloom v2.18: VexFlow 5 stemDirection and compact staff layout. */
+/* Tonaloom: VexFlow adaptive stem directions and compact staff layout. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -72,19 +72,6 @@ function makeSet(){
  set={layoutVersion:2,pos:0,questions};questionAt=Date.now();save();
 }
 function current(){return set?.questions[set.pos]||null;}
-// Decide stem direction from staff position for each two-note chord.
-// Whichever extreme lies farther from the staff middle controls the direction;
-// in a tie, use a down stem (as for a note on the middle line).
-function staffStemDirection(notes,clef){
- const middle=clef==='treble'?34:clef==='bass'?22:null; // B4 / D3
- if(middle===null)throw Error('未知谱号：'+clef);
- const indices=notes.map(label=>{
-  const m=/^([A-G])(?:𝄫|𝄪|♭|♯)?(-?\d+)$/.exec(label);
-  if(!m)throw Error('音符无法确定符干方向：'+label);
-  return Number(m[2])*7+'CDEFGAB'.indexOf(m[1]);
- });
- return Math.min(...indices)+Math.max(...indices)>=2*middle?-1:1;
-}
 function formatNote(label){
  const m=/^([A-G])(𝄫|𝄪|♭|♯)?(-?\d+)$/.exec(label);
  if(!m)throw Error('音符无法记谱：'+label);
@@ -110,15 +97,10 @@ async function drawScore(){
    const stave=new VF.Stave(7,0,width-14).addClef(clef);
    const chords=set.questions.slice(row*5,row*5+5).map(q=>{
     const p=q.notes.map(formatNote);
-    const stemDir=staffStemDirection(q.notes,clef);
-    // VexFlow 5 uses camelCase options; stem_direction is silently ignored.
-    if(VF.Stem.DOWN!==-1||VF.Stem.UP!==1)throw Error('不兼容的五线谱符干方向常量');
     const note=new VF.StaveNote({
      keys:p.map(x=>x.key),duration:'q',clef,
-     stemDirection:stemDir // VF.Stem.DOWN (-1) or VF.Stem.UP (1)
+     autoStem:true
     });
-    if(note.getStemDirection()!==stemDir)
-     throw Error('符干方向设置没有生效：'+q.notes.join(','));
 
     p.forEach((x,i)=>{if(x.accidental)note.addModifier(new VF.Accidental(x.accidental),i);});
     return note;

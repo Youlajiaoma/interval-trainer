@@ -1,4 +1,4 @@
-/* Five-line staff sight-reading module, v2.10.1. Beamed stems use stroke colors without clipping filters. */
+/* Five-line staff sight-reading module. VexFlow chooses adaptive stem directions. */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -200,7 +200,7 @@ function drawLine(VF,group,width){
   const bNotes=[];
   for(let i=bar.start;i<bar.end;i++){
    const n=session.notes[i];
-   const note=new VF.StaveNote({keys:[noteKey(n.index,n.alter)],duration:DURATION_CODES[String(n.duration)],clef});
+   const note=new VF.StaveNote({keys:[noteKey(n.index,n.alter)],duration:DURATION_CODES[String(n.duration)],clef,autoStem:true});
    if(n.alter){
      const accidental=new VF.Accidental(ACCIDENTALS[n.alter]);
      note.addModifier(accidental,0);
