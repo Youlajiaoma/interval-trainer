@@ -2,6 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const logic = window.IntervalLogic;
+  const recordedLibrary = window.MELODIC_RECORDINGS;
   const lowChoices = [36, 48, 60, 72, 84];
   const highChoices = [48, 60, 72, 84, 96];
   const storage = await window.IntervalPwaStorage.initialize();
@@ -16,11 +17,16 @@
   const commonDefaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false };
   function normalizeProfile(saved, mode) {
     const raw = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
-    const profile = { ...commonDefaults, enabled: commonDefaults.enabled.slice(), mode };
+    const defaults = mode === 'melodic'
+      ? commonDefaults.enabled.filter(i => Boolean(recordedLibrary.intervals[String(i)]))
+      : commonDefaults.enabled;
+    const profile = { ...commonDefaults, enabled: defaults.slice(), mode };
     if (Array.isArray(raw.enabled)) {
-      profile.enabled = [...new Set(raw.enabled)].filter(i => Number.isInteger(i) && i >= 0 && i <= 12);
+      profile.enabled = [...new Set(raw.enabled)].filter(i => Number.isInteger(i) && defaults.includes(i));
     }
-    if (!profile.enabled.length) profile.enabled = commonDefaults.enabled.slice();
+    // A legacy unison-only selection has no melodic recording. Restore usable
+    // defaults before entering practice, where the settings button is available.
+    if (!profile.enabled.length) profile.enabled = defaults.slice();
     if (lowChoices.includes(raw.low)) profile.low = raw.low;
     if (highChoices.includes(raw.high) && raw.high > profile.low) profile.high = raw.high;
     else if (profile.high <= profile.low) profile.high = Math.min(96, profile.low + 12);
@@ -58,7 +64,6 @@
   let review = activeMode === 'melodic' ? melodicReview : harmonicReview;
   let statisticsMode = activeMode;
   const sessions = {harmonic:{questionNo:0,correct:0,answered:0},melodic:{questionNo:0,correct:0,answered:0}};
-  const recordedLibrary = window.MELODIC_RECORDINGS;
   const recordedInstruments = Object.keys(recordedLibrary.instruments);
   const timbreNames = recordedLibrary.instruments;
   let statsUi = null;
