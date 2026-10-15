@@ -92,6 +92,16 @@ class Element {
 
 function createMemoryDatabase(initial = new Map()) {
   const records = new Map(initial);
+  const channels = new Set();
+  class BroadcastChannel {
+    constructor(name) { this.name = name; channels.add(this); }
+    postMessage(data) {
+      for (const peer of channels) if (peer !== this && peer.name === this.name) {
+        queueMicrotask(() => { if (channels.has(peer)) peer.onmessage?.({data}); });
+      }
+    }
+    close() { channels.delete(this); }
+  }
   let nextWriteFailure = null;
   const db = {
     objectStoreNames: {contains: () => true},
@@ -115,7 +125,7 @@ function createMemoryDatabase(initial = new Map()) {
         const staged = new Map(records);
         let stagedWrites = 0;
         for (const op of operations) {
-          if (op.type === 'get') { op.request.result = records.get(op.key); op.request.onsuccess?.(); }
+          if (op.type === 'get') { op.request.result = staged.get(op.key); op.request.onsuccess?.(); }
           else {
             if (failure && !failure.synchronous && stagedWrites++ === failure.after) {
               tx.error = Error('模拟保存空间不足');
@@ -125,6 +135,7 @@ function createMemoryDatabase(initial = new Map()) {
             if (op.type === 'put') staged.set(op.key, op.value);
             else staged.delete(op.key);
           }
+          if (tx.aborted) { tx.onabort?.(); return; }
         }
         // Commit the complete write set together, not one field at a time.
         for (const [key, value] of staged) records.set(key, value);
@@ -134,7 +145,7 @@ function createMemoryDatabase(initial = new Map()) {
       return tx;
     }
   };
-  return {records, failNextWrite({after = 1, synchronous = false} = {}) {
+  return {records, BroadcastChannel, failNextWrite({after = 1, synchronous = false} = {}) {
     nextWriteFailure = {after, synchronous};
   }, indexedDB: {open() {
     const request = {};
@@ -243,6 +254,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345} = {})
   const engraver = createEngraver();
   const window = Object.assign(new Element('window'), {
     document, indexedDB: database.indexedDB, localStorage: {getItem: () => null},
+    BroadcastChannel: database.BroadcastChannel,
     navigator: {storage: {persist: async () => true}}, innerHeight: 900, scrollY: 0,
     scrollTo() {}, confirm: () => true, location: {reload() { window.reloads++; }}, reloads: 0,
     AudioContext, SightVexFlowReady: Promise.resolve(engraver.api),

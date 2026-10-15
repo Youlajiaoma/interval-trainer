@@ -267,8 +267,8 @@
       const melodic = window.IntervalReview.normalizeStore(obj.melodic);
       entries.push([keys.REVIEW_KEY, JSON.stringify(harmonic)], [keys.MELODY_KEY, JSON.stringify(melodic)]);
       if (obj.version === 3 && obj.sight) {
-        const treble = window.IntervalReview.normalizeStore(obj.sight.treble, 62);
-        const bass = window.IntervalReview.normalizeStore(obj.sight.bass, 62);
+        const treble = window.SightTrainer.normalizeReview('treble', obj.sight.treble);
+        const bass = window.SightTrainer.normalizeReview('bass', obj.sight.bass);
         const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? {clef:obj.sight.settings.clef,accidentals:obj.sight.settings.accidentals===true} : {clef:'both',accidentals:false};
         entries.push([keys.SIGHT_TREBLE_KEY, JSON.stringify(treble)], [keys.SIGHT_BASS_KEY, JSON.stringify(bass)],
           [keys.SIGHT_SETTINGS_KEY, JSON.stringify(config)]);
@@ -300,6 +300,12 @@
       () => statisticsMode === 'staff' ? window.StaffIntervalTrainer?.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview,
       () => statisticsMode === 'staff' ? logic.INTERVALS.map(i=>i.semitones) : moduleSettings[statisticsMode].enabled);
     const statsDialog = $('stats-dialog');
+    window.addEventListener('interval-trainer-storage-updated', () => {
+      if (statsDialog.open && !window.SightTrainer?.isStatsActive()) statsUi.render();
+    });
+    for (const id of ['home-stats','open-stats','stats-harmonic','stats-melodic','stats-staff','stats-sight']) {
+      $(id).addEventListener('click', () => { storage.refresh?.().catch(() => {}); });
+    }
     for (const mode of ['harmonic','melodic','staff']) {
       $('stats-'+mode).addEventListener('click', () => {
         statisticsMode=mode;syncStatisticsMode();
@@ -322,7 +328,12 @@
     });
     $('close-stats').addEventListener('click', () => statsDialog.close());
     statsDialog.addEventListener('click', e => { if(e.target === statsDialog) statsDialog.close(); });
-    $('export-backup').addEventListener('click', () => browserDownload(createBackup()));
+    $('export-backup').addEventListener('click', async () => {
+      // Include answers saved by other windows. If storage has failed, retain
+      // the existing ability to export the in-memory record for recovery.
+      try { await storage.refresh?.(); } catch {}
+      browserDownload(createBackup());
+    });
     $('import-backup').addEventListener('click', () => $('backup-file').click());
     $('backup-file').addEventListener('change', async e => {
       const file = e.target.files?.[0]; e.target.value = '';

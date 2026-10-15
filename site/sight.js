@@ -523,9 +523,8 @@ function enter(){
 }
 function leave(){ if(!active)return; active=false; document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
 function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
-function migrateReviewRange(clef,key){
- const old=getJson(key);
- if(!old||old.cardRange===63)return;
+function convertReviewRange(clef,old){
+ if(!old||old.cardRange===63)return old;
  const oldStart=OLD_POOL_START[clef], offset=oldStart-POOLS[clef][0];
  const scale=x=>(Number(x)+offset)*3;
  function transformFields(map){
@@ -543,7 +542,16 @@ function migrateReviewRange(clef,key){
  for(const h of copy.history||[]){h.actual=scale(h.actual);if(h.chosen!==null)h.chosen=scale(h.chosen);}
  for(const d of Object.values(copy.daily||{}))d.intervals=transformFields(d.intervals);
  copy.cardRange=63;
- save(key,copy);
+ return copy;
+}
+function normalizeReview(clef,raw){
+ return root.IntervalReview.normalizeStore(convertReviewRange(clef,raw),REVIEW_MAX);
+}
+function migrateReviewRange(clef,key){
+ const existing=getJson(key);
+ if(!existing||existing.cardRange===63)return;
+ if(storage.updateItem)storage.updateItem(key,raw=>raw?JSON.stringify(convertReviewRange(clef,JSON.parse(raw))):null);
+ else save(key,convertReviewRange(clef,existing));
 }
 function init(){
  if(initialized)return;
@@ -567,9 +575,12 @@ function init(){
  for(const id of ['stats-harmonic','stats-melodic','stats-staff']) $(''+id).addEventListener('click',()=>switchStats(false));
  $('close-stats').addEventListener('click',()=>switchStats(false));
  $('stats-dialog').addEventListener('close',()=>switchStats(false));
+ root.addEventListener('interval-trainer-storage-updated',()=>{
+  if($('stats-dialog').open&&$('stats-dialog').classList.contains('sight-stats-active'))renderStats();
+ });
  initialized=true;
 }
 root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,hideStats:()=>switchStats(false),
- isStatsActive:()=>$('stats-dialog').classList.contains('sight-stats-active'),clearHistory};
+ isStatsActive:()=>$('stats-dialog').classList.contains('sight-stats-active'),clearHistory,normalizeReview};
 if(root.IntervalAppReady)init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);

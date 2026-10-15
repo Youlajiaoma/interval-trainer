@@ -134,12 +134,14 @@
     const isValid = n => Number.isInteger(n) && n >= 0 && n <= maxIndex;
     let available = storageAvailable(storage);
     let data = newStore(); data.cardRange = maxIndex+1;
+    let lastSaved = null;
     let storageWarning = '';
     if (available) {
-      try { const saved = storage.getItem(key); if (saved) data = normalizeStore(JSON.parse(saved), maxIndex); }
+      try { lastSaved = storage.getItem(key); if (lastSaved) data = normalizeStore(JSON.parse(lastSaved), maxIndex); }
       catch { storageWarning = '检测到损坏的旧记录，原始存储没有被自动删除。请先导出备份再继续练习。'; available = false; }
     }
-    if (directional && !data.directionalInitialized) {
+    function initializeDirectional(data) {
+      if (!directional || data.directionalInitialized) return;
       // Migration is lossless for original aggregated totals. The retained directional
       // history is replayed solely to seed per-direction scheduling and breakdowns.
       let position=Math.max(0,data.totalAnswers-data.history.length);
@@ -152,46 +154,79 @@
         addDirectionalDay(data.directionalDaily,h.at,k,correct);
       }
       data.directionalInitialized=true;
-      // Retain aggregate data untouched; persist directional scheduling extension.
-      if(available)try{storage.setItem(key,JSON.stringify(data));}catch{available=false;}
+    }
+    function readData(saved) {
+      const next = saved ? normalizeStore(JSON.parse(saved), maxIndex) : newStore();
+      if (!saved) next.cardRange = maxIndex+1;
+      initializeDirectional(next);
+      return next;
+    }
+    function sync() {
+      if (!available || !storage.updateItem) return;
+      const saved = storage.getItem(key);
+      if (saved === lastSaved) return;
+      try { data = readData(saved); lastSaved = saved; }
+      catch { available = false; storageWarning = '检测到损坏的记录，请先导出备份并检查数据。'; }
     }
     function save() {
       if (!available) return false;
       try { storage.setItem(key, JSON.stringify(data)); return true; }
       catch { available = false; storageWarning = '存储失败，请导出记录并检查浏览器存储空间。'; return false; }
     }
+    function mutate(change) {
+      sync();
+      if (available && storage.updateItem) {
+        try {
+          lastSaved = storage.updateItem(key, saved => {
+            const next = readData(saved);
+            return JSON.stringify(change(next) || next);
+          });
+          data = readData(lastSaved);
+          return true;
+        } catch { available = false; storageWarning = '存储失败，请导出记录并检查浏览器存储空间。'; return false; }
+      }
+      data = change(data) || data;
+      return save();
+    }
+    if (directional && !data.directionalInitialized) {
+      // Migrate the latest stored record, rather than writing an old window copy.
+      mutate(next => { initializeDirectional(next); });
+    }
     function record({ actual, chosen, revealed = false, hinted = false, low, high, direction = null, firstMode = null, timbre = null, responseMs = null, now = Date.now() }) {
       if (!isValid(actual) || !(isValid(chosen) || (revealed && chosen === null))) throw Error('无效的音程');
       if(directional && direction!==1 && direction!==-1)throw Error('旋律音程缺少方向');
       now=num(now,0,8640000000000000);
       const correct=!revealed && actual===chosen;
-      data.totalAnswers++;
-      const c=schedule(data.cards[actual]||blankCard(),correct,hinted,now,data.totalAnswers);
-      data.cards[actual]=c;
-      // "Show answer" is a wrong attempt but not a confusion with another interval.
-      if(!correct && isValid(chosen)) {
-        const pair=`${actual}>${chosen}`;
-        data.confusions[pair]=(data.confusions[pair]||0)+1;
-      }
-      if(directional) {
-        const dk=directionKey(actual,direction);
-        data.directionalCards[dk]=schedule(data.directionalCards[dk]||blankCard(),correct,hinted,now,data.totalAnswers);
-        addDirectionalDay(data.directionalDaily,now,dk,correct);
-      }
-      const ms=Number.isFinite(responseMs)?num(responseMs,0,3600000):null;
-      data.history.push({at:now,actual,chosen,revealed:!!revealed,hinted:!!hinted,low,high,
-        responseMs:ms,direction,firstMode,timbre});
-      if(data.history.length>MAX_HISTORY)data.history.splice(0,data.history.length-MAX_HISTORY);
-      const today=dayKey(now),d=data.daily[today]||blankDay();
-      incrementDay(d,actual,correct,!!hinted,ms);data.daily[today]=d;
-      for(const k of Object.keys(data.daily).sort().slice(0,Math.max(0,Object.keys(data.daily).length-MAX_DAYS)))delete data.daily[k];
-      if(directional)for(const k of Object.keys(data.directionalDaily).sort().slice(0,Math.max(0,Object.keys(data.directionalDaily).length-MAX_DAYS)))delete data.directionalDaily[k];
-      save();
-      return {correct,dueAt:directional?data.directionalCards[directionKey(actual,direction)].dueAt:c.dueAt};
+      mutate(data => {
+        data.totalAnswers++;
+        const c=schedule(data.cards[actual]||blankCard(),correct,hinted,now,data.totalAnswers);
+        data.cards[actual]=c;
+        // "Show answer" is a wrong attempt but not a confusion with another interval.
+        if(!correct && isValid(chosen)) {
+          const pair=`${actual}>${chosen}`;
+          data.confusions[pair]=(data.confusions[pair]||0)+1;
+        }
+        if(directional) {
+          const dk=directionKey(actual,direction);
+          data.directionalCards[dk]=schedule(data.directionalCards[dk]||blankCard(),correct,hinted,now,data.totalAnswers);
+          addDirectionalDay(data.directionalDaily,now,dk,correct);
+        }
+        const ms=Number.isFinite(responseMs)?num(responseMs,0,3600000):null;
+        data.history.push({at:now,actual,chosen,revealed:!!revealed,hinted:!!hinted,low,high,
+          responseMs:ms,direction,firstMode,timbre});
+        if(data.history.length>MAX_HISTORY)data.history.splice(0,data.history.length-MAX_HISTORY);
+        const today=dayKey(now),d=data.daily[today]||blankDay();
+        incrementDay(d,actual,correct,!!hinted,ms);data.daily[today]=d;
+        for(const k of Object.keys(data.daily).sort().slice(0,Math.max(0,Object.keys(data.daily).length-MAX_DAYS)))delete data.daily[k];
+        if(directional)for(const k of Object.keys(data.directionalDaily).sort().slice(0,Math.max(0,Object.keys(data.directionalDaily).length-MAX_DAYS)))delete data.directionalDaily[k];
+      });
+      return {correct,dueAt:directional?data.directionalCards[directionKey(actual,direction)]?.dueAt:data.cards[actual]?.dueAt};
     }
     function skip({now = Date.now()} = {}) {
-      const today = dayKey(now); const d = data.daily[today] || blankDay();
-      d.skipped++; data.daily[today] = d; save();
+      mutate(data => {
+        const today = dayKey(now); const d = data.daily[today] || blankDay();
+        d.skipped++; data.daily[today] = d;
+      });
     }
     function weightedChoice(choices, weighting, random) {
       const weights = choices.map(s => Math.max(.001, weighting(s)));
@@ -201,6 +236,7 @@
       return choices[choices.length-1];
     }
     function choose(eligible, previous = null, {now = Date.now(), random = Math.random} = {}) {
+      sync();
       let choices=directional
         ? [...new Set(eligible.filter(isValid).flatMap(semi=>[`${semi}:up`,`${semi}:down`]))]
         : [...new Set(eligible.filter(isValid))];
@@ -228,6 +264,7 @@
       },random);
     }
     function analysis(enabled = Array.from({length:maxIndex+1},(_,i)=>i), now=Date.now()) {
+      sync();
       const cards = Array.from({length:maxIndex+1},(_,semi)=>({semi,...(data.cards[semi] || {attempts:0,correct:0,wrong:0,dueAt:0,pendingAfter:null})}));
       const inScope = cards.filter(c => enabled.includes(c.semi));
       const directionCards=directional?enabled.flatMap(semi=>[1,-1].map(dir=>{
@@ -245,9 +282,10 @@
           .map(([k,i])=>({semi:Number(k.split(':')[0]),direction:k.endsWith('up')?1:-1,wrong:i.answered-i.correct}))
         : Object.entries(yd.intervals).filter(([key,i])=>enabled.includes(Number(key))&&i.answered>i.correct).map(([key,i])=>({semi:Number(key),wrong:i.answered-i.correct}));
       return {total:data.totalAnswers,correct,wrong:data.totalAnswers-correct,due,weak,cards,confusions,
-        yesterdayWrong,directionCards,storageAvailable:available,storageWarning};
+        yesterdayWrong,directionCards,storageAvailable:available && storage?.available!==false,storageWarning};
     }
     function statistics(period = 30, now = Date.now()) {
+      sync();
       const days = period === 'all' ? null : Math.max(1, Math.min(365,Number(period)||30));
       const todayKey=dayKey(now);
       const minKey = days === null ? '0000-01-01' : dayKey(addCalendarDays(now,1-days));
@@ -289,26 +327,19 @@
       let streak=0;
       while (practiced.has(dayKey(date)) && streak<MAX_DAYS) {streak++;date=addCalendarDays(date,-1);}
       return {period,totals,byInterval,byDirection,directionConfusions,directional,trend,history,practiceDays:keys.filter(k=>data.daily[k].answered>0).length,
-        streak,allTime:data.totalAnswers,confusions,storageAvailable:available,
+        streak,allTime:data.totalAnswers,confusions,storageAvailable:available && storage?.available!==false,
         yesterdayWrong:analysis(undefined,now).yesterdayWrong,
         due:analysis(undefined,now).due.length};
     }
     function importJson(json) {
-      const next=normalizeStore(JSON.parse(json), maxIndex); const prev=data;
-      data=next; if (directional && !data.directionalInitialized){
-        let p=Math.max(0,data.totalAnswers-data.history.length);
-        for(const h of [...data.history].sort((a,b)=>a.at-b.at)){p++;if(h.direction!==1&&h.direction!==-1)continue;
-          const k=directionKey(h.actual,h.direction),correct=!h.revealed&&h.actual===h.chosen;
-          data.directionalCards[k]=schedule(data.directionalCards[k]||blankCard(),correct,h.hinted,h.at,p);
-          addDirectionalDay(data.directionalDaily,h.at,k,correct);}
-        data.directionalInitialized=true;
-      } if (!save()) {data=prev;throw Error('无法保存导入的记录');}
+      const next=readData(json); const prev=data;
+      if (!mutate(() => next)) {data=prev;throw Error('无法保存导入的记录');}
       return analysis();
     }
-    function reset() {data=newStore();data.cardRange=maxIndex+1;if(directional)data.directionalInitialized=true;save();}
+    function reset() {mutate(() => {const next=newStore();next.cardRange=maxIndex+1;initializeDirectional(next);return next;});}
     return {record,skip,choose,analysis,statistics,importJson,reset,
-      exportJson:()=>JSON.stringify(data,null,2), snapshot:()=>JSON.parse(JSON.stringify(data)),
-      get storageAvailable(){return available;}
+      exportJson:()=>{sync();return JSON.stringify(data,null,2);}, snapshot:()=>{sync();return JSON.parse(JSON.stringify(data));},
+      get storageAvailable(){return available && storage?.available!==false;}
     };
   }
   root.IntervalReview=Object.freeze({createReviewManager,normalizeStore,dayKey,addCalendarDays});

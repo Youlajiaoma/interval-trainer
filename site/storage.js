@@ -1,5 +1,5 @@
-/* IndexedDB is the single durable store. Synchronous adapter keeps the v1.4
- * question/review engine unchanged; each setItem opens an immediate IDB transaction.
+/* IndexedDB is the single durable store. The synchronous cache gives immediate
+ * feedback; review updates read and change the latest value in one transaction.
  * localStorage is READ ONLY during first-time migration from legacy HTML versions.
  */
 (function (root) {
@@ -18,19 +18,26 @@
   const STAFF_SESSION_KEY = 'tonaloom-staff-interval-v1';
   const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, STAFF_REVIEW_KEY, STAFF_SESSION_KEY];
 
-  const req = request => new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('数据库读取失败'));
-  });
   const transact = (db, mode, build) => new Promise((resolve, reject) => {
     let result;
     const tx = db.transaction(OBJECT_STORE, mode);
     const store = tx.objectStore(OBJECT_STORE);
-    try { result = build(store); } catch (e) { try { tx.abort(); } catch {} reject(e); return; }
+    const fail = e => { try { tx.abort(); } catch {} reject(e); };
     tx.oncomplete = () => resolve(result);
     tx.onerror = () => reject(tx.error || new Error('数据库事务失败'));
     tx.onabort = () => reject(tx.error || new Error('数据库事务被取消'));
+    try { result = build(store, fail); } catch (e) { fail(e); }
   });
+  async function readEntries(db) {
+    const values = new Map();
+    await transact(db, 'readonly', store => {
+      for (const key of KEYS) {
+        const r = store.get(key);
+        r.onsuccess = () => values.set(key, typeof r.result === 'string' ? r.result : null);
+      }
+    });
+    return values;
+  }
   function openDatabase() {
     if (!('indexedDB' in root)) return Promise.reject(new Error('该浏览器不支持 IndexedDB'));
     return new Promise((resolve, reject) => {
@@ -48,15 +55,14 @@
     let db;
     const cache = new Map();
     const pending = new Set();
+    const changes = new Map();
+    let channel = null, refreshing = null, refreshRequested = false;
     let failure = '';
     let migrated = false;
     let migratedKeys = [];
     try {
       db = await openDatabase();
-      for (const key of KEYS) {
-        const value = await req(db.transaction(OBJECT_STORE, 'readonly').objectStore(OBJECT_STORE).get(key));
-        if (typeof value === 'string') cache.set(key, value);
-      }
+      for (const [key, value] of await readEntries(db)) if (value !== null) cache.set(key, value);
       // Preserve data already saved by the PWA: never overwrite with old localStorage.
       // Imported v1.3/v1.4 JSON data is handled separately below.
       const legacy = [];
@@ -73,9 +79,21 @@
         } catch { continue; }
       }
       if (legacy.length) {
-        await transact(db, 'readwrite', store => { for (const [key, value] of legacy) store.put(value, key); });
-        for (const [key, value] of legacy) { cache.set(key, value); migratedKeys.push(key); }
-        migrated = true;
+        const restored = new Map();
+        await transact(db, 'readwrite', (store, fail) => {
+          for (const [key, value] of legacy) {
+            const r = store.get(key);
+            r.onsuccess = () => {
+              try {
+                // A second window may have saved new data since initialization.
+                if (typeof r.result === 'string') restored.set(key, r.result);
+                else { store.put(value, key); restored.set(key, value); migratedKeys.push(key); }
+              } catch (e) { fail(e); }
+            };
+          }
+        });
+        for (const [key, value] of restored) cache.set(key, value);
+        migrated = migratedKeys.length > 0;
       }
     } catch (e) {
       failure = `IndexedDB 无法使用：${e.message}。当前练习数据无法可靠保存，请检查浏览器设置。`;
@@ -91,6 +109,52 @@
       });
       operation.finally(() => pending.delete(operation)).catch(() => {});
     }
+    function setCached(key, value) {
+      if (value === null) cache.delete(key); else cache.set(key, value);
+    }
+    function reconcile(key, saved) {
+      const before = cache.get(key) ?? null;
+      for (const change of changes.get(key) || []) saved = change.apply(saved);
+      setCached(key, saved);
+      return before !== saved;
+    }
+    function notify(keys) {
+      if (keys.length) root.dispatchEvent?.(new CustomEvent('interval-trainer-storage-updated', {detail:keys}));
+    }
+    function broadcast(keys) {
+      const known = keys.filter(key => KEYS.includes(key));
+      if (known.length) try { channel?.postMessage(known); } catch { /* focus refresh is also available */ }
+    }
+    function updateItem(key, update) {
+      if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
+      const optimistic = update(cache.get(key) ?? null);
+      const queue = changes.get(key) || [];
+      const change = {apply:update};
+      queue.push(change); changes.set(key, queue);
+      setCached(key, optimistic);
+      let saved;
+      const operation = transact(db, 'readwrite', (store, fail) => {
+        const r = store.get(key);
+        r.onsuccess = () => {
+          try {
+            // Keep the read and write in the same transaction. Other windows
+            // cannot insert an intervening write to this object store.
+            const previous = typeof r.result === 'string' ? r.result : null;
+            saved = update(previous);
+            if (saved !== previous) {
+              if (saved === null) store.delete(key); else store.put(saved, key);
+            }
+          } catch (e) { fail(e); }
+        };
+      }).then(() => {
+        queue.splice(queue.indexOf(change), 1);
+        if (!queue.length) changes.delete(key);
+        if (reconcile(key, saved)) notify([key]);
+        broadcast([key]);
+      });
+      track(operation);
+      return optimistic;
+    }
     const adapter = {
       get available() { return Boolean(db) && !failure; },
       get failureMessage() { return failure; },
@@ -98,20 +162,30 @@
       migratedKeys,
       getItem(key) { return cache.has(key) ? cache.get(key) : null; },
       setItem(key, value) {
-        if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
         value = String(value);
-        cache.set(key, value);
-        track(transact(db, 'readwrite', store => { store.put(value, key); }));
+        updateItem(key, () => value);
       },
       removeItem(key) {
-        if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
-        cache.delete(key);
-        track(transact(db, 'readwrite', store => { store.delete(key); }));
+        updateItem(key, () => null);
       },
+      updateItem,
       async flush() {
-        const tasks = [...pending];
-        await Promise.all(tasks);
+        while (pending.size) await Promise.all([...pending]);
         if (failure) throw new Error(failure);
+      },
+      refresh() {
+        refreshRequested = true;
+        if (!refreshing) refreshing = (async () => {
+          do {
+            refreshRequested = false;
+            await this.flush();
+            if (!db) throw new Error('IndexedDB 未就绪');
+            const updated = [];
+            for (const [key, value] of await readEntries(db)) if (reconcile(key, value)) updated.push(key);
+            notify(updated);
+          } while (refreshRequested);
+        })().finally(() => { refreshing = null; });
+        return refreshing;
       },
       async replaceEntries(entries) {
         if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
@@ -122,7 +196,9 @@
         await transact(db, 'readwrite', store => {
           for (const [key, value] of rows) store.put(value, key);
         });
-        for (const [key, value] of rows) cache.set(key, value);
+        const updated = [];
+        for (const [key, value] of rows) if (reconcile(key, value)) updated.push(key);
+        notify(updated); broadcast(rows.map(([key]) => key));
       },
       async replaceBoth(settingsJson, reviewJson) {
         return this.replaceEntries([[SETTINGS_KEY, settingsJson], [REVIEW_KEY, reviewJson]]);
@@ -135,6 +211,13 @@
         return this.replaceEntries([[SETTINGS_KEY,settingsJson],[REVIEW_KEY,harmonicJson],[MELODY_KEY,melodicJson]]);
       }
     };
+    // Messages only request a fresh database read; correctness of writes does
+    // not depend on message delivery or BroadcastChannel support.
+    const refresh = () => { adapter.refresh().catch(() => {}); };
+    if (db && root.BroadcastChannel) {
+      try { channel = new root.BroadcastChannel(DATABASE); channel.onmessage = refresh; } catch {}
+    }
+    root.addEventListener?.('focus', refresh);
     // Persistent-storage request may be denied; app still works in best-effort mode.
     if (db && root.navigator?.storage?.persist) {
       root.navigator.storage.persist().catch(() => {});
