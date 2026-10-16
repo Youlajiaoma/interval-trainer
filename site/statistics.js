@@ -129,7 +129,7 @@
     }
     replace('stats-history',wrap);
   }
-  function init(getReview,getEnabled){
+  function init(getReview,getEnabled,onPeriodChange){
     const select=$('stats-period');
     function render(){
       const review=getReview();
@@ -142,7 +142,7 @@
       renderSummary(s);renderTrend(s);renderCalendar(s,now);renderIntervals(s);renderConfusions(s);renderPlan(s);renderHistory(s);
       const warn=$('stats-storage-warning');warn.textContent=review.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
     }
-    select.addEventListener('change',render);
+    select.addEventListener('change',onPeriodChange || render);
     return {render};
   }
   root.IntervalStats=Object.freeze({init});

@@ -30,7 +30,6 @@
 .sight-clef-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .sight-clef-options button{border-radius:8px;border:1px solid #43465c;background:#222438;color:#b7b8ca;padding:11px 4px;font-size:12px}
 .sight-clef-options button.active{background:#3d345e;color:#ebe2ff;border-color:#9a85e2}
-.stats-mode-switch{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sight-stats-active .stats-intro,.sight-stats-active .stats-summary-grid,.sight-stats-active .stats-panel{display:none}
 .sight-stats-active #sight-stats-content .stats-panel{display:block}
 .sight-stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}

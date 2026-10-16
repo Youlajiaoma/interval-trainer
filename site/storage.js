@@ -7,16 +7,15 @@
   const DATABASE = 'interval-trainer-offline';
   const OBJECT_STORE = 'settings-and-history';
   const DB_VERSION = 1;
-  const REVIEW_KEY = 'interval-trainer-review-v1';
-  const SETTINGS_KEY = 'interval-trainer-settings';
-  const MELODY_KEY = 'interval-trainer-review-melodic-v1';
-  const SIGHT_TREBLE_KEY = 'interval-trainer-review-sight-treble-v1';
-  const SIGHT_BASS_KEY = 'interval-trainer-review-sight-bass-v1';
-  const SIGHT_SETTINGS_KEY = 'interval-trainer-sight-settings-v1';
-  const SIGHT_SESSION_KEY = 'interval-trainer-sight-session-v1';
-  const STAFF_REVIEW_KEY = 'tonaloom-staff-interval-review-v1';
-  const STAFF_SESSION_KEY = 'tonaloom-staff-interval-v1';
-  const KEYS = [REVIEW_KEY, SETTINGS_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, SIGHT_SETTINGS_KEY, SIGHT_SESSION_KEY, STAFF_REVIEW_KEY, STAFF_SESSION_KEY];
+  const modules = root.TonaloomModules;
+  const REVIEW_KEY = modules.get('harmonic').reviews[0].key;
+  const SETTINGS_KEY = modules.settingsKey;
+  const MELODY_KEY = modules.get('melodic').reviews[0].key;
+  const sight = modules.get('sight'), staff = modules.get('staff');
+  const SIGHT_TREBLE_KEY = sight.reviews[0].key, SIGHT_BASS_KEY = sight.reviews[1].key;
+  const SIGHT_SETTINGS_KEY = sight.settingsKey, SIGHT_SESSION_KEY = sight.sessionKey;
+  const STAFF_REVIEW_KEY = staff.reviews[0].key, STAFF_SESSION_KEY = staff.sessionKey;
+  const KEYS = modules.storageKeys;
 
   const transact = (db, mode, build) => new Promise((resolve, reject) => {
     let result;
@@ -73,7 +72,8 @@
         if (!old) continue;
         try {
           const parsed = JSON.parse(old);
-          if ([REVIEW_KEY, MELODY_KEY, SIGHT_TREBLE_KEY, SIGHT_BASS_KEY, STAFF_REVIEW_KEY].includes(key)) root.IntervalReview.normalizeStore(parsed, [SIGHT_TREBLE_KEY,SIGHT_BASS_KEY].includes(key)?62:12);
+          const review = modules.reviewDefinitions.find(item => item.key === key);
+          if (review) root.IntervalReview.normalizeStore(parsed, review.maxIndex);
           if (key === SETTINGS_KEY && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) continue;
           legacy.push([key, old]);
         } catch { continue; }

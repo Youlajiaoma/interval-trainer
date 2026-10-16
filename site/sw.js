@@ -1,10 +1,10 @@
-/* v2.18.1: shared VexFlow adaptive stem directions for both notation modules. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.18.1';
+/* Shared module catalog and audio service require a complete new core cache. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.18.2';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './','./index.html','./styles.css','./sight.css','./logic.js',
-  './review.js','./statistics.js','./storage.js','./app.js','./sight.js','./staff-interval.js','./vendor/vexflow-loader.js',
+  './','./index.html','./styles.css','./sight.css','./logic.js','./modules.js',
+  './review.js','./statistics.js','./audio.js','./storage.js','./app.js','./sight.js','./staff-interval.js','./vendor/vexflow-loader.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',

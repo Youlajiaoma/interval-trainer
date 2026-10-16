@@ -1,0 +1,57 @@
+name: Tonaloom Checks
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PWA_TEST_URL: http://127.0.0.1:8000/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Run dependency-free checks
+        run: node tests/run.cjs
+      - name: Prepare isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/tonaloom-browser-tools" --no-save --package-lock=false playwright@1.56.0
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Bundle notation dependency for offline checks
+        run: |
+          mkdir -p site/vendor
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 \
+            'https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js' \
+            --output site/vendor/vexflow.js
+          test "$(wc -c < site/vendor/vexflow.js)" -gt 100000
+      - name: Run complete checks against a local server
+        shell: bash
+        env:
+          NODE_PATH: ${{ runner.temp }}/tonaloom-browser-tools/node_modules
+        run: |
+          python -m http.server 8000 --bind 127.0.0.1 --directory site > "$RUNNER_TEMP/tonaloom-http.log" 2>&1 &
+          tonaloom_server_pid=$!
+          trap 'kill "$tonaloom_server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..40}; do
+            if curl --fail --silent "$PWA_TEST_URL" > /dev/null; then break; fi
+            sleep 0.25
+          done
+          node tests/run.cjs --full

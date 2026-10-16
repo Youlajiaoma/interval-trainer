@@ -2,30 +2,16 @@
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
+const modules=root.TonaloomModules, definition=modules.get('sight');
 const NAMES=['C','D','E','F','G','A','B'];
-const CH_NAME={treble:'高音谱号',bass:'低音谱号'};
-const PATHS={"treble":"M314 801Q300 854 291.0 906.0Q282 958 282 1012Q282 1059 288.5 1100.5Q295 1142 307 1177Q320 1217 341.0 1252.5Q362 1288 385.5 1311.0Q409 1334 427 1334Q451 1334 493 1249Q514 1206 524.0 1156.0Q534 1106 534 1049Q534 978 515.0 907.5Q496 837 459.5 775.0Q423 713 372 666L407 498Q422 500 432.0 501.0Q442 502 447 502Q508 502 556.0 467.5Q604 433 632.5 377.0Q661 321 661 254Q661 177 621.5 115.5Q582 54 503 25Q508 8 532 -117Q538 -147 541.0 -164.5Q544 -182 545.0 -195.0Q546 -208 546 -225Q546 -275 521.5 -314.5Q497 -354 455.5 -376.0Q414 -398 363 -398Q311 -398 271.0 -378.5Q231 -359 208.0 -324.5Q185 -290 185 -245Q185 -197 211.5 -165.0Q238 -133 287 -133Q329 -133 355.5 -163.5Q382 -194 382 -236Q382 -272 357.0 -299.0Q332 -326 292 -326H282Q308 -365 364 -365Q433 -365 472.0 -320.0Q511 -275 511 -205Q511 -188 507.0 -159.5Q503 -131 493 -91Q483 -51 477.5 -25.0Q472 1 470 12Q436 2 390 2Q304 2 222 52Q142 102 96.0 184.0Q50 266 50 361Q50 451 91 530Q132 609 192.5 675.0Q253 741 314 801ZM341 826Q364 838 390.0 870.5Q416 903 440.0 945.0Q464 987 479.0 1029.5Q494 1072 494 1106Q494 1142 483.0 1163.0Q472 1184 445 1184Q421 1184 398.5 1162.0Q376 1140 358.5 1103.5Q341 1067 331.0 1022.0Q321 977 321 930Q321 898 327.5 872.0Q334 846 341 826ZM398 379Q371 373 347.0 353.5Q323 334 308.5 306.5Q294 279 294 248Q294 223 307.0 196.5Q320 170 339 154Q352 142 365 136Q380 129 380 123Q380 120 370 117Q332 126 301.5 151.0Q271 176 253.5 211.5Q236 247 236 287Q236 330 253.5 370.0Q271 410 302.5 442.0Q334 474 374 490L345 641Q229 547 174.5 456.5Q120 366 120 277Q120 212 154.0 156.0Q188 100 247.0 65.5Q306 31 380 31Q400 31 420.5 35.0Q441 39 464 45ZM495 55Q593 97 593 227Q593 270 571.0 305.5Q549 341 512.0 362.0Q475 383 429 383Z","bass":"M50 123Q216 231 288 301Q336 348 373.0 408.5Q410 469 431.5 536.0Q453 603 453 669Q453 728 435.0 773.5Q417 819 383.0 845.0Q349 871 302 871Q284 871 264.5 867.0Q245 863 224 855Q181 839 158.0 813.5Q135 788 135 765Q135 756 143.0 752.0Q151 748 158 748Q168 748 183 752Q190 754 196.5 755.0Q203 756 210 756Q248 756 272.0 733.5Q296 711 296 674Q296 638 266.0 612.0Q236 586 195 586Q146 586 111.0 617.0Q76 648 76 697Q76 756 109.0 802.0Q142 848 198.5 874.0Q255 900 324 900Q400 900 460.0 867.0Q520 834 555.5 776.5Q591 719 591 646Q591 551 538 464Q511 419 476.5 379.0Q442 339 389.0 297.5Q336 256 256.0 208.0Q176 160 57 101ZM687 809Q710 809 726.0 793.0Q742 777 742 754Q742 731 726.0 715.5Q710 700 687 700Q664 700 648.0 715.5Q632 731 632 754Q632 777 648.0 793.0Q664 809 687 809ZM687 589Q710 589 726.0 573.0Q742 557 742 534Q742 511 726.0 495.5Q710 480 687 480Q664 480 648.0 495.5Q632 511 632 534Q632 557 648.0 573.0Q664 589 687 589Z"};
-const SETTINGS_KEY='interval-trainer-sight-settings-v1';
-const SESSION_KEY='interval-trainer-sight-session-v1';
-const TREBLE_KEY='interval-trainer-review-sight-treble-v1';
-const BASS_KEY='interval-trainer-review-sight-bass-v1';
-// Each measure sums to 4 quarter-note beats. Variable notes per measure.
-const RHYTHMS=[
- [1,1,1,1], [2,1,1], [1,1,2], [2,2],
- [.5,.5,1,1,1], [1,.5,.5,1,1], [1,1,.5,.5,1],
- [.5,.5,.5,.5,1,1], [1,.5,.5,.5,.5,1],
- [1.5,.5,1,1], [1,.5,1.5,1], [.5,1.5,1,1],
- [1,.5,.5,.5,.5,1], [.5,.5,.5,.5,.5,.5,1],
- [1,1,.5,.25,.25,1], [.25,.25,.5,1,1,1],
- [.5,.5,.5,.5,.5,.5,.5,.5]
-];
+const SETTINGS_KEY=definition.settingsKey, SESSION_KEY=definition.sessionKey;
+const TREBLE_KEY=definition.reviews[0].key, BASS_KEY=definition.reviews[1].key;
 const DURATION_CODES={'2':'h','1.5':'qd','1':'q','0.5':'8','0.25':'16'};
 const SEMITONES=[0,2,4,5,7,9,11];
 const POOLS={
  treble:[...Array.from({length:21},(_,i)=>24+i)],
  bass:[...Array.from({length:21},(_,i)=>12+i)]
 };
-const CLEF_BASE={treble:30,bass:18};
 const SEMI=SEMITONES;
 const ACCIDENTALS={0:'',1:'#',2:'b'};
 const PITCH_SIGN={0:'',1:'♯',2:'♭'};
@@ -63,18 +49,11 @@ let initialized=false, pendingTimer=null, flashTimer=null, flashingIndex=-1;
 let drawing=0, lastLayoutWidth=0, resizeTimer=null;
 const engravings=new Map();
 const LAYOUT={minNote:34, firstBarExtra:60, otherBarExtra:10, maxPerLine:9};
-let audioCtx=null, audioGain=null;
-const buffers=new Map(), loading=new Map();
+const audio=root.TonaloomAudio.createChannel(.42);
 const random=(n)=>Math.floor(Math.random()*n);
 const shuffle=(arr)=>{const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=random(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function letterFromIndex(i){return ((i%7)+7)%7;}
 function pitchLabel(clef,id){ const n=POOLS[clef][id];return n===undefined?'—':NAMES[letterFromIndex(n)]+Math.floor(n/7); }
-function nearestChosenPosition(clef,actualIndex,letter){
- const pool=POOLS[clef];
- return pool.map((n,i)=>({n,i})).filter(o=>letterFromIndex(o.n)===letter)
-   .sort((a,b)=>Math.abs(a.n-actualIndex)-Math.abs(b.n-actualIndex))[0].i;
-}
 function diatonicToMidi(index){
  const oct=Math.floor(index/7), letter=letterFromIndex(index);
  return 12*(oct+1)+SEMI[letter];
@@ -107,7 +86,7 @@ function makeGroup(){
  const container=$('sight-score');if(container)delete container.dataset.layout;
  const notes=[],bars=measurePlans();
  for(const bar of bars)for(const duration of bar.duration){
-  const clef=bar.clef, pool=POOLS[clef], candidates=pool.map((_,i)=>i);
+  const clef=bar.clef, pool=POOLS[clef];
   const last=notes.at(-1), previous=last?.clef===clef?last.index-pool[0]:null;
   const eligible=candidateReviewUnits(clef);
   const chosen=getReview(clef).choose(eligible,previous===null?null:previous*3);
@@ -365,42 +344,15 @@ async function renderScore(force=false){
   markCurrent();
  }catch(err){console.error('Sight score rendering failed',err);container.textContent='乐谱生成失败';$('sight-warning').textContent='请重新开始本组练习';}
 }
-async function getAudioContext(){
- if(!window.AudioContext && !window.webkitAudioContext) throw Error('当前浏览器不支持 Web Audio');
- if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioGain=audioCtx.createGain(); audioGain.gain.value=.42; audioGain.connect(audioCtx.destination); }
- if(audioCtx.state==='suspended') await audioCtx.resume();
- return audioCtx;
-}
-async function loadSample(midi){
- const anchor=clamp(midi,36,96); const key=String(anchor);
- if(buffers.has(key)) return {buffer:buffers.get(key), rate:Math.pow(2,(midi-anchor)/12)};
- if(!loading.has(key)){
-   const sample=root.PIANO_SAMPLES?.[String(anchor)];
-   if(!sample) throw Error(`缺少钢琴音源：${anchor}`);
-   loading.set(key,(async()=>{
-     const bin=atob(sample), bytes=new Uint8Array(bin.length);
-     for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-     const ctx=await getAudioContext();
-     return await ctx.decodeAudioData(bytes.buffer);
-   })());
- }
- try{ const buffer=await loading.get(key); buffers.set(key,buffer); return {buffer,rate:Math.pow(2,(midi-anchor)/12)}; }
- finally{ loading.delete(key); }
-}
-function scheduleTone(sample,at,duration,gainMultiplier=.7){
- const src=audioCtx.createBufferSource(); src.buffer=sample.buffer; src.playbackRate.value=sample.rate||1;
- const g=audioCtx.createGain();
- g.gain.setValueAtTime(0,at); g.gain.linearRampToValueAtTime(gainMultiplier,at+.01); g.gain.setValueAtTime(gainMultiplier,at+Math.max(.02,duration-.14)); g.gain.linearRampToValueAtTime(.0001,at+duration);
- src.connect(g); g.connect(audioGain); src.start(at); src.stop(at+duration+.03);
- src.onended=()=>{ try{src.disconnect(); g.disconnect();}catch{} };
-}
 async function playCorrectPitch(note){
  if(!note)return;
+ const token=audio.token;
  try{
-  const ctx=await getAudioContext();
+  const ctx=await audio.ready();
   const midi=noteMidi(note);
-  const sample=await loadSample(midi);
-  scheduleTone(sample,ctx.currentTime+.01,.85,.72);
+  const sample=await audio.piano(midi,true);
+  if(token!==audio.token)return;
+  audio.tone(sample,ctx.currentTime+.01,.85,.72,{attack:.01,hold:.71,floor:.0001,tail:.03});
  }catch(err){ console.error('Sight correct-note playback error:',err); }
 }
 function renderKeyboard(){
@@ -508,25 +460,18 @@ function renderStats(){
  confused.sort((a,b)=>b.count-a.count);
  if(confused.length){ const section=document.createElement('section');section.className='stats-panel'; const h=document.createElement('h3');h.textContent='常见误认';section.append(h); for(const item of confused.slice(0,10)){ const row=document.createElement('div');row.className='sight-confusion'; row.append(Object.assign(document.createElement('span'),{textContent:item.label}),Object.assign(document.createElement('strong'),{textContent:item.count+' 次'})); section.append(row); } container.append(section); }
 }
-function switchStats(on){
- const box=$('stats-dialog');box.classList.toggle('sight-stats-active',on);
- $('sight-stats-content').classList.toggle('hidden',!on);
- const sightBtn=$('stats-sight');sightBtn.classList.toggle('active',on);sightBtn.setAttribute('aria-pressed',String(on));
- if(on){for(const key of ['harmonic','melodic','staff']){ const btn=$('stats-'+key);btn.classList.remove('active');btn.setAttribute('aria-pressed','false'); }}
- if(on)renderStats();
-}
 function clearHistory(){
- review.treble.reset();review.bass.reset();renderStats();
+ review.treble.reset();review.bass.reset();
 }
-function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); if(!$('stats-dialog').open)$('home-stats').click(); switchStats(true); }
+function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); modules.showStatistics(definition.id); }
 function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
  active=true; document.body.classList.add('module-active'); document.documentElement.classList.remove('practice-scroll-locked');
- $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent='音符辨认'; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('back-home').onclick=e=>{e.stopImmediatePropagation();leave();}; $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
+ $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent=definition.name; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
-function leave(){ if(!active)return; active=false; document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); $('back-home').onclick=null; window.scrollTo(0,0); }
+function leave(){ if(!active)return; active=false; audio.stop(); document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); window.scrollTo(0,0); }
 function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
 function convertReviewRange(clef,old){
  if(!old||old.cardRange===63)return old;
@@ -552,6 +497,14 @@ function convertReviewRange(clef,old){
 function normalizeReview(clef,raw){
  return root.IntervalReview.normalizeStore(convertReviewRange(clef,raw),REVIEW_MAX);
 }
+function backupEntries(obj){
+ if(obj.version!==3||!obj[definition.backupField])return [];
+ const snapshot=obj[definition.backupField];
+ const treble=normalizeReview('treble',snapshot.treble),bass=normalizeReview('bass',snapshot.bass);
+ const config=snapshot.settings&&['treble','bass','both'].includes(snapshot.settings.clef)?
+  {clef:snapshot.settings.clef,accidentals:snapshot.settings.accidentals===true}:{clef:'both',accidentals:false};
+ return [[TREBLE_KEY,JSON.stringify(treble)],[BASS_KEY,JSON.stringify(bass)],[SETTINGS_KEY,JSON.stringify(config)]];
+}
 function migrateReviewRange(clef,key){
  const existing=getJson(key);
  if(!existing||existing.cardRange===63)return;
@@ -576,16 +529,10 @@ function init(){
  $('sight-settings-dialog').addEventListener('click',e=>{ if(e.target===$('sight-settings-dialog'))e.target.close(); });
  function openSettingsRefresh(){ for(const b of document.querySelectorAll('.sight-clef-options button')){ const on=b.dataset.clef===settings.clef; b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on)); } }
  for(const btn of document.querySelectorAll('.sight-clef-options button'))btn.addEventListener('click',()=>{ settings.clef=btn.dataset.clef; save(SETTINGS_KEY,settings); openSettingsRefresh(); });
- $('stats-sight').addEventListener('click',()=>switchStats(true));
- for(const id of ['stats-harmonic','stats-melodic','stats-staff']) $(''+id).addEventListener('click',()=>switchStats(false));
- $('close-stats').addEventListener('click',()=>switchStats(false));
- $('stats-dialog').addEventListener('close',()=>switchStats(false));
- root.addEventListener('interval-trainer-storage-updated',()=>{
-  if($('stats-dialog').open&&$('stats-dialog').classList.contains('sight-stats-active'))renderStats();
- });
+ modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,clearHistory,renderStatistics:renderStats});
  initialized=true;
 }
-root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,hideStats:()=>switchStats(false),
- isStatsActive:()=>$('stats-dialog').classList.contains('sight-stats-active'),clearHistory,normalizeReview};
+root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,
+ isStatsActive:()=>modules.statisticsMode===definition.id,clearHistory,normalizeReview};
 if(root.IntervalAppReady)init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);

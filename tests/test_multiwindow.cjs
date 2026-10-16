@@ -211,6 +211,22 @@ test('没有窗口通知时，旧窗口重新打开统计和导出都能取得�
   assert.equal(summary(watcher), '2');
 });
 
+test('没有窗口通知时，从每个练习的设置打开统计都能读取另一窗口的新成绩', async t => {
+  for (const exercise of exercises) {
+    const database = databaseFor(exercise.clef);
+    const watcher = await openApp(t, {database});
+    const writer = await openApp(t, {database});
+    await watcher.click(exercise.entry); await writer.click(exercise.entry);
+    const answer = exercise.answer ?? writer.window.StaffIntervalTrainer.backup().set.questions[0].semitones;
+    await writer.answer(exercise.container, answer);
+    if (exercise.clef) await writer.advance(500);
+    assert.equal(JSON.parse(watcher.storage.getItem(exercise.key) || '{}').totalAnswers ?? 0, 0);
+    await watcher.click('open-settings');
+    await watcher.click(exercise.key === keys.staff ? 'staff-open-stats' : exercise.clef ? 'sight-open-stats' : 'open-stats');
+    assert.equal((exercise.clef ? sightSummary : summary)(watcher), '1', exercise.name);
+  }
+});
+
 test('旧副本触发旋律方向记录初始化时，不覆盖其他窗口已保存的作答', async t => {
   const database = databaseFor();
   const first = await openApp(t, {database});

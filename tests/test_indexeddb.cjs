@@ -33,6 +33,7 @@ const legacy=new Map();
 const w={indexedDB:dbAPI,localStorage:{getItem:k=>legacy.get(k)??null,setItem:(k,v)=>legacy.set(k,v),removeItem:k=>legacy.delete(k)},navigator:{storage:{persist:async()=>true}}};
 const ctx=vm.createContext({window:w,indexedDB:dbAPI,console,Map,Set,Promise,setTimeout,Date});
 vm.runInContext(fs.readFileSync(path.join(site,'review.js'),'utf8'),ctx);
+vm.runInContext(fs.readFileSync(path.join(site,'modules.js'),'utf8'),ctx);
 vm.runInContext(fs.readFileSync(path.join(site,'storage.js'),'utf8'),ctx);
 const K=w.IntervalPwaStorage.REVIEW_KEY, S=w.IntervalPwaStorage.SETTINGS_KEY;
 (async()=>{

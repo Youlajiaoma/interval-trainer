@@ -240,15 +240,17 @@ async function createApp({database = createMemoryDatabase(), seed = 12345} = {})
   random.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   const errors = [], audioEvents = [], downloads = [];
   class AudioContext {
-    constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; }
+    constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; audioEvents.push({type:'context'}); }
     async resume() { this.state = 'running'; }
-    async decodeAudioData() { return {duration: 1}; }
+    async decodeAudioData(bytes) { const midi = new Uint8Array(bytes)[0]; audioEvents.push({type:'decode', midi}); return {duration:1, midi}; }
     createGain() {
       return {connect() {}, disconnect() {}, gain: {setValueAtTime() {}, linearRampToValueAtTime() {}, setTargetAtTime() {}}};
     }
     createBufferSource() {
-      return {connect() {}, disconnect() {}, playbackRate: {setValueAtTime() {}},
-        start(at) { audioEvents.push({type: 'start', at}); }, stop(at) { audioEvents.push({type: 'stop', at}); }};
+      const rate = {value:1, setValueAtTime(value) { this.value = value; }};
+      return {connect() {}, disconnect() {}, playbackRate:rate,
+        start(at) { audioEvents.push({type:'start', at, midi:this.buffer.midi, rate:rate.value}); },
+        stop(at) { audioEvents.push({type:'stop', at}); }};
     }
   }
   const engraver = createEngraver();
@@ -258,7 +260,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345} = {})
     navigator: {storage: {persist: async () => true}}, innerHeight: 900, scrollY: 0,
     scrollTo() {}, confirm: () => true, location: {reload() { window.reloads++; }}, reloads: 0,
     AudioContext, SightVexFlowReady: Promise.resolve(engraver.api),
-    PIANO_SAMPLES: Object.fromEntries(Array.from({length: 61}, (_, i) => [36 + i, 'AA==']))
+    PIANO_SAMPLES: Object.fromEntries(Array.from({length: 61}, (_, i) => [36+i, Buffer.from([36+i]).toString('base64')]))
   });
   class MemoryBlob {
     constructor(parts) { this.text = parts.join(''); downloads.push(this.text); }
@@ -283,7 +285,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345} = {})
     }
   });
   document.baseURI = 'https://isolated.test/';
-  for (const file of ['logic.js', 'review.js', 'statistics.js', 'storage.js', 'assets/melodic-recordings.js']) {
+  for (const file of ['logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'assets/melodic-recordings.js']) {
     vm.runInContext(readSource(file), context, {filename: file});
   }
   const ready = vm.runInContext(readSource('app.js'), context, {filename: 'app.js'});

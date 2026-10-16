@@ -3,15 +3,14 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const logic=root.IntervalLogic;
-const KEY='tonaloom-staff-interval-v1', REVIEW_KEY='tonaloom-staff-interval-review-v1', OPTIONS=logic.INTERVALS;
+const modules=root.TonaloomModules,definition=modules.get('staff');
+const KEY=definition.sessionKey, REVIEW_KEY=definition.reviews[0].key, OPTIONS=logic.INTERVALS;
 const ROWS=[[0],[1,2],[3,4],[5,6,7],[8,9],[10,11],[12]];
 const ACC={'♯':'#','♭':'b'};
-const MODES=['both'];
 const store=()=>root.IntervalPwaStorageAdapter;
 let active=false,initialized=false,drawSerial=0,advanceTimer=null,flashTimer=null,flashing=-1,review=null,questionAt=Date.now();
 let setting={clef:'both'},set=null,previous=-1;
-let audio=null,master=null;
-const samples=new Map(),pending=new Map(),voices=new Set();
+const audio=root.TonaloomAudio.createChannel(.43);
 const random=n=>Math.floor(Math.random()*n);
 // At most ONE ordinary sharp or flat may appear across both noteheads.
 // Filtering real pitch spellings keeps the notated and sounded intervals identical.
@@ -152,7 +151,7 @@ function renderOptions(){
     button.disabled=true;
     if(semi===q.semitones)button.classList.add('correct-answer');
    }else{
-    button.addEventListener('click',()=>choose(semi,button));
+    button.addEventListener('click',()=>choose(semi));
    }
    row.appendChild(button);
   }
@@ -177,51 +176,18 @@ function render(){
  $('staff-interval-reveal').classList.toggle('hidden',q.done);
  renderOptions();
 }
-function audioContext(){
- const Constructor=root.AudioContext||root.webkitAudioContext;
- if(!Constructor)throw Error('当前浏览器不支持钢琴播放');
- if(!audio){audio=new Constructor();master=audio.createGain();master.gain.value=.43;master.connect(audio.destination);}
- return audio;
-}
-async function piano(midi){
- const key=String(midi);
- if(samples.has(key))return samples.get(key);
- if(!pending.has(key)){
-  const source=root.PIANO_SAMPLES?.[key];
-  if(!source)throw Error('钢琴采样缺失：'+key);
-  pending.set(key,(async()=>{
-   const bin=atob(source),buf=new Uint8Array(bin.length);
-   for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
-   return audioContext().decodeAudioData(buf.buffer);
-  })());
- }
- try{
-  const decoded=await pending.get(key);
-  samples.set(key,decoded);return decoded;
- }finally{pending.delete(key);}
-}
 async function playCorrect(q){
+ const token=audio.token;
  try{
-  const ctx=audioContext();
-  if(ctx.state==='suspended')await ctx.resume();
-  const buffers=await Promise.all([piano(q.low),piano(q.high)]);
+  const ctx=await audio.ready();
+  const samples=await Promise.all([audio.piano(q.low),audio.piano(q.high)]);
+  if(token!==audio.token)return;
   const t=ctx.currentTime+.035;
-  for(const buffer of buffers){
-   const source=ctx.createBufferSource();
-   const gain=ctx.createGain();
-   source.buffer=buffer;
-   gain.gain.setValueAtTime(0,t);
-   gain.gain.linearRampToValueAtTime(q.low===q.high?.4:.68,t+.014);
-   gain.gain.setValueAtTime(q.low===q.high?.4:.68,t+.85);
-   gain.gain.linearRampToValueAtTime(.001,t+1.05);
-   source.connect(gain);gain.connect(master);
-   voices.add(source);
-   source.onended=()=>{voices.delete(source);try{source.disconnect();gain.disconnect();}catch{}};
-   source.start(t);source.stop(t+1.09);
-  }
+  for(const sample of samples)audio.tone(sample,t,1.05,q.low===q.high?.4:.68,
+   {attack:.014,hold:.85,floor:.001,tail:.04});
  }catch(err){console.error('钢琴音程播放失败',err);}
 }
-function choose(semi,button){
+function choose(semi){
  const q=current();if(!active||!q||q.done)return;
  if(semi!==q.semitones){
   if(!q.mistake)q.firstWrong=semi;
@@ -248,11 +214,6 @@ function reveal(){
 }
 function openSettings(){
  if(!active)return;
- for(const btn of document.querySelectorAll('[data-staff-clef]')){
-  const on=btn.dataset.staffClef===setting.clef;
-  btn.classList.toggle('active',on);
-  btn.setAttribute('aria-pressed',String(on));
- }
  $('staff-interval-settings').showModal();
 }
 function enter(){
@@ -270,12 +231,12 @@ function enter(){
  $('sight-practice').classList.add('hidden');
  $('staff-interval-practice').classList.remove('hidden');
  $('practice-navigation').classList.remove('hidden');
- $('practice-mode-title').textContent='音程辨认';
+ $('practice-mode-title').textContent=definition.name;
  $('open-settings').classList.remove('hidden');
  root.scrollTo(0,0);render();
 }
 function leave(){
- if(!active)return;active=false;drawSerial++;clearTimeout(advanceTimer);clearTimeout(flashTimer);flashing=-1;
+ if(!active)return;active=false;audio.stop();drawSerial++;clearTimeout(advanceTimer);clearTimeout(flashTimer);flashing=-1;
  if($('staff-interval-settings').open)$('staff-interval-settings').close();
  $('staff-interval-practice').classList.add('hidden');
  $('practice-navigation').classList.add('hidden');
@@ -294,17 +255,14 @@ function init(){
  $('staff-interval-reveal').addEventListener('click',reveal);
  $('staff-interval-next-set').addEventListener('click',()=>{makeSet();render();});
  $('staff-interval-settings-close').addEventListener('click',()=>$('staff-interval-settings').close());
- $('staff-open-stats').addEventListener('click',()=>{ $('staff-interval-settings').close();$('home-stats').click();$('stats-staff').click(); });
+ $('staff-open-stats').addEventListener('click',()=>{ $('staff-interval-settings').close();modules.showStatistics(definition.id); });
  $('staff-interval-settings-done').addEventListener('click',()=>$('staff-interval-settings').close());
  $('staff-interval-reset').addEventListener('click',()=>{
   if(!root.confirm('重新开始本组10题？当前进度将被替换。'))return;
   makeSet();$('staff-interval-settings').close();render();
  });
- for(const btn of document.querySelectorAll('[data-staff-clef]')){
-  btn.addEventListener('click',()=>{
-   setting.clef=btn.dataset.staffClef;save();openSettings();
-  });
- }
+ modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,
+  reviewManager:()=>review,enabled:()=>OPTIONS.map(item=>item.semitones),clearHistory:()=>review.reset()});
  initialized=true;
 }
 function backup(){return {setting:{clef:setting.clef},set:valid(set)?set:null,review:review?.snapshot()||null};}
@@ -312,6 +270,13 @@ function normalizeBackup(snapshot){
  if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))throw Error('音程辨认备份格式不正确');
  return {setting:{clef:'both'},set:valid(snapshot.set)?snapshot.set:null,
   review:snapshot.review?root.IntervalReview.normalizeStore(snapshot.review):null};
+}
+function backupEntries(obj){
+ if(!obj[definition.backupField])return [];
+ const snapshot=normalizeBackup(obj[definition.backupField]);
+ const entries=[[KEY,JSON.stringify({setting:snapshot.setting,set:snapshot.set})]];
+ if(snapshot.review)entries.push([REVIEW_KEY,JSON.stringify(snapshot.review)]);
+ return entries;
 }
 function restoreBackup(snapshot){
  if(!snapshot||typeof snapshot!=='object')return;

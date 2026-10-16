@@ -2,6 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const logic = window.IntervalLogic;
+  const modules = window.TonaloomModules;
   const recordedLibrary = window.MELODIC_RECORDINGS;
   const lowChoices = [36, 48, 60, 72, 84];
   const highChoices = [48, 60, 72, 84, 96];
@@ -13,7 +14,7 @@
   window.IntervalPwaStorageAdapter = storage;
   // Module-specific preferences share one IndexedDB key, but each module owns
   // its own values. Legacy v2.0 flat settings are copied into both modules once.
-  const settingsKey = 'interval-trainer-settings';
+  const settingsKey = modules.settingsKey;
   const commonDefaults = { enabled: logic.INTERVALS.map(i => i.semitones), low: 48, high: 84, volume: 65, duration: 2, showAnswer: true, autoPlayNext: true, confirmAnswer: false };
   function normalizeProfile(saved, mode) {
     const raw = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
@@ -62,24 +63,31 @@
   const harmonicReview = window.IntervalReview.createReviewManager(storage);
   const melodicReview = window.IntervalReview.createReviewManager(storage, window.IntervalPwaStorage.MELODY_KEY, {directional:true});
   let review = activeMode === 'melodic' ? melodicReview : harmonicReview;
-  let statisticsMode = activeMode;
   const sessions = {harmonic:{questionNo:0,correct:0,answered:0},melodic:{questionNo:0,correct:0,answered:0}};
   const recordedInstruments = Object.keys(recordedLibrary.instruments);
   const timbreNames = recordedLibrary.instruments;
   let statsUi = null;
   let hintUsed = false;
   let firstPlayAt = null;
-  const state = { current: null, previous: null, options: [], questionNo: 0, answered: 0, correct: 0, selected: null, submitted: false, revealed:false, hasPlayed: false, playToken: 0, playingTimeout: null };
-  let audioCtx = null;
-  let masterGain = null;
-  const buffers = new Map();
-  const loading = new Map();
-  const activeVoices = new Set();
-  const recordingBuffers = new Map();
-  const recordingLoading = new Map();
+  const state = { current: null, previous: null, options: [], questionNo: 0, answered: 0, correct: 0, selected: null, submitted: false, revealed:false, hasPlayed: false, playingTimeout: null };
+  const audio = window.TonaloomAudio.createChannel(settings.volume / 100 * .8);
   let toastTimeout = null;
   let currentScreen = 'home';
   let currentQuestionMode = null;
+  for (const definition of modules.list.filter(module => module.hearing)) {
+    const mode = definition.id, manager = mode === 'harmonic' ? harmonicReview : melodicReview;
+    modules.register(mode, {
+      enter:() => enterPractice(mode), isActive:() => currentScreen === 'practice' && activeMode === mode,
+      openSettings:() => { syncSettingsForm(); $('settings-dialog').showModal(); },
+      reviewManager:() => manager, enabled:() => moduleSettings[mode].enabled,
+      backup:() => manager.snapshot(), clearHistory:() => manager.reset(),
+      backupEntries:obj => {
+        if (obj.version === 1 && mode !== 'harmonic') return [];
+        const review = window.IntervalReview.normalizeStore(obj.version === 1 ? obj.review : obj[definition.backupField]);
+        return [[definition.reviews[0].key, JSON.stringify(review)]];
+      }
+    });
+  }
 
   // v2.2: prevent useless vertical drag/bounce when the entire practice fits.
   // On short screens, allow ordinary scrolling so no answer is ever clipped.
@@ -123,7 +131,7 @@
     } catch (e) { toast('设置保存失败，请检查浏览器存储权限'); console.error(e); }
   }
   function syncSettingsForm() {
-    $('settings-title').textContent = settings.mode === 'harmonic' ? '和声音程设置' : '旋律音程设置';
+    $('settings-title').textContent = modules.get(settings.mode).name + '设置';
     $('note-low').value = String(settings.low);
     $('note-high').value = String(settings.high);
     $('volume').value = String(settings.volume);
@@ -136,7 +144,7 @@
     $('audio-range-section').classList.toggle('hidden', settings.mode === 'melodic');
     $('duration-label').classList.toggle('hidden', settings.mode === 'melodic');
     $('duration').classList.toggle('hidden', settings.mode === 'melodic');
-    if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(settings.volume / 100 * .8, audioCtx.currentTime, .015);
+    audio.setVolume(settings.volume / 100 * .8);
     drawToggles();
   }
   function syncHintButton() {
@@ -207,7 +215,7 @@
     const updateSliders = () => {
       $('volume-value').textContent = `${settings.volume}%`;
       $('duration-value').textContent = `${settings.duration.toFixed(1)} 秒`;
-      if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(settings.volume / 100 * .8, audioCtx.currentTime, .015);
+      audio.setVolume(settings.volume / 100 * .8);
     };
     $('volume').addEventListener('input', () => { settings.volume = Number($('volume').value); updateSliders(); persist(); });
     $('duration').addEventListener('input', () => { settings.duration = Number($('duration').value); updateSliders(); persist(); });
@@ -229,11 +237,8 @@
     });
     const dialog = $('settings-dialog');
     $('open-settings').addEventListener('click', () => {
-      if (window.StaffIntervalTrainer?.isActive()) { window.StaffIntervalTrainer.openSettings(); return; }
-      if (window.SightTrainer?.isActive()) { window.SightTrainer.openSettings(); return; }
-      if (currentScreen !== 'practice') return;
-      syncSettingsForm();
-      dialog.showModal();
+      const active = modules.list.map(module => modules.get(module.id)).find(module => module.isActive?.());
+      active?.openSettings();
     });
     $('close-settings').addEventListener('click', () => dialog.close());
     $('settings-done').addEventListener('click', () => dialog.close());
@@ -241,13 +246,11 @@
     setupStatsControls();
     syncSettingsForm();
   }
-  const intervalName = semi => logic.INTERVALS[semi]?.name || `音程 ${semi}`;
   function createBackup() {
-    return JSON.stringify({ format: 'interval-trainer-backup', version: 3,
-      exportedAt: new Date().toISOString(), settings: JSON.parse(JSON.stringify({schema: 2, activeModule: activeMode, modules: moduleSettings})),
-      harmonic: harmonicReview.snapshot(), melodic: melodicReview.snapshot(),
-      sight: window.SightTrainer?.backup() || null,
-      staffInterval: window.StaffIntervalTrainer?.backup() || null }, null, 2);
+    const backup = {format:'interval-trainer-backup', version:3, exportedAt:new Date().toISOString(),
+      settings:JSON.parse(JSON.stringify({schema:2, activeModule:activeMode, modules:moduleSettings}))};
+    for (const module of modules.list) backup[module.backupField] = modules.get(module.id).backup?.() || null;
+    return JSON.stringify(backup, null, 2);
   }
   async function restoreBackup(data) {
     const obj = JSON.parse(data);
@@ -263,27 +266,7 @@
     if (!storage.available) throw Error('当前浏览器无法保存学习记录');
     const keys = window.IntervalPwaStorage;
     const entries = [[keys.SETTINGS_KEY, restoredSettings]];
-    if (obj.version === 1) {
-      // v1.5/1.6 legacy backup affects harmonic history only; preserve melodic history.
-      const harmonic = window.IntervalReview.normalizeStore(obj.review);
-      entries.push([keys.REVIEW_KEY, JSON.stringify(harmonic)]);
-    } else {
-      const harmonic = window.IntervalReview.normalizeStore(obj.harmonic);
-      const melodic = window.IntervalReview.normalizeStore(obj.melodic);
-      entries.push([keys.REVIEW_KEY, JSON.stringify(harmonic)], [keys.MELODY_KEY, JSON.stringify(melodic)]);
-      if (obj.version === 3 && obj.sight) {
-        const treble = window.SightTrainer.normalizeReview('treble', obj.sight.treble);
-        const bass = window.SightTrainer.normalizeReview('bass', obj.sight.bass);
-        const config = obj.sight.settings && ['treble','bass','both'].includes(obj.sight.settings.clef) ? {clef:obj.sight.settings.clef,accidentals:obj.sight.settings.accidentals===true} : {clef:'both',accidentals:false};
-        entries.push([keys.SIGHT_TREBLE_KEY, JSON.stringify(treble)], [keys.SIGHT_BASS_KEY, JSON.stringify(bass)],
-          [keys.SIGHT_SETTINGS_KEY, JSON.stringify(config)]);
-      }
-    }
-    if (obj.staffInterval) {
-      const staff = window.StaffIntervalTrainer.normalizeBackup(obj.staffInterval);
-      entries.push([keys.STAFF_SESSION_KEY, JSON.stringify({setting:staff.setting, set:staff.set})]);
-      if (staff.review) entries.push([keys.STAFF_REVIEW_KEY, JSON.stringify(staff.review)]);
-    }
+    for (const module of modules.list) entries.push(...modules.get(module.id).backupEntries(obj));
     // Validate and serialize every module before changing any stored or live data.
     await storage.replaceEntries(entries);
     window.location.reload();
@@ -301,35 +284,41 @@
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
   function setupStatsControls() {
-    statsUi = window.IntervalStats.init(
-      () => statisticsMode === 'staff' ? window.StaffIntervalTrainer?.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview,
-      () => statisticsMode === 'staff' ? logic.INTERVALS.map(i=>i.semitones) : moduleSettings[statisticsMode].enabled);
+    const selected = () => modules.get(modules.statisticsMode);
     const statsDialog = $('stats-dialog');
-    window.addEventListener('interval-trainer-storage-updated', () => {
-      if (statsDialog.open && !window.SightTrainer?.isStatsActive()) statsUi.render();
-    });
-    for (const id of ['home-stats','open-stats','stats-harmonic','stats-melodic','stats-staff','stats-sight']) {
-      $(id).addEventListener('click', () => { storage.refresh?.().catch(() => {}); });
-    }
-    for (const mode of ['harmonic','melodic','staff']) {
-      $('stats-'+mode).addEventListener('click', () => {
-        statisticsMode=mode;syncStatisticsMode();
-        if(mode==='staff')window.SightTrainer?.hideStats();
-        statsUi.render();
-      });
-    }
-    function syncStatisticsMode(){
-      for(const mode of ['harmonic','melodic','staff']) {
-        const active=statisticsMode===mode;
-        $('stats-'+mode).classList.toggle('active',active);
-        $('stats-'+mode).setAttribute('aria-pressed',String(active));
+    function renderStatistics() {
+      const sight = modules.statisticsMode === 'sight';
+      statsDialog.classList.toggle('sight-stats-active', sight);
+      $('sight-stats-content').classList.toggle('hidden', !sight);
+      for (const module of modules.list) {
+        const active = module.id === modules.statisticsMode;
+        $(module.statsId).classList.toggle('active', active);
+        $(module.statsId).setAttribute('aria-pressed', String(active));
       }
+      if (selected().renderStatistics) selected().renderStatistics();
+      else statsUi.render();
+    }
+    statsUi = window.IntervalStats.init(
+      () => selected().reviewManager(), () => selected().enabled(), renderStatistics);
+    modules.configureStatistics(activeMode, open => {
+      renderStatistics();
+      if (open) {
+        storage.refresh?.().catch(() => {});
+        if (!statsDialog.open) statsDialog.showModal();
+      }
+    });
+    window.addEventListener('interval-trainer-storage-updated', () => {
+      if (statsDialog.open) renderStatistics();
+    });
+    for (const module of modules.list) {
+      $(module.statsId).addEventListener('click', () => modules.showStatistics(module.id));
     }
     $('open-stats').addEventListener('click', () => {
       $('settings-dialog').close();
-      statisticsMode=settings.mode;syncStatisticsMode();
-      statsUi.render();
-      statsDialog.showModal();
+      modules.showStatistics(settings.mode);
+    });
+    statsDialog.addEventListener('close', () => {
+      if (modules.statisticsMode === 'sight') modules.showStatistics(settings.mode, false);
     });
     $('close-stats').addEventListener('click', () => statsDialog.close());
     statsDialog.addEventListener('click', e => { if(e.target === statsDialog) statsDialog.close(); });
@@ -351,12 +340,8 @@
     });
     $('clear-review').addEventListener('click', () => {
       if(!window.confirm('永久清空当前统计类别的全部练习统计和复习记录？建议先导出备份。')) return;
-      // Note statistics have their own view; clear the category currently shown.
-      if (window.SightTrainer?.isStatsActive()) window.SightTrainer.clearHistory();
-      else {
-        (statisticsMode === 'staff' ? window.StaffIntervalTrainer.reviewManager() : statisticsMode === 'melodic' ? melodicReview : harmonicReview).reset();
-        statsUi.render();
-      }
+      selected().clearHistory();
+      renderStatistics();
       toast('当前类别历史记录已清空');
     });
   }
@@ -410,14 +395,10 @@
   }
   function setAudioStatus(text) { $('audio-status').textContent = text; }
   function stopVoices() {
-    state.playToken++;
+    audio.stop();
     if (state.playingTimeout) clearTimeout(state.playingTimeout);
     state.playingTimeout = null;
     document.body.classList.remove('playing');
-    for (const voice of [...activeVoices]) {
-      try { voice.stop(); } catch { /* already ended */ }
-    }
-    activeVoices.clear();
   }
   function eligibleForCurrentMode() {
     if (settings.mode === 'melodic') {
@@ -488,95 +469,32 @@
     }
     if (newQuestion() && settings.autoPlayNext) void play('main');
   }
-  async function getAudioContext() {
-    if (!window.AudioContext && !window.webkitAudioContext) throw Error('当前浏览器不支持 Web Audio');
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = audioCtx.createGain();
-      masterGain.gain.value = settings.volume / 100 * .8;
-      masterGain.connect(audioCtx.destination);
-    }
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
-    return audioCtx;
-  }
-  async function loadSample(timbre, midi) {
-    const anchor=timbre==='piano' ? midi : 36+Math.round((midi-36)/3)*3;
-    const key=`${timbre}:${anchor}`;
-    if(buffers.has(key)) return {buffer:buffers.get(key),rate:Math.pow(2,(midi-anchor)/12)};
-    if(!loading.has(key)) {
-      const source=timbre==='piano' ? window.PIANO_SAMPLES : window.MELODY_SAMPLES?.[timbre];
-      const sample=source?.[String(anchor)];
-      if(!sample) throw Error(`缺少音频采样：${key}`);
-      loading.set(key,(async()=>{
-        const binary=atob(sample),bytes=new Uint8Array(binary.length);
-        for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-        const ctx=await getAudioContext();
-        return await ctx.decodeAudioData(bytes.buffer);
-      })());
-    }
-    try {
-      const buffer=await loading.get(key);buffers.set(key,buffer);
-      return {buffer,rate:Math.pow(2,(midi-anchor)/12)};
-    } finally {loading.delete(key);}
-  }
   function scheduleTone(sample, at, duration, gainMultiplier) {
-    const voice=audioCtx.createBufferSource();voice.buffer=sample.buffer;
-    voice.playbackRate.setValueAtTime(sample.rate,at);
-    const envelope=audioCtx.createGain();
-    envelope.gain.setValueAtTime(0,at);
-    envelope.gain.linearRampToValueAtTime(gainMultiplier,at+.013);
-    envelope.gain.setValueAtTime(gainMultiplier,at+Math.max(.014,duration-.17));
-    envelope.gain.linearRampToValueAtTime(.0001,at+duration);
-    voice.connect(envelope);envelope.connect(masterGain);
-    voice.onended=()=>{activeVoices.delete(voice);try{voice.disconnect();envelope.disconnect();}catch{}};
-    activeVoices.add(voice);voice.start(at);voice.stop(at+duration+.02);
-  }
-  async function loadRecording(url) {
-    if (recordingBuffers.has(url)) return recordingBuffers.get(url);
-    if (!recordingLoading.has(url)) recordingLoading.set(url, (async () => {
-      const response = await fetch(new URL(url, document.baseURI));
-      if (!response.ok) throw Error(`音源下载失败（${response.status}）`);
-      const bytes = await response.arrayBuffer();
-      const ctx = await getAudioContext();
-      return await ctx.decodeAudioData(bytes);
-    })());
-    try {
-      const buffer = await recordingLoading.get(url);
-      recordingBuffers.set(url,buffer);
-      return buffer;
-    } finally { recordingLoading.delete(url); }
-  }
-  function scheduleRecording(buffer, at) {
-    const voice=audioCtx.createBufferSource();voice.buffer=buffer;
-    const gain=audioCtx.createGain();gain.gain.value=3;
-    voice.connect(gain);gain.connect(masterGain);
-    voice.onended=()=>{activeVoices.delete(voice);try{voice.disconnect();gain.disconnect();}catch{}};
-    activeVoices.add(voice);
-    voice.start(at);voice.stop(at+buffer.duration);
+    audio.tone(sample,at,duration,gainMultiplier,
+      {attack:.013,hold:Math.max(.014,duration-.17),floor:.0001,tail:.02});
   }
   async function play(kind) {
     if(!state.current)return;
     // The split-notes demonstration is available only after committing an answer.
     if (kind === 'hint' && (settings.mode !== 'harmonic' || !state.submitted)) return;
-    stopVoices();const token=state.playToken;
+    stopVoices();const token=audio.token;
     try {
-      await getAudioContext();
+      const ctx=await audio.ready();
       const current=state.current;
       const melodic=settings.mode==='melodic';
       let total=0;
       if(melodic){
         // A supplied recording already contains both notes in the correct order.
         // Do not transpose, synthesize, or infer unprovided pitches.
-        const buffer=await loadRecording(current.recordingUrl);
-        if(token!==state.playToken)return;
-        scheduleRecording(buffer,audioCtx.currentTime+.06);
+        const buffer=await audio.recording(current.recordingUrl);
+        if(token!==audio.token)return;
+        audio.playRecording(buffer,ctx.currentTime+.06);
         total=buffer.duration;
 
-        if(kind==='hint')hintUsed=true;
       } else {
-        const [first,second]=await Promise.all([loadSample('piano',current.low),loadSample('piano',current.high)]);
-        if(token!==state.playToken)return;
-        const t=audioCtx.currentTime+.06;
+        const [first,second]=await Promise.all([audio.piano(current.low),audio.piano(current.high)]);
+        if(token!==audio.token)return;
+        const t=ctx.currentTime+.06;
         if(kind==='hint') {
           const duration=Math.min(1.25,Math.max(.65,settings.duration*.56)),gap=.14;
           scheduleTone(first,t,duration,.9);
@@ -589,25 +507,26 @@
           total=settings.duration;
         }
       }
-      state.playingTimeout=setTimeout(()=>{if(token===state.playToken){document.body.classList.remove('playing');setAudioStatus('');}},(total+.1)*1000);
+      state.playingTimeout=setTimeout(()=>{if(token===audio.token){document.body.classList.remove('playing');setAudioStatus('');}},(total+.1)*1000);
       document.body.classList.add('playing');state.hasPlayed=true;
       if(firstPlayAt===null)firstPlayAt=Date.now();
       $('play-label').textContent='重听';
     } catch(err){
-      if(token===state.playToken){setAudioStatus('音频播放失败，请检查网络或浏览器音频支持');toast(`播放失败：${err.message}`);}
+      if(token===audio.token){setAudioStatus('音频播放失败，请检查网络或浏览器音频支持');toast(`播放失败：${err.message}`);}
       console.error('Audio playback error:',err);
     }
   }
   function syncModeControls(){
-    $('practice-mode-title').textContent = settings.mode==='melodic'?'旋律音程':'和声音程';
+    $('practice-mode-title').textContent = modules.get(settings.mode).name;
     $('hint').classList.toggle('hidden',settings.mode==='melodic');
     $('stats-title').textContent='练习统计';
     syncSettingsForm();
     syncHintButton();
   }
   function showHome(){
-    if (window.SightTrainer?.isActive()) window.SightTrainer.leave();
-    if (window.StaffIntervalTrainer?.isActive()) window.StaffIntervalTrainer.leave();
+    for (const module of modules.list.map(item => modules.get(item.id))) {
+      if (module.isActive?.()) module.leave?.();
+    }
     // Leaving a module is navigation, not a wrong answer or a skipped question.
     if ($('settings-dialog').open) $('settings-dialog').close();
     stopVoices();
@@ -647,10 +566,7 @@
   }
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
-    $('home-harmonic').addEventListener('click',()=>enterPractice('harmonic'));
-    $('home-melodic').addEventListener('click',()=>enterPractice('melodic'));
-    $('home-sight').addEventListener('click',()=>window.SightTrainer?.enter());
-    $('home-staff-interval').addEventListener('click',()=>window.StaffIntervalTrainer?.enter());
+    for (const module of modules.list) $(module.homeId).addEventListener('click',()=>modules.get(module.id).enter?.());
     $('back-home').addEventListener('click',showHome);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
@@ -673,15 +589,7 @@
         $('stats-dialog').close();
       } else if ($('settings-dialog').open) {
         $('settings-dialog').close();
-      } else if (window.StaffIntervalTrainer?.isActive()) {
-        showHome();
-        lastBack = Date.now();
-        toast('再按一次返回退出');
-      } else if (window.SightTrainer?.isActive()) {
-        window.SightTrainer.leave();
-        lastBack = Date.now();
-        toast('再按一次返回退出');
-      } else if (currentScreen === 'practice') {
+      } else if (modules.list.some(module => modules.get(module.id).isActive?.())) {
         showHome();
         lastBack = Date.now();
         toast('再按一次返回退出');

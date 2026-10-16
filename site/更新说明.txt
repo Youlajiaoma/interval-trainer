@@ -1,9 +1,10 @@
-音程听辨 v1.6 · 已部署 GitHub Pages 的更新方法
+Tonaloom 本地验证与更新说明
 
-1. 解压本压缩包（不要直接上传 ZIP）。
-2. 打开 GitHub 仓库 Youlajiaoma/interval-trainer，进入仓库的 site 文件夹。
-3. 点击 Add file → Upload files，选择解压出的 4 个文件（app.js、index.html、styles.css、sw.js），确认目标位置是 site/，提交到 main 分支。
-4. 等待 Actions 自动部署成功，然后手机联网重新打开 PWA。若仍显示旧布局，完整退出 App 再打开，等待 Service Worker 更新激活。
-5. 练习记录存储在原网站来源的 IndexedDB，保持网址不变，不需要重建数据库。更新前仍建议手动导出 JSON 备份。
+1. 在 dev 分支进行开发，先运行 node tests/run.cjs，并按 tests/README.md 准备完整浏览器检查。
+2. 在本地网页验收四个模块、五线谱、声音、统计、备份和离线行为。
+3. 用户确认后创建本地 Commit；得到单独授权后再 Push dev。
+4. 正式发布需用户明确授权，将已验证的修改合并到 main 并 Push。当前 GitHub Pages 流程部署完整的 site/ 目录，并准备固定版本的 VexFlow。
+5. 等待部署成功，再确认网页和已安装的 PWA 已加载新文件。必要时在应用内接受更新。
 
-改动：7 行指定按钮布局 + 增四度（减五度）作为最后额外整行；移除全局空格/H/N 快捷键及说明。
+不要沿用旧版压缩包仅上传 4 个文件的方法：当前程序包含多个公共脚本、两个识谱模块和离线资源，必须保持文件完整且版本一致。
+练习记录保存在当前设备和浏览器的 IndexedDB 中。更新前可导出 JSON 备份；保持网址不变，无需清空或重建学习数据。

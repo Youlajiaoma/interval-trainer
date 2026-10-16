@@ -37,3 +37,29 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
   }
   assert.equal(new Set(paths).size, 96);
 });
+
+test('网页引用的脚本与样式均列入离线清单，新增公共脚本可离线加载', () => {
+  const env = {URL, self:{registration:{scope:'https://isolated.test/'}, addEventListener() {}}};
+  const core = vm.runInNewContext(readSource('sw.js')+'; CORE_FILES', env);
+  const paths = new Set(Array.from(core, file => new URL(file, 'https://isolated.test/').pathname));
+  const html = readSource('index.html');
+  const referenced = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(match => match[1]);
+  referenced.push(...[...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g)].map(match => match[1]));
+  for (const file of referenced) {
+    assert(paths.has('/'+file), '网页依赖必须进入核心缓存：'+file);
+    assert(fs.existsSync(path.join(site, file)), '网页依赖文件必须存在：'+file);
+  }
+  assert(paths.has('/audio.js') && paths.has('/modules.js'));
+});
+
+test('离线录音清单与实际出题录音完全对应，没有遗漏或重复', () => {
+  const env = {URL, self:{registration:{scope:'https://isolated.test/'}, addEventListener() {}}};
+  const files = Array.from(vm.runInNewContext(readSource('sw.js')+'; AUDIO_FILES', env));
+  const context = {window:{}};
+  vm.runInNewContext(readSource('assets/melodic-recordings.js'), context);
+  const required = Object.values(context.window.MELODIC_RECORDINGS.intervals)
+    .flatMap(interval => Object.values(interval).flatMap(direction => Object.values(direction)));
+  assert.equal(files.length, 96);
+  assert.equal(new Set(files).size, files.length);
+  assert.deepEqual(files.sort(), required.sort());
+});

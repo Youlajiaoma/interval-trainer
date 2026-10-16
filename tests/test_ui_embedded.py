@@ -19,7 +19,7 @@ window.IntervalPwaStorage={MELODY_KEY:'interval-trainer-review-melodic-v1',initi
  replaceBoth:async(s,r)=>{tdata.set('interval-trainer-settings',s);tdata.set('interval-trainer-review-v1',r)},
  flush:async()=>{}})};
 </script>'''
-for script in ('logic.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js'):
+for script in ('logic.js','modules.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js','audio.js'):
     src=src.replace(f'<script src="{script}"></script>',f'<script>\n{(root/script).read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="storage.js"></script>', adapter)
 src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text(encoding="utf-8")}\n</script>')
