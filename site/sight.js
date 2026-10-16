@@ -434,31 +434,41 @@ function answer(chosen,revealed){
  if(n.mistakeChosen===null){n.mistakeChosen=chosen;save(SESSION_KEY,session);}
  busy=true; blinkWrong();
 }
-function statsBox(label,val){const b=document.createElement('div');b.className='sight-kpi';b.append(Object.assign(document.createElement('span'),{textContent:label}),Object.assign(document.createElement('strong'),{textContent:val}));return b;}
-function statRow(label,attempts,correct){ const row=document.createElement('div');row.className='sight-stat-row'; const lab=document.createElement('span');lab.textContent=label; const bar=document.createElement('div');bar.className='sight-stat-track'; const fill=document.createElement('div');fill.style.width=attempts?`${100*correct/attempts}%`:'0%';bar.append(fill); const value=document.createElement('span');value.textContent=attempts?`${correct}/${attempts} · ${Math.round(100*correct/attempts)}%`:'—'; row.append(lab,bar,value);return row; }
-function renderStats(){
- const container=$('sight-stats-content');container.replaceChildren();
- const t=review.treble.statistics('all'), b=review.bass.statistics('all');
- const total=t.totals.answered+b.totals.answered,correct=t.totals.correct+b.totals.correct;
- const grid=document.createElement('div');grid.className='sight-stats-grid';
- [['累计识谱',total+''],['正确率',total?Math.round(100*correct/total)+'%':'—'],['高音谱号',t.totals.answered+''],['低音谱号',b.totals.answered+'']].forEach(v=>grid.append(statsBox(...v)));
- container.append(grid);
- for(const [title,s] of [['高音谱号',t],['低音谱号',b]]){
-   const section=document.createElement('section');section.className='stats-panel';
-   const h=document.createElement('h3');h.textContent=title;section.append(h);
-   for(let i=0;i<21;i++){const rows=s.byInterval.slice(i*3,i*3+3);const answered=rows.reduce((sum,n)=>sum+(n?.answered||0),0),correct=rows.reduce((sum,n)=>sum+(n?.correct||0),0);section.append(statRow(pitchLabel(title==='高音谱号'?'treble':'bass',i),answered,correct));}
-   container.append(section);
+function statistics(period,now){
+ const sources=['treble','bass'].map(clef=>{
+  const enabled=settings.clef==='both'||settings.clef===clef?candidateReviewUnits(clef):[];
+  const stats=root.IntervalStats.readReview(review[clef],enabled,period,now);
+  return {clef,stats,allDays:period==='all'?stats.trend:review[clef].statistics('all',now).trend};
+ });
+ function mergeDays(series){
+  const days=new Map();
+  for(const rows of series)for(const row of rows){
+   const day=days.get(row.day)||{day:row.day,answered:0,correct:0};
+   day.answered+=row.answered;day.correct+=row.correct;days.set(row.day,day);
+  }
+  return [...days.values()].sort((a,b)=>a.day.localeCompare(b.day));
  }
- const daily=new Map();
- for(const source of [t,b])for(const row of source.trend){ const d=daily.get(row.day)||{answered:0,correct:0}; d.answered+=row.answered;d.correct+=row.correct;daily.set(row.day,d); }
- const dates=[...daily.keys()].sort().slice(-7);
- if(dates.length){ const section=document.createElement('section');section.className='stats-panel'; section.append(Object.assign(document.createElement('h3'),{textContent:'最近练习'})); for(const date of dates){const d=daily.get(date);section.append(statRow(date.slice(5),d.answered,d.correct));} container.append(section); }
- const recent=[...t.history.map(h=>({...h,clef:'高音谱号'})),...b.history.map(h=>({...h,clef:'低音谱号'}))].sort((a,b)=>b.at-a.at).slice(0,10);
- if(recent.length){ const section=document.createElement('section');section.className='stats-panel'; section.append(Object.assign(document.createElement('h3'),{textContent:'最近答题'})); for(const h of recent){ const row=document.createElement('div');row.className='sight-confusion'; const wrong=h.revealed||h.actual!==h.chosen; const clef=h.clef==='高音谱号'?'treble':'bass'; const name=`${h.clef} · ${reviewLabel(clef,h.actual)}`; const chosen=h.revealed?'显示答案':wrong?`→ ${reviewLabel(clef,h.chosen)}`:'✓'; row.append(Object.assign(document.createElement('span'),{textContent:name}),Object.assign(document.createElement('strong'),{textContent:chosen})); section.append(row);} container.append(section); }
- const confused=[];
- for(const [clef,r] of [['高音谱号',review.treble],['低音谱号',review.bass]]){ for(const c of r.analysis(Array.from({length:63},(_,i)=>i)).confusions.slice(0,8))confused.push({label:`${clef} · ${reviewLabel(clef==='高音谱号'?'treble':'bass',c.actual)} → ${reviewLabel(clef==='高音谱号'?'treble':'bass',c.chosen)}`,count:c.count}); }
- confused.sort((a,b)=>b.count-a.count);
- if(confused.length){ const section=document.createElement('section');section.className='stats-panel'; const h=document.createElement('h3');h.textContent='常见误认';section.append(h); for(const item of confused.slice(0,10)){ const row=document.createElement('div');row.className='sight-confusion'; row.append(Object.assign(document.createElement('span'),{textContent:item.label}),Object.assign(document.createElement('strong'),{textContent:item.count+' 次'})); section.append(row); } container.append(section); }
+ const trend=mergeDays(sources.map(source=>source.stats.trend));
+ const totals=Object.fromEntries(Object.keys(sources[0].stats.totals).map(key=>
+  [key,sources.reduce((sum,source)=>sum+source.stats.totals[key],0)]));
+ const byInterval=sources.flatMap(({clef,stats})=>Array.from({length:21},(_,i)=>{
+  // Preserve the existing per-position grouping of natural, sharp and flat notes.
+  const rows=stats.byInterval.slice(i*3,i*3+3);
+  return {semi:i*3,clef,answered:rows.reduce((sum,row)=>sum+row.answered,0),
+   correct:rows.reduce((sum,row)=>sum+row.correct,0)};
+ }));
+ const tagged=key=>sources.flatMap(({clef,stats})=>stats[key].map(row=>({...row,clef})));
+ const {dayKey,addCalendarDays}=root.IntervalReview;
+ const practiced=new Set(mergeDays(sources.map(source=>source.allDays)).filter(day=>day.answered>0).map(day=>day.day));
+ let date=practiced.has(dayKey(now))?now:addCalendarDays(now,-1),streak=0;
+ while(practiced.has(dayKey(date))){streak++;date=addCalendarDays(date,-1);}
+ return {period,unit:'音符',label:(unit,clef)=>`${clef==='treble'?'高音谱号':'低音谱号'} · ${reviewLabel(clef,unit)}`,
+  totals,byInterval,trend,last49:mergeDays(sources.map(source=>source.stats.last49)),
+  practiceDays:trend.filter(day=>day.answered>0).length,streak,
+  history:tagged('history').sort((a,b)=>b.at-a.at),
+  confusions:tagged('confusions').sort((a,b)=>b.count-a.count),
+  yesterdayWrong:tagged('yesterdayWrong'),due:sources.reduce((sum,source)=>sum+source.stats.due,0),
+  storageAvailable:sources.every(source=>source.stats.storageAvailable)};
 }
 function clearHistory(){
  review.treble.reset();review.bass.reset();
@@ -529,7 +539,7 @@ function init(){
  $('sight-settings-dialog').addEventListener('click',e=>{ if(e.target===$('sight-settings-dialog'))e.target.close(); });
  function openSettingsRefresh(){ for(const b of document.querySelectorAll('.sight-clef-options button')){ const on=b.dataset.clef===settings.clef; b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on)); } }
  for(const btn of document.querySelectorAll('.sight-clef-options button'))btn.addEventListener('click',()=>{ settings.clef=btn.dataset.clef; save(SETTINGS_KEY,settings); openSettingsRefresh(); });
- modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,clearHistory,renderStatistics:renderStats});
+ modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,clearHistory,statistics});
  initialized=true;
 }
 root.SightTrainer={enter,leave,openSettings,isActive:()=>active,backup,showStats:openStats,

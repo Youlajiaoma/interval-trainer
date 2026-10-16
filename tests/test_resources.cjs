@@ -41,15 +41,16 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
 test('网页引用的脚本与样式均列入离线清单，新增公共脚本可离线加载', () => {
   const env = {URL, self:{registration:{scope:'https://isolated.test/'}, addEventListener() {}}};
   const core = vm.runInNewContext(readSource('sw.js')+'; CORE_FILES', env);
-  const paths = new Set(Array.from(core, file => new URL(file, 'https://isolated.test/').pathname));
+  const urls = new Set(Array.from(core, file => new URL(file, 'https://isolated.test/').href));
   const html = readSource('index.html');
   const referenced = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(match => match[1]);
   referenced.push(...[...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g)].map(match => match[1]));
   for (const file of referenced) {
-    assert(paths.has('/'+file), '网页依赖必须进入核心缓存：'+file);
-    assert(fs.existsSync(path.join(site, file)), '网页依赖文件必须存在：'+file);
+    const url = new URL(file, 'https://isolated.test/');
+    assert(urls.has(url.href), '网页依赖及其版本必须进入核心缓存：'+file);
+    assert(fs.existsSync(path.join(site, url.pathname.slice(1))), '网页依赖文件必须存在：'+file);
   }
-  assert(paths.has('/audio.js') && paths.has('/modules.js'));
+  assert(urls.has('https://isolated.test/audio.js') && urls.has('https://isolated.test/modules.js'));
 });
 
 test('离线录音清单与实际出题录音完全对应，没有遗漏或重复', () => {

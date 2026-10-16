@@ -94,6 +94,41 @@ const site=path.join(__dirname,'../site');
    if(errors.length)throw Error(errors.join('\n'));
    console.log('PASS sight adaptive half/quarter stems, middle line, accidental, beam groups and visible error stems:',clef);
   }
+  // All statistics categories share the same visible panels at phone/desktop widths.
+  await page.click('#back-home');
+  await page.evaluate(async()=>{
+   const storage=window.IntervalPwaStorageAdapter;
+   for(const [key,actual,chosen] of [['interval-trainer-review-sight-treble-v1',16,17],['interval-trainer-review-sight-bass-v1',51,51]]){
+    const manager=IntervalReview.createReviewManager(storage,key,{maxIndex:62});
+    manager.record({actual,chosen,now:Date.now()});
+   }
+   await storage.flush();
+  });
+  await page.click('#home-stats');
+  if(!await page.locator('#stats-dialog').isVisible())throw Error('home statistics did not open');
+  await page.addStyleTag({content:'.sight-stats-active .stats-intro,.sight-stats-active .stats-summary-grid,.sight-stats-active .stats-panel{display:none}'});
+  await page.locator('#stats-dialog').evaluate(element=>element.classList.add('sight-stats-active'));
+  await page.click('#stats-sight');
+  await page.waitForFunction(()=>document.querySelector('#stats-trend svg'));
+  for(const range of ['7','30','90','all']){
+   await page.selectOption('#stats-period',range);
+   if(!await page.locator('#stats-period').isVisible())throw Error('note statistics date filter hidden');
+   if(await page.locator('#stats-calendar .stats-heat').count()!==49)throw Error('note statistics calendar missing');
+   if(await page.locator('#stats-performance-title').textContent()!=='各音符表现')throw Error('note statistics title');
+   const noteText=await page.locator('#stats-intervals').textContent();
+   if(!noteText.includes('高音谱号')||!noteText.includes('低音谱号'))throw Error('clef breakdown missing');
+   if(!await page.locator('#stats-history').isVisible()||!await page.locator('#stats-review-plan').isVisible())throw Error('shared statistics panels hidden');
+   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||document.querySelector('.stats-content').scrollWidth>document.querySelector('.stats-content').clientWidth+1))throw Error('note statistics horizontal overflow at '+width);
+  }
+  for(const mode of ['harmonic','melodic','staff','sight']){
+   await page.click('#stats-'+mode);
+   if(await page.locator('#stats-summary .stats-kpi').count()!==4)throw Error('statistics summary differs for '+mode);
+   if(!await page.locator('#stats-summary').isVisible())throw Error('statistics summary hidden for '+mode);
+   if(!await page.locator('#stats-period').isVisible())throw Error('statistics filter hidden for '+mode);
+  }
+  if(errors.length)throw Error(errors.join('\n'));
+  console.log('PASS shared statistics panels, note clefs, date filters and no overflow:',width);
+  await page.close();
  }
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

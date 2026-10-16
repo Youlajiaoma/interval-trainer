@@ -30,18 +30,6 @@
 .sight-clef-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .sight-clef-options button{border-radius:8px;border:1px solid #43465c;background:#222438;color:#b7b8ca;padding:11px 4px;font-size:12px}
 .sight-clef-options button.active{background:#3d345e;color:#ebe2ff;border-color:#9a85e2}
-.sight-stats-active .stats-intro,.sight-stats-active .stats-summary-grid,.sight-stats-active .stats-panel{display:none}
-.sight-stats-active #sight-stats-content .stats-panel{display:block}
-.sight-stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}
-.sight-kpi{background:#212336;border:1px solid #383b51;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:5px}
-.sight-kpi span{color:#a6a5bc;font-size:12px}
-.sight-kpi strong{font-size:22px}
-.sight-stats-content .stats-panel h3{font-size:15px;margin:0 0 14px}
-.sight-stat-row{display:grid;grid-template-columns:27px minmax(0,1fr) 96px;gap:10px;align-items:center;margin:10px 0;font-size:12px}
-.sight-stat-row>span:last-child{text-align:right;color:#adabc0}
-.sight-stat-track{height:9px;border-radius:8px;background:#303348;overflow:hidden}
-.sight-stat-track div{height:100%;background:#ab91ee;border-radius:8px}
-.sight-confusion{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:8px 0;color:#bcb8d2;border-bottom:1px solid #313246}
 .sight-review-plan{font-size:12px;color:#a8a7bb;margin:14px 0}
 .sight-warning{font-size:12px;color:#efb4c3;margin:4px 0}
 .sight-warning:empty{display:none}

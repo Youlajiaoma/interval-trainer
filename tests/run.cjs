@@ -99,7 +99,7 @@ async function main() {
         }
         const response = await fetch(url, {signal: AbortSignal.timeout(2000), redirect: 'error'});
         const html = await response.text();
-        serverReady = response.ok && html.includes('id="home-harmonic"') && html.includes('src="app.js"');
+        serverReady = response.ok && html.includes('id="home-harmonic"') && /<script\s+src="app\.js(?:\?[^"]*)?"/.test(html);
       } catch { /* Never start a server or contact a production site automatically. */ }
       if (!vendorReady || !serverReady) skipped('PWA 浏览器离线与保存', '需要本地 VexFlow 文件及已启动的本地 Tonaloom 网页服务');
       else await externalTest('PWA 浏览器离线与保存', python, ['-B', 'tests/test_pwa_integration.py']);

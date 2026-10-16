@@ -34,13 +34,13 @@ for (const [mode, label] of [['harmonic', '和声'], ['melodic', '旋律'], ['st
     const app = await createApp({database});
     const before = await app.backup();
     await app.click('home-stats'); await app.click('stats-' + mode); await app.click('stats-sight');
-    const kpis = () => app.get('sight-stats-content').children[0].children.map(item => item.children[1].textContent);
+    const kpis = () => app.get('stats-summary').children[0].children.map(item => item.children[1].textContent);
     assert.equal(kpis()[0], '2', '清空前应显示两个谱号的记录');
     await app.click('clear-review');
     const after = await app.backup();
     assertSightCleared(after);
     assertOtherModulesUnchanged(before, after);
-    assert.deepEqual(kpis(), ['0', '—', '0', '0'], '当前页面的计数应立即更新');
+    assert.deepEqual(kpis(), ['0', '—', '0 天', '0 天'], '当前页面的计数应立即更新');
     assert(app.get('stats-dialog').open);
     assert(app.get('stats-sight').classList.contains('active'));
     const reloaded = await createApp({database});
@@ -70,6 +70,6 @@ test('从音符练习设置进入统计，取消清空不改数据，确认后�
   assert.equal(database.records.get(keys.sightSession), new Map(storedBefore).get(keys.sightSession), '当前练习题组不应被清空历史替换');
   await app.click('close-stats');
   await app.click('home-stats');
-  assert(!app.get('stats-dialog').classList.contains('sight-stats-active'), '重新打开默认统计时不能沿用音符统计状态');
+  assert.equal(app.get('stats-performance-title').textContent, '各音程表现', '重新打开默认统计时不能沿用音符统计内容');
   app.assertNoErrors();
 });

@@ -193,9 +193,10 @@ function createEngraver() {
   return {api, notes};
 }
 
-async function createApp({database = createMemoryDatabase(), seed = 12345} = {}) {
+async function createApp({database = createMemoryDatabase(), seed = 12345, sourceOverrides = {}} = {}) {
+  const source = file => sourceOverrides[file] ?? readSource(file);
   const elements = new Map();
-  for (const match of readSource('index.html').matchAll(/<(\w+)\b[^>]*\bid="([^"]+)"[^>]*>/g)) {
+  for (const match of source('index.html').matchAll(/<(\w+)\b[^>]*\bid="([^"]+)"[^>]*>/g)) {
     const element = new Element(match[1]);
     element.id = match[2];
     element.className = /class="([^"]*)"/.exec(match[0])?.[1] || '';
@@ -286,10 +287,10 @@ async function createApp({database = createMemoryDatabase(), seed = 12345} = {})
   });
   document.baseURI = 'https://isolated.test/';
   for (const file of ['logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'assets/melodic-recordings.js']) {
-    vm.runInContext(readSource(file), context, {filename: file});
+    vm.runInContext(source(file), context, {filename: file});
   }
-  const ready = vm.runInContext(readSource('app.js'), context, {filename: 'app.js'});
-  for (const file of ['sight.js', 'staff-interval.js']) vm.runInContext(readSource(file), context, {filename: file});
+  const ready = vm.runInContext(source('app.js'), context, {filename: 'app.js'});
+  for (const file of ['sight.js', 'staff-interval.js']) vm.runInContext(source(file), context, {filename: file});
   await ready;
   const settle = async () => {
     await new Promise(setImmediate);

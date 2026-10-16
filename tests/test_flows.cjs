@@ -47,7 +47,7 @@ for (const [mode, label] of [['harmonic', '和声'], ['melodic', '旋律'], ['st
     const app = await createApp({database: seededDatabase()});
     const before = await app.backup();
     await app.click('home-stats'); await app.click('stats-sight'); await app.click('stats-' + mode);
-    assert(!app.get('stats-dialog').classList.contains('sight-stats-active'));
+    assert.equal(app.get('stats-performance-title').textContent, '各音程表现');
     await app.click('clear-review');
     const after = await app.backup();
     for (const category of ['harmonic', 'melodic', 'staff']) {

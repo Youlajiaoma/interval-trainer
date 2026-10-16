@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="sight.css">
+  <link rel="stylesheet" href="sight.css?v=2.18.4">
 </head>
 <body>
   <div class="app-shell">
@@ -180,14 +180,13 @@
           <button id="stats-sight" type="button" aria-pressed="false">音符辨认</button>
           <button id="stats-staff" type="button" aria-pressed="false">音程辨认</button>
         </nav>
-        <div class="sight-stats-content hidden" id="sight-stats-content"></div>
         <div class="stats-intro"><div><h3>练习概览</h3></div>
         <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
         <div id="stats-summary" class="stats-summary-grid"></div>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3></div><div id="stats-trend"></div></section>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>练习日历</h3></div><div id="stats-calendar"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>各音程表现</h3></div><div id="stats-intervals"></div></section>
-        <section class="stats-panel"><div class="stats-panel-heading"><h3>易混淆音程</h3></div><div id="stats-confusions"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3 id="stats-performance-title">各音程表现</h3></div><div id="stats-intervals"></div></section>
+        <section class="stats-panel"><div class="stats-panel-heading"><h3 id="stats-confusions-title">易混淆音程</h3></div><div id="stats-confusions"></div></section>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>自动针对性复习</h3></div><div id="stats-review-plan"></div></section>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>最近答题</h3></div><div id="stats-history"></div></section>
         <details class="stats-data-details"><summary>数据备份与管理</summary>
@@ -205,12 +204,12 @@
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
   <script src="review.js"></script>
-  <script src="statistics.js"></script>
+  <script src="statistics.js?v=2.18.4"></script>
   <script src="audio.js"></script>
   <script src="storage.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=2.18.4"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js"></script>
+  <script src="sight.js?v=2.18.4"></script>
   <script src="staff-interval.js"></script>
   <script src="pwa-register.js"></script>
 </body>

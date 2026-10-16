@@ -27,7 +27,6 @@ function databaseFor(clef = 'treble', notifications = false) {
 
 const read = (database, key) => JSON.parse(database.records.get(key));
 const summary = app => app.get('stats-summary').children[0].children[0].children[1].textContent;
-const sightSummary = app => app.get('sight-stats-content').children[0].children[0].children[1].textContent;
 const manager = app => app.window.IntervalReview.createReviewManager(app.storage, keys.harmonic);
 
 function clickAnswer(app, container, answer) {
@@ -177,13 +176,12 @@ for (const sight of [false, true]) {
     const writer = await openApp(t, {database});
     await watcher.click('home-stats');
     if (sight) await watcher.click('stats-sight');
-    const count = sight ? sightSummary : summary;
-    assert.equal(count(watcher), '0');
+    assert.equal(summary(watcher), '0');
     await writer.click(sight ? 'home-sight' : 'home-harmonic');
     await writer.answer(sight ? 'sight-keys' : 'answer-grid', sight ? 0 : 4);
     if (sight) await writer.advance(500);
     await watcher.settle();
-    assert.equal(count(watcher), '1');
+    assert.equal(summary(watcher), '1');
     assert(watcher.get('stats-dialog').open);
   });
 }
@@ -223,7 +221,7 @@ test('没有窗口通知时，从每个练习的设置打开统计都能读取�
     assert.equal(JSON.parse(watcher.storage.getItem(exercise.key) || '{}').totalAnswers ?? 0, 0);
     await watcher.click('open-settings');
     await watcher.click(exercise.key === keys.staff ? 'staff-open-stats' : exercise.clef ? 'sight-open-stats' : 'open-stats');
-    assert.equal((exercise.clef ? sightSummary : summary)(watcher), '1', exercise.name);
+    assert.equal(summary(watcher), '1', exercise.name);
   }
 });
 

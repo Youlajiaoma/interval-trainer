@@ -52,7 +52,7 @@ test('统计全部十六种切换路径中，清空与日期选择始终作用�
     for (const mode of modes) assert.equal(app.get('stats-'+mode).getAttribute('aria-pressed'), String(mode === to));
     app.get('stats-period').value = '7';
     app.get('stats-period').dispatchEvent({type:'change'}); await app.settle();
-    assert.equal(app.get('stats-dialog').classList.contains('sight-stats-active'), to === 'sight');
+    assert.equal(app.get('stats-performance-title').textContent, to === 'sight' ? '各音符表现' : '各音程表现');
     await app.click('clear-review');
     const after = await app.backup();
     for (const [mode, field] of [['harmonic','harmonic'],['melodic','melodic'],['sight','sight'],['staff','staffInterval']]) {

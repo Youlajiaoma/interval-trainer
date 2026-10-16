@@ -5,6 +5,7 @@
   const names=['纯一度','小二度','大二度','小三度','大三度','纯四度','三全音','纯五度','小六度','大六度','小七度','大七度','纯八度'];
   const fmtPct=(correct,total)=>total?Math.round(100*correct/total)+'%':'—';
   const safeDate=(s)=>s.slice(5).replace('-','/');
+  const label=(s,unit,clef)=>s.label?s.label(unit,clef):names[unit];
   function create(tag,cls,text) {
     const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;
   }
@@ -63,7 +64,6 @@
     replace('stats-trend',wrap);
   }
   function renderCalendar(s,now){
-    const lookup=new Map(s.trend.map(d=>[d.day,d]));
     // 和日期范围筛选无关的固定最近 49 天会交由 render 获取 fullLast49 数据。
     const days=s.last49;
     const wrap=create('div','stats-calendar-wrap');
@@ -84,10 +84,10 @@
     const wrap=create('div','stats-interval-list');
     const observed=(s.directional?s.byDirection:s.byInterval).filter(i=>i.answered>0).sort((a,b)=>
       a.correct/a.answered-b.correct/b.answered || b.answered-a.answered);
-    if(!observed.length){replace('stats-intervals',empty('练习后这里会显示各音程的正确率。'));return;}
+    if(!observed.length){replace('stats-intervals',empty(`练习后这里会显示各${s.unit||'音程'}的正确率。`));return;}
     for(const row of observed){
       const item=create('div','stats-interval-row');
-      item.append(create('span','stats-interval-name',`${row.direction===1?'↑ ':row.direction===-1?'↓ ':''}${names[row.semi]}`));
+      item.append(create('span','stats-interval-name',`${row.direction===1?'↑ ':row.direction===-1?'↓ ':''}${label(s,row.semi,row.clef)}`));
       const track=create('div','stats-interval-track'),fill=create('span','stats-interval-fill');
       fill.style.width=(100*row.correct/row.answered).toFixed(2)+'%';track.append(fill);item.append(track);
       item.append(create('span','stats-interval-value',`${fmtPct(row.correct,row.answered)}  ·  ${row.correct}/${row.answered}`));wrap.append(item);
@@ -99,18 +99,19 @@
     if(!rows.length){replace('stats-confusions',empty('目前没有误判记录。'));return;}
     const wrap=create('div','stats-confusion-list');
     for(const r of rows){const line=create('div','stats-confusion-row');
-      line.append(create('span','',`${r.direction===1?'↑ ':r.direction===-1?'↓ ':''}${names[r.actual]} → ${names[r.chosen]}`),create('strong','',`${r.count} 次`));wrap.append(line);
+      line.append(create('span','',`${r.direction===1?'↑ ':r.direction===-1?'↓ ':''}${label(s,r.actual,r.clef)} → ${label(s,r.chosen,r.clef)}`),create('strong','',`${r.count} 次`));wrap.append(line);
     }replace('stats-confusions',wrap);
   }
   function renderPlan(s){
     const wrap=create('div','stats-plan');
     const focus=s.yesterdayWrong;
+    const unit=s.unit||'音程';
     if(focus.length){
-      wrap.append(create('p','',`昨日答错 ${focus.length} 种音程，今天将自动提高这些音程的出题优先级：`));
+      wrap.append(create('p','',`昨日答错 ${focus.length} 种${unit}，今天将自动提高这些${unit}的出题优先级：`));
       const group=create('div','stats-focus-tags');
-      for(const i of focus.sort((a,b)=>b.wrong-a.wrong))group.append(create('span','',`${i.direction===1?'↑ ':i.direction===-1?'↓ ':''}${names[i.semi]} · 错 ${i.wrong} 题`));wrap.append(group);
+      for(const i of focus.sort((a,b)=>b.wrong-a.wrong))group.append(create('span','',`${i.direction===1?'↑ ':i.direction===-1?'↓ ':''}${label(s,i.semi,i.clef)} · 错 ${i.wrong} 题`));wrap.append(group);
     }else wrap.append(create('p','','昨日没有需要重点补练的错题；继续正常练习，系统会结合到期和历史误判调整题目比例。'));
-    wrap.append(create('p','stats-plan-secondary',`当前有 ${s.due} 种音程到期待巩固。答错后也会在间隔其他题目后再次出现，不会让同一音程无休止地连续重复。`));
+    wrap.append(create('p','stats-plan-secondary',`当前有 ${s.due} 种${unit}到期待巩固。答错后也会在间隔其他题目后再次出现，不会让同一${unit}无休止地连续重复。`));
     replace('stats-review-plan',wrap);
   }
   function renderHistory(s){
@@ -122,28 +123,33 @@
       line.append(create('span','stats-history-at',new Date(h.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})));
       const dir = h.direction === 1 ? '↑ ' : h.direction === -1 ? '↓ ' : '';
       const timbre = ({piano:'钢琴',violin:'小提琴',guitar:'吉他',sax:'萨克斯',flute:'长笛'})[h.timbre] || '';
-      const label = h.revealed ? `${names[h.actual]} · 显示答案` : (correct ? names[h.actual] : `${names[h.actual]} → ${names[h.chosen]}`);
-      line.append(create('span','stats-history-names',`${dir}${label}${timbre ? ' · '+timbre : ''}`));
+      const actual=label(s,h.actual,h.clef),chosen=label(s,h.chosen,h.clef);
+      const text = h.revealed ? `${actual} · 显示答案` : (correct ? actual : `${actual} → ${chosen}`);
+      line.append(create('span','stats-history-names',`${dir}${text}${timbre ? ' · '+timbre : ''}`));
       line.append(create('span',correct?'stats-history-ok':'stats-history-bad',correct?'正确':'错误'));
       wrap.append(line);
     }
     replace('stats-history',wrap);
   }
-  function init(getReview,getEnabled,onPeriodChange){
+  function readReview(review,enabled,period,now){
+    const s=review.statistics(period,now),current=review.analysis(enabled,now);
+    return {...s,last49:review.statistics(49,now).trend,yesterdayWrong:current.yesterdayWrong,
+      due:current.due.length,storageAvailable:review.storageAvailable};
+  }
+  function init(getStatistics){
     const select=$('stats-period');
     function render(){
-      const review=getReview();
+      // A page kept open across updates can retain the former note-only hiding class.
+      $('stats-dialog').classList.remove('sight-stats-active');
       const now=Date.now();const value=select.value;
-      const s=review.statistics(value==='all'?'all':Number(value),now);
-      s.last49=review.statistics(49,now).trend;
-      const current=review.analysis(getEnabled(),now);
-      s.yesterdayWrong=current.yesterdayWrong;
-      s.due=current.due.length;
+      const s=getStatistics(value==='all'?'all':Number(value),now);
+      $('stats-performance-title').textContent=`各${s.unit||'音程'}表现`;
+      $('stats-confusions-title').textContent=`易混淆${s.unit||'音程'}`;
       renderSummary(s);renderTrend(s);renderCalendar(s,now);renderIntervals(s);renderConfusions(s);renderPlan(s);renderHistory(s);
-      const warn=$('stats-storage-warning');warn.textContent=review.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
+      const warn=$('stats-storage-warning');warn.textContent=s.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
     }
-    select.addEventListener('change',onPeriodChange || render);
+    select.addEventListener('change',render);
     return {render};
   }
-  root.IntervalStats=Object.freeze({init});
+  root.IntervalStats=Object.freeze({init,readReview});
 })(typeof window!=='undefined'?window:globalThis);

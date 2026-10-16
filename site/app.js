@@ -287,19 +287,18 @@
     const selected = () => modules.get(modules.statisticsMode);
     const statsDialog = $('stats-dialog');
     function renderStatistics() {
-      const sight = modules.statisticsMode === 'sight';
-      statsDialog.classList.toggle('sight-stats-active', sight);
-      $('sight-stats-content').classList.toggle('hidden', !sight);
       for (const module of modules.list) {
         const active = module.id === modules.statisticsMode;
         $(module.statsId).classList.toggle('active', active);
         $(module.statsId).setAttribute('aria-pressed', String(active));
       }
-      if (selected().renderStatistics) selected().renderStatistics();
-      else statsUi.render();
+      statsUi.render();
     }
-    statsUi = window.IntervalStats.init(
-      () => selected().reviewManager(), () => selected().enabled(), renderStatistics);
+    statsUi = window.IntervalStats.init((period,now) => {
+      const module=selected();
+      return module.statistics?module.statistics(period,now):
+        window.IntervalStats.readReview(module.reviewManager(),module.enabled(),period,now);
+    });
     modules.configureStatistics(activeMode, open => {
       renderStatistics();
       if (open) {

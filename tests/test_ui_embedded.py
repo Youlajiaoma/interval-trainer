@@ -5,6 +5,8 @@ import tempfile
 import os
 root=Path(__file__).resolve().parents[1]/'site'
 src=(root/'index.html').read_text(encoding='utf-8')
+# Inline the current files even when the production page versions its resource URLs.
+src=re.sub(r'((?:src|href)="[^"?]+)\?v=[^"]*"', r'\1"', src)
 src=src.replace('<link rel="stylesheet" href="styles.css">','<style>'+(root/'styles.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sight.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="manifest" href="manifest.webmanifest">','')
