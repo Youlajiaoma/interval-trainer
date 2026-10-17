@@ -1,9 +1,9 @@
-/* The shared statistics markup and scripts must update together. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.18.4';
+/* Refresh the shared statistics stylesheet together with its page reference. */
+const CACHE_NAME = 'interval-trainer-pwa-v2.18.5';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './','./index.html','./styles.css','./sight.css?v=2.18.4','./logic.js','./modules.js',
+  './','./index.html','./styles.css?v=2.18.5','./sight.css?v=2.18.4','./logic.js','./modules.js',
   './review.js','./statistics.js?v=2.18.4','./audio.js','./storage.js','./app.js?v=2.18.4','./sight.js?v=2.18.4','./staff-interval.js','./vendor/vexflow-loader.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
