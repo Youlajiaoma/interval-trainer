@@ -23,7 +23,7 @@ async function changedBackup(app) {
   backup.melodic = reviewStore({actual: 7, chosen: 6, directional: true, count: 3});
   backup.sight.treble = reviewStore({actual: 62, chosen: 61, maxIndex: 62, count: 2});
   backup.sight.bass = reviewStore({actual: 61, chosen: 62, maxIndex: 62, count: 3});
-  backup.sight.settings = {clef: 'bass', accidentals: true};
+  backup.sight.settings = {clef: 'bass', accidentals: true, rangeBelow: 3, rangeAbove: 3};
   backup.staffInterval.review = reviewStore({actual: 8, chosen: 7, count: 4});
   return backup;
 }

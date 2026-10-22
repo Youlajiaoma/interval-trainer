@@ -1,10 +1,10 @@
 /* Refresh the shared statistics stylesheet together with its page reference. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.18.6';
+const CACHE_NAME = 'interval-trainer-pwa-v2.18.7';
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './','./index.html','./styles.css?v=2.18.6','./sight.css?v=2.18.6','./logic.js','./modules.js',
-  './review.js?v=2.18.6','./statistics.js?v=2.18.6','./audio.js','./storage.js','./app.js?v=2.18.6','./sight.js?v=2.18.6','./staff-interval.js','./vendor/vexflow-loader.js',
+  './','./index.html','./styles.css?v=2.18.7','./sight.css?v=2.18.7','./logic.js','./modules.js',
+  './review.js?v=2.18.7','./statistics.js?v=2.18.7','./audio.js','./storage.js','./app.js?v=2.18.7','./sight.js?v=2.18.7','./staff-interval.js','./vendor/vexflow-loader.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',

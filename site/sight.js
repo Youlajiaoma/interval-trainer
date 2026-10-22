@@ -12,6 +12,7 @@ const POOLS={
  treble:[...Array.from({length:21},(_,i)=>24+i)],
  bass:[...Array.from({length:21},(_,i)=>12+i)]
 };
+const STAFF_LINES={treble:{bottom:30,top:38},bass:{bottom:18,top:26}};
 const SEMI=SEMITONES;
 const ACCIDENTALS={0:'',1:'#',2:'b'};
 const PITCH_SIGN={0:'',1:'♯',2:'♭'};
@@ -33,7 +34,8 @@ function reviewLabel(clef,unit){
  return pitchLabel(clef,di)+PITCH_SIGN[alter];
 }
 function candidateReviewUnits(clef,include=Boolean(settings.accidentals)){
- return POOLS[clef].flatMap((index,di)=>accidentalPossibilities(letterFromIndex(index),include).map(alter=>di*3+alter));
+ const {bottom,top}=STAFF_LINES[clef],min=bottom-2*settings.rangeBelow,max=top+2*settings.rangeAbove;
+ return POOLS[clef].flatMap((index,di)=>index<min||index>max?[]:accidentalPossibilities(letterFromIndex(index),include).map(alter=>di*3+alter));
 }
 function recordChosenUnit(note,chosenSemi){
  const actual=reviewUnit(note);
@@ -44,7 +46,7 @@ function recordChosenUnit(note,chosenSemi){
  return result.length?result[0]:(actual===0?1:0);
 }
 
-let storage, review, settings={clef:'both',accidentals:false}, session=null, active=false, busy=false;
+let storage, review, settings={clef:'both',accidentals:false,rangeBelow:3,rangeAbove:3}, session=null, active=false, busy=false;
 let initialized=false, pendingTimer=null, flashTimer=null, flashingIndex=-1;
 let drawing=0, lastLayoutWidth=0, resizeTimer=null;
 const engravings=new Map();
@@ -483,7 +485,7 @@ function clearHistory(){
  review.treble.reset();review.bass.reset();
 }
 function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); modules.showStatistics(definition.id); }
-function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
+function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); $('sight-range-below').value=String(settings.rangeBelow); $('sight-range-above').value=String(settings.rangeAbove); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
@@ -491,7 +493,12 @@ function enter(){
  $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent=definition.name; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
 function leave(){ if(!active)return; active=false; audio.stop(); document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); window.scrollTo(0,0); }
-function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals)}};}
+function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals),rangeBelow:settings.rangeBelow,rangeAbove:settings.rangeAbove}};}
+function normalizedSettings(value){
+ const count=n=>Number.isInteger(n)&&n>=0&&n<=3?n:3;
+ return {clef:['treble','bass','both'].includes(value?.clef)?value.clef:'both',accidentals:value?.accidentals===true,
+  rangeBelow:count(value?.rangeBelow),rangeAbove:count(value?.rangeAbove)};
+}
 function convertReviewRange(clef,old){
  if(!old||old.cardRange===63)return old;
  const oldStart=OLD_POOL_START[clef], offset=oldStart-POOLS[clef][0];
@@ -520,8 +527,7 @@ function backupEntries(obj){
  if(obj.version!==3||!obj[definition.backupField])return [];
  const snapshot=obj[definition.backupField];
  const treble=normalizeReview('treble',snapshot.treble),bass=normalizeReview('bass',snapshot.bass);
- const config=snapshot.settings&&['treble','bass','both'].includes(snapshot.settings.clef)?
-  {clef:snapshot.settings.clef,accidentals:snapshot.settings.accidentals===true}:{clef:'both',accidentals:false};
+ const config=normalizedSettings(snapshot.settings);
  return [[TREBLE_KEY,JSON.stringify(treble)],[BASS_KEY,JSON.stringify(bass)],[SETTINGS_KEY,JSON.stringify(config)]];
 }
 function migrateReviewRange(clef,key){
@@ -536,9 +542,11 @@ function init(){
  migrateReviewRange('treble',TREBLE_KEY); migrateReviewRange('bass',BASS_KEY);
  review={treble:root.IntervalReview.createReviewManager(storage,TREBLE_KEY,{maxIndex:REVIEW_MAX,responseSensitive:true}),
          bass:root.IntervalReview.createReviewManager(storage,BASS_KEY,{maxIndex:REVIEW_MAX,responseSensitive:true})};
- const existing=getJson(SETTINGS_KEY); if(['treble','bass','both'].includes(existing?.clef))settings.clef=existing.clef; settings.accidentals=existing?.accidentals===true;
+ settings=normalizedSettings(getJson(SETTINGS_KEY));
  session=validatedSession(getJson(SESSION_KEY));
  $('sight-accidentals').addEventListener('change',e=>{settings.accidentals=e.target.checked;save(SETTINGS_KEY,settings);});
+ $('sight-range-below').addEventListener('change',e=>{settings.rangeBelow=normalizedSettings({...settings,rangeBelow:Number(e.target.value)}).rangeBelow;save(SETTINGS_KEY,settings);});
+ $('sight-range-above').addEventListener('change',e=>{settings.rangeAbove=normalizedSettings({...settings,rangeAbove:Number(e.target.value)}).rangeAbove;save(SETTINGS_KEY,settings);});
  $('sight-reveal').addEventListener('click',()=>answer(null,true));
  $('sight-next-set').addEventListener('click',()=>{makeGroup();render();});
  $('sight-close-settings').addEventListener('click',()=>$('sight-settings-dialog').close());
