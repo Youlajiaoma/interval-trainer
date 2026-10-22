@@ -39,6 +39,8 @@ with sync_playwright() as pw:
     page.on('pageerror',lambda x:errors.append(str(x)))
     page.set_content(src,wait_until='domcontentloaded',timeout=40000)
     page.wait_for_function('window.IntervalAppReady === true',timeout=15000)
+    assert page.evaluate('getComputedStyle(document.body).userSelect')=='none'
+    assert page.evaluate('getComputedStyle(document.querySelector("#home-title")).userSelect')=='none'
     page.locator('#home-harmonic').click()
     assert page.locator('#answer-grid button').count()==13
     assert page.locator('#practice .audio-toolbar').count()==1
