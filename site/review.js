@@ -22,7 +22,7 @@
     directionalInitialized:false, directionalCards:{}, directionalDaily:{}});
   const directionKey = (semi, direction) => `${semi}:${direction === 1 ? 'up' : 'down'}`;
   const validDirectionKey = key => /^(?:[0-9]|1[0-2]):(?:up|down)$/.test(key);
-  const blankCard = () => ({attempts:0,correct:0,wrong:0,repetitions:0,intervalDays:0,ease:2.5,dueAt:0,lastAt:0,pendingAfter:null,streak:0});
+  const blankCard = () => ({attempts:0,correct:0,wrong:0,repetitions:0,intervalDays:0,ease:2.5,dueAt:0,lastAt:0,pendingAfter:null,streak:0,responseTotal:0,responseCount:0});
   function schedule(card, correct, hinted, now, position) {
     card.attempts++;card.lastAt=now;
     if(correct){card.correct++;card.streak++;}else{card.wrong++;card.streak=0;}
@@ -40,7 +40,12 @@
       intervalDays:num(c.intervalDays,0,3650),ease:num(c.ease,1.3,3.5,2.5),
       dueAt:num(c.dueAt,0,8640000000000000),lastAt:num(c.lastAt,0,8640000000000000),
       pendingAfter:Number.isFinite(c.pendingAfter)?num(c.pendingAfter,0,10000000):null,
-      streak:num(c.streak,0,100000)};
+      streak:num(c.streak,0,100000),responseTotal:num(c.responseTotal,0,3.6e12),responseCount:num(c.responseCount,0,1000000)};
+  }
+  function recordResponseTime(card, responseMs) {
+    if (!Number.isFinite(responseMs)) return;
+    card.responseTotal = Math.min(3.6e12, card.responseTotal + num(responseMs, 0, 3600000));
+    card.responseCount = Math.min(1000000, card.responseCount + 1);
   }
   function addDirectionalDay(store, at, key, correct) {
     const day=dayKey(at);
@@ -130,7 +135,7 @@
     try { const key = STORAGE_KEY + '-test'; storage.setItem(key, '1'); storage.removeItem(key); return true; }
     catch { return false; }
   }
-  function createReviewManager(storage, key = STORAGE_KEY, {directional = false, maxIndex = 12} = {}) {
+  function createReviewManager(storage, key = STORAGE_KEY, {directional = false, maxIndex = 12, responseSensitive = false} = {}) {
     const isValid = n => Number.isInteger(n) && n >= 0 && n <= maxIndex;
     let available = storageAvailable(storage);
     let data = newStore(); data.cardRange = maxIndex+1;
@@ -196,10 +201,12 @@
       if (!isValid(actual) || !(isValid(chosen) || (revealed && chosen === null))) throw Error('无效的音程');
       if(directional && direction!==1 && direction!==-1)throw Error('旋律音程缺少方向');
       now=num(now,0,8640000000000000);
+      const ms=Number.isFinite(responseMs)?num(responseMs,0,3600000):null;
       const correct=!revealed && actual===chosen;
       mutate(data => {
         data.totalAnswers++;
         const c=schedule(data.cards[actual]||blankCard(),correct,hinted,now,data.totalAnswers);
+        if(responseSensitive)recordResponseTime(c,ms);
         data.cards[actual]=c;
         // "Show answer" is a wrong attempt but not a confusion with another interval.
         if(!correct && isValid(chosen)) {
@@ -211,7 +218,6 @@
           data.directionalCards[dk]=schedule(data.directionalCards[dk]||blankCard(),correct,hinted,now,data.totalAnswers);
           addDirectionalDay(data.directionalDaily,now,dk,correct);
         }
-        const ms=Number.isFinite(responseMs)?num(responseMs,0,3600000):null;
         data.history.push({at:now,actual,chosen,revealed:!!revealed,hinted:!!hinted,low,high,
           responseMs:ms,direction,firstMode,timbre});
         if(data.history.length>MAX_HISTORY)data.history.splice(0,data.history.length-MAX_HISTORY);
@@ -228,12 +234,22 @@
         d.skipped++; data.daily[today] = d;
       });
     }
-    function weightedChoice(choices, weighting, random) {
+    function weightedChoice(choices, weighting, random, uniformShare = 0) {
       const weights = choices.map(s => Math.max(.001, weighting(s)));
       const total = weights.reduce((a,b) => a+b,0);
-      let v = Math.max(0, Math.min(.99999999, random())) * total;
+      const sample=Math.max(0, Math.min(.99999999, random()));
+      if(uniformShare>0&&sample<uniformShare){
+        return choices[Math.min(choices.length-1,Math.floor(sample/uniformShare*choices.length))];
+      }
+      let v = (uniformShare>0?(sample-uniformShare)/(1-uniformShare):sample) * total;
       for (let i=0;i<choices.length;i++) { v -= weights[i]; if (v < 0) return choices[i]; }
       return choices[choices.length-1];
+    }
+    function responseWeight(card) {
+      if (!responseSensitive || !card || !card.responseCount) return 1;
+      const averageMs=card.responseTotal/card.responseCount;
+      // Longer answers gain weight gradually; every note keeps a base weight of 1.
+      return 1+Math.log1p(averageMs/1000);
     }
     function choose(eligible, previous = null, {now = Date.now(), random = Math.random} = {}) {
       sync();
@@ -255,13 +271,13 @@
       });
       const todayAnswers=directional?Object.values(today.intervals).reduce((n,v)=>n+v.answered,0):today.answered;
       if(focus.length&&(todayAnswers===0||random()<.42)) {
-        return weightedChoice(focus,k=>{const v=yesterday.intervals[k];return 1+2*(v.answered-v.correct)/v.answered;},random);
+        return weightedChoice(focus,k=>{const v=yesterday.intervals[k];return (1+2*(v.answered-v.correct)/v.answered)*responseWeight(cards[k]);},random,responseSensitive ? .2 : 0);
       }
       return weightedChoice(choices,k=>{
         const c=cards[k];if(!c)return 1;
-        return 1+2*c.wrong/Math.max(1,c.attempts)+(c.dueAt&&c.dueAt<=now?5:0)+
-          (c.pendingAfter!==null&&c.pendingAfter!==undefined&&data.totalAnswers>=c.pendingAfter?12:0);
-      },random);
+        return (1+2*c.wrong/Math.max(1,c.attempts)+(c.dueAt&&c.dueAt<=now?5:0)+
+          (c.pendingAfter!==null&&c.pendingAfter!==undefined&&data.totalAnswers>=c.pendingAfter?12:0))*responseWeight(c);
+      },random,responseSensitive ? .2 : 0);
     }
     function analysis(enabled = Array.from({length:maxIndex+1},(_,i)=>i), now=Date.now()) {
       sync();

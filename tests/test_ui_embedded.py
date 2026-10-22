@@ -50,7 +50,7 @@ with sync_playwright() as pw:
     page.locator('#open-settings').click();page.locator('#open-stats').click()
     assert page.locator('#stats-dialog').is_visible()
     assert page.locator('#stats-summary .stats-kpi').count()==4
-    assert page.locator('#stats-history .stats-history-row').count()==1
+    assert page.locator('#stats-history, #stats-review-plan').count()==0
     assert 'IndexedDB' in page.locator('#stats-storage-warning').text_content()
     page.screenshot(path=str(screenshots/f'{kind}-stats.png'))
     page.locator('#stats-period').select_option('7')

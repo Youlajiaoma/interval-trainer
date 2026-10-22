@@ -117,7 +117,7 @@ const site=path.join(__dirname,'../site');
    if(await page.locator('#stats-performance-title').textContent()!=='各音符表现')throw Error('note statistics title');
    const noteText=await page.locator('#stats-intervals').textContent();
    if(!noteText.includes('高音谱号')||!noteText.includes('低音谱号'))throw Error('clef breakdown missing');
-   if(!await page.locator('#stats-history').isVisible()||!await page.locator('#stats-review-plan').isVisible())throw Error('shared statistics panels hidden');
+   if(await page.locator('#stats-history, #stats-review-plan').count())throw Error('internal review details must stay out of statistics UI');
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||document.querySelector('.stats-content').scrollWidth>document.querySelector('.stats-content').clientWidth+1))throw Error('note statistics horizontal overflow at '+width);
   }
   for(const mode of ['harmonic','melodic','staff','sight']){

@@ -102,35 +102,6 @@
       line.append(create('span','',`${r.direction===1?'↑ ':r.direction===-1?'↓ ':''}${label(s,r.actual,r.clef)} → ${label(s,r.chosen,r.clef)}`),create('strong','',`${r.count} 次`));wrap.append(line);
     }replace('stats-confusions',wrap);
   }
-  function renderPlan(s){
-    const wrap=create('div','stats-plan');
-    const focus=s.yesterdayWrong;
-    const unit=s.unit||'音程';
-    if(focus.length){
-      wrap.append(create('p','',`昨日答错 ${focus.length} 种${unit}，今天将自动提高这些${unit}的出题优先级：`));
-      const group=create('div','stats-focus-tags');
-      for(const i of focus.sort((a,b)=>b.wrong-a.wrong))group.append(create('span','',`${i.direction===1?'↑ ':i.direction===-1?'↓ ':''}${label(s,i.semi,i.clef)} · 错 ${i.wrong} 题`));wrap.append(group);
-    }else wrap.append(create('p','','昨日没有需要重点补练的错题；继续正常练习，系统会结合到期和历史误判调整题目比例。'));
-    wrap.append(create('p','stats-plan-secondary',`当前有 ${s.due} 种${unit}到期待巩固。答错后也会在间隔其他题目后再次出现，不会让同一${unit}无休止地连续重复。`));
-    replace('stats-review-plan',wrap);
-  }
-  function renderHistory(s){
-    if(!s.history.length){replace('stats-history',empty('还没有作答记录。'));return;}
-    const wrap=create('div','stats-history-list');
-    for(const h of s.history.slice(0,25)){
-      const correct=!h.revealed&&h.actual===h.chosen;
-      const line=create('div','stats-history-row');
-      line.append(create('span','stats-history-at',new Date(h.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})));
-      const dir = h.direction === 1 ? '↑ ' : h.direction === -1 ? '↓ ' : '';
-      const timbre = ({piano:'钢琴',violin:'小提琴',guitar:'吉他',sax:'萨克斯',flute:'长笛'})[h.timbre] || '';
-      const actual=label(s,h.actual,h.clef),chosen=label(s,h.chosen,h.clef);
-      const text = h.revealed ? `${actual} · 显示答案` : (correct ? actual : `${actual} → ${chosen}`);
-      line.append(create('span','stats-history-names',`${dir}${text}${timbre ? ' · '+timbre : ''}`));
-      line.append(create('span',correct?'stats-history-ok':'stats-history-bad',correct?'正确':'错误'));
-      wrap.append(line);
-    }
-    replace('stats-history',wrap);
-  }
   function readReview(review,enabled,period,now){
     const s=review.statistics(period,now),current=review.analysis(enabled,now);
     return {...s,last49:review.statistics(49,now).trend,yesterdayWrong:current.yesterdayWrong,
@@ -145,7 +116,7 @@
       const s=getStatistics(value==='all'?'all':Number(value),now);
       $('stats-performance-title').textContent=`各${s.unit||'音程'}表现`;
       $('stats-confusions-title').textContent=`易混淆${s.unit||'音程'}`;
-      renderSummary(s);renderTrend(s);renderCalendar(s,now);renderIntervals(s);renderConfusions(s);renderPlan(s);renderHistory(s);
+      renderSummary(s);renderTrend(s);renderCalendar(s,now);renderIntervals(s);renderConfusions(s);
       const warn=$('stats-storage-warning');warn.textContent=s.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
     }
     select.addEventListener('change',render);

@@ -19,7 +19,9 @@ async function draw(t, clef, edits) {
   t.after(() => app.assertNoErrors());
   await app.click('home-sight');
   assert.equal(app.engraver.notes.length, 20);
-  assert.equal(database.records.get(keys.sightSession), saved, '绘制符号不能修改实际音高或练习进度');
+  const after = JSON.parse(database.records.get(keys.sightSession));
+  const stripTimer = item => ({...item, notes:item.notes.map(({questionStartedAt,responseMs,...note})=>note)});
+  assert.deepEqual(stripTimer(after), JSON.parse(saved), '绘制符号不能修改实际音高或练习进度');
   return app.engraver.notes;
 }
 

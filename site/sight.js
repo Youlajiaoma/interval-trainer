@@ -92,7 +92,8 @@ function makeGroup(){
   const chosen=getReview(clef).choose(eligible,previous===null?null:previous*3);
   const selected=chosen===null?eligible[random(eligible.length)]:chosen;
   const index=pool[Math.floor(selected/3)],alter=selected%3;
-  notes.push({clef,letter:letterFromIndex(index),index,alter,duration,result:null,mistakeChosen:null});
+  notes.push({clef,letter:letterFromIndex(index),index,alter,duration,result:null,mistakeChosen:null,
+    questionStartedAt:null,responseMs:null});
  }
  session={version:4,pos:0,notes,bars,startedAt:Date.now(),correct:0};
  engravings.clear();flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;}save(SESSION_KEY,session);
@@ -110,7 +111,9 @@ function validatedSession(x){
   const notes=x.notes.slice(bar.start,bar.end);
   if(notes.some(n=>!n||n.clef!==bar.clef||!POOLS[n.clef].includes(n.index)||
      n.letter!==letterFromIndex(n.index)||![0,1,2].includes(n.alter)||
-     ![.25,.5,1,1.5,2].includes(n.duration)))return null;
+     ![.25,.5,1,1.5,2].includes(n.duration)||
+     (n.questionStartedAt!==null&&n.questionStartedAt!==undefined&&!Number.isFinite(n.questionStartedAt))||
+     (n.responseMs!==null&&n.responseMs!==undefined&&(!Number.isFinite(n.responseMs)||n.responseMs<0))))return null;
   if(Math.abs(notes.reduce((v,n)=>v+n.duration,0)-4)>1e-8)return null;
   cursor=bar.end;
  }
@@ -374,6 +377,8 @@ function renderKeyboard(){
 function render(){
  if(!session)return;
  const finished=session.pos===20;
+ const note=currentNote();
+ if(note&&note.questionStartedAt==null){note.questionStartedAt=Date.now();save(SESSION_KEY,session);}
  $('sight-count').textContent=String(Math.min(20,session.pos+1)).padStart(2,'0');
  $('sight-correct').textContent=String(session.correct);
  $('sight-accuracy').textContent=session.pos?`${Math.round(session.correct/session.pos*100)}%`:'—';
@@ -394,10 +399,10 @@ function commitNote(outcome){
  if(outcome==='correct'){
    if(n.mistakeChosen===null){
      session.correct++;
-     getReview(n.clef).record({actual:actualIndex,chosen:actualIndex,revealed:false,hinted:false,low:0,high:0,responseMs:null});
+     getReview(n.clef).record({actual:actualIndex,chosen:actualIndex,revealed:false,hinted:false,low:0,high:0,responseMs:n.responseMs});
    } else {
      const chosenIndex=recordChosenUnit(n,n.mistakeChosen);
-     getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:false,hinted:false,low:0,high:0,responseMs:null});
+     getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:false,hinted:false,low:0,high:0,responseMs:n.responseMs});
    }
    n.mistakeChosen=null;
    flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;}
@@ -405,7 +410,7 @@ function commitNote(outcome){
  }
  if(outcome==='reveal'){
    const chosenIndex=n.mistakeChosen===null?null:recordChosenUnit(n,n.mistakeChosen);
-   getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:true,hinted:false,low:0,high:0,responseMs:null});
+   getReview(n.clef).record({actual:actualIndex,chosen:chosenIndex,revealed:true,hinted:false,low:0,high:0,responseMs:n.responseMs});
    n.mistakeChosen=null;
    flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;}
    session.pos++; save(SESSION_KEY,session);
@@ -416,6 +421,10 @@ function commitNote(outcome){
 function answer(chosen,revealed){
  if(busy||!active||!session||session.pos>=20)return;
  const n=currentNote(); if(!n)return;
+ if(n.responseMs===null||n.responseMs===undefined){
+  n.responseMs=Math.max(0,Math.min(3600000,Date.now()-(Number.isFinite(n.questionStartedAt)?n.questionStartedAt:Date.now())));
+  save(SESSION_KEY,session);
+ }
  if(revealed){
    busy=true;
    const keys=[...$('sight-keys').querySelectorAll('button')];
@@ -525,8 +534,8 @@ function init(){
  if(initialized)return;
  storage=root.IntervalPwaStorageAdapter;if(!storage)return;
  migrateReviewRange('treble',TREBLE_KEY); migrateReviewRange('bass',BASS_KEY);
- review={treble:root.IntervalReview.createReviewManager(storage,TREBLE_KEY,{maxIndex:REVIEW_MAX}),
-         bass:root.IntervalReview.createReviewManager(storage,BASS_KEY,{maxIndex:REVIEW_MAX})};
+ review={treble:root.IntervalReview.createReviewManager(storage,TREBLE_KEY,{maxIndex:REVIEW_MAX,responseSensitive:true}),
+         bass:root.IntervalReview.createReviewManager(storage,BASS_KEY,{maxIndex:REVIEW_MAX,responseSensitive:true})};
  const existing=getJson(SETTINGS_KEY); if(['treble','bass','both'].includes(existing?.clef))settings.clef=existing.clef; settings.accidentals=existing?.accidentals===true;
  session=validatedSession(getJson(SESSION_KEY));
  $('sight-accidentals').addEventListener('change',e=>{settings.accidentals=e.target.checked;save(SETTINGS_KEY,settings);});

@@ -1,6 +1,8 @@
 'use strict';
 
 const test = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 const assert = require('node:assert/strict');
 const {createApp, createMemoryDatabase} = require('./helpers/app-harness.cjs');
 const {keys, NOW} = require('./helpers/fixtures.cjs');
@@ -36,7 +38,6 @@ test('音符空记录使用共用概览、49 天日历和空状态，不显示�
   assert.equal(app.get('stats-calendar').children[0].children[0].children.length, 49);
   assert.match(app.get('stats-trend').textContent, /没有答题记录/);
   assert.match(app.get('stats-intervals').textContent, /各音符的正确率/);
-  assert.match(app.get('stats-review-plan').textContent, /0 种音符/);
   assert.match(app.get('stats-storage-warning').textContent, /IndexedDB/);
 });
 
@@ -79,7 +80,6 @@ test('音符近 7、30、90 天与全部时间同步筛选总数、表现、误�
     const s = view(app, range);
     assert.equal(s.byInterval.reduce((sum,row) => sum+row.answered,0), answered);
     assert.equal(s.confusions.reduce((sum,row) => sum+row.count,0), wrong);
-    assert.equal(app.get('stats-history').children[0].children.length, answered);
     const squares = app.get('stats-calendar').children[0].children[0].children;
     assert.equal(squares.length, 49);
     assert.equal(squares.filter(square => square.dataset.level !== '0').length, 5);
@@ -98,8 +98,6 @@ test('音符表现保留同位置三种升降形式的合计，误认和历史�
   const confused = app.get('stats-confusions').textContent;
   assert.match(confused, /高音谱号 · D4♭ → 高音谱号 · D4/);
   assert.match(confused, /低音谱号 · D4 → 低音谱号 · D4♯/);
-  assert.match(app.get('stats-history').textContent, /高音谱号 · D4♯/);
-  assert.match(app.get('stats-history').textContent, /低音谱号 · D4/);
 });
 
 test('音符昨日错题和到期复习按实际谱号与升降号设置显示，历史仍包含全部设置下的作答', async t => {
@@ -111,26 +109,10 @@ test('音符昨日错题和到期复习按实际谱号与升降号设置显示�
   const treble = await open(t, events, {clef:'treble', accidentals:false});
   assert.equal(view(treble).yesterdayWrong.length, 1);
   assert.equal(view(treble).due, 1);
-  assert.match(treble.get('stats-review-plan').textContent, /昨日答错 1 种音符/);
-  assert.match(treble.get('stats-review-plan').textContent, /高音谱号 · D4/);
-  assert(!treble.get('stats-review-plan').textContent.includes('低音谱号'));
   assert.equal(view(treble).history.length, 3);
   const both = await open(t, events, {clef:'both', accidentals:true});
   assert.equal(view(both).yesterdayWrong.length, 3);
   assert.equal(view(both).due, 3);
-  assert.match(both.get('stats-review-plan').textContent, /低音谱号 · D4/);
-});
-
-test('音符最近答题合并两个谱号后按时间排序，显示答案仍按错误显示且不成为误认组合', async t => {
-  const events = Array.from({length:30}, (_,i) => ({clef:i%2?'treble':'bass', actual:i%2?15:51,
-    at:NOW-i*1000, ...(i===0?{chosen:null,revealed:true}:{})}));
-  const app = await open(t, events);
-  const rows = app.get('stats-history').children[0].children;
-  assert.equal(rows.length, 25);
-  assert.match(rows[0].textContent, /低音谱号 · D4 · 显示答案错误/);
-  assert.match(rows[1].textContent, /高音谱号 · D4正确/);
-  assert.equal(view(app).confusions.length, 0);
-  assert.deepEqual(Array.from(view(app).history, h=>h.at), events.map(event=>event.at));
 });
 
 test('切换音符与其他三类统计后标题和内容更新，筛选、查看及重新载入都不修改保存数据', async t => {
@@ -165,9 +147,14 @@ test('共用统计仍保留另外三类的正确率、旋律上下行、乐器�
     if (mode === 'melodic') {
       assert.match(text, /↑ 纯五度0%  ·  0\/1/);
       assert.match(text, /↓ 纯五度100%  ·  1\/1/);
-      assert.match(app.get('stats-history').textContent, /↓ 纯五度 · 钢琴正确/);
       assert.match(app.get('stats-confusions').textContent, /↑ 纯五度 → 三全音/);
     } else assert.match(text, /纯五度50%  ·  1\/2/);
-    assert.match(app.get('stats-review-plan').textContent, /种音程/);
   }
+});
+
+
+test('Statistics UI hides review details and disables pinch zoom', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../site/index.html'), 'utf8');
+  assert.doesNotMatch(html, /id="stats-(?:review-plan|history)"/);
+  assert.match(html, /maximum-scale=1,user-scalable=no/);
 });
