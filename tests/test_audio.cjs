@@ -20,6 +20,7 @@ function environment() {
       const events = [], gain = {value:1,
         setValueAtTime: (...args) => events.push(['set', ...args]),
         linearRampToValueAtTime: (...args) => events.push(['ramp', ...args]),
+        cancelScheduledValues: (...args) => events.push(['cancel', ...args]),
         setTargetAtTime: (...args) => events.push(['target', ...args])};
       const node = {gain, events, connect(target) { this.target = target; }, disconnect() { this.disconnected = true; }};
       state.gains.push(node); return node;
@@ -99,15 +100,28 @@ test('统一播放保留起音、保持、收音和停止时刻，声音结束�
   assert(voice.disconnected && voice.target.disconnected);
 });
 
-test('停止一个模块只取消自己的声音，不影响其他模块的播放', async () => {
+test('停止播放时先平滑淡出当前声音，且不影响其他模块', async () => {
   const {state, channel} = environment(), a = channel(.52), b = channel(.43);
   const sample = await a.piano(60), envelope = {attack:.01,hold:.8,floor:.001,tail:.02};
-  a.tone(sample, 6, 1, .7, envelope); b.tone(sample, 6, 1, .6, envelope);
+  a.tone(sample, 4.8, 1, .7, envelope); b.tone(sample, 4.8, 1, .6, envelope);
   const token = a.token;
   a.stop();
   assert.notEqual(a.token, token);
   assert.equal(state.voices[0].stops.length, 2);
+  assert.equal(state.voices[0].stops[1], 5.012);
+  assert.deepEqual(state.voices[0].target.events.slice(-3), [['cancel',5],['set',.7,5],['ramp',0,5.012]]);
   assert.equal(state.voices[1].stops.length, 1);
+});
+
+test('正在播放的旋律录音也会淡出，短时间内重复停止不会重置淡出', async () => {
+  const {state, channel} = environment(), audio = channel(.52);
+  const buffer = await audio.recording('assets/tune.m4a');
+  audio.playRecording(buffer, 4.9);
+  const voice = state.voices[0];
+  audio.stop();
+  audio.stop();
+  assert.deepEqual(voice.target.events, [['cancel',5],['set',3,5],['ramp',0,5.012]]);
+  assert.deepEqual(voice.stops, [7.4,5.012]);
 });
 
 async function appFor(t, initial) {

@@ -51,7 +51,8 @@
   }
   function createChannel(level) {
     let master = null, generation = 0;
-    const voices = new Set();
+    const voices = new Map();
+    const stopFade = .012;
     function output() {
       const ctx = getContext();
       if (!master) { master = ctx.createGain(); master.gain.value = level; master.connect(ctx.destination); }
@@ -72,8 +73,19 @@
         voices.delete(source);
         try { source.disconnect(); volume.disconnect(); } catch {}
       };
-      voices.add(source);
+      voices.set(source, {volume, at, duration, gain, envelope, stopping:false});
       source.start(at); source.stop(at+duration+(envelope?.tail ?? 0));
+    }
+    function gainAt(voice, time) {
+      const {at, duration, gain, envelope} = voice;
+      if (!envelope) return gain;
+      if (time <= at) return 0;
+      if (time < at+envelope.attack) return gain*(time-at)/envelope.attack;
+      if (time < at+envelope.hold) return gain;
+      const releaseDuration = at+duration-(at+envelope.hold);
+      if (releaseDuration <= 0 || time >= at+duration) return envelope.floor;
+      const progress = (time-(at+envelope.hold))/releaseDuration;
+      return gain+(envelope.floor-gain)*progress;
     }
     return Object.freeze({
       ready, piano, recording,
@@ -84,8 +96,21 @@
       },
       stop() {
         generation++;
-        for (const voice of voices) try { voice.stop(); } catch {}
-        voices.clear();
+        if (!voices.size) return;
+        const now = getContext().currentTime, end = now+stopFade;
+        for (const [source, voice] of voices) {
+          if (voice.stopping) continue;
+          try {
+            const parameter = voice.volume.gain;
+            parameter.cancelScheduledValues(now);
+            parameter.setValueAtTime(gainAt(voice, now), now);
+            parameter.linearRampToValueAtTime(0, end);
+            source.stop(end);
+            voice.stopping = true;
+          } catch {
+            try { source.stop(); } catch {}
+          }
+        }
       },
       tone(sample, at, duration, gain, envelope) { start(sample, at, duration, gain, envelope); },
       playRecording(buffer, at, gain = 3) { start({buffer, rate:1}, at, buffer.duration, gain, null); }
