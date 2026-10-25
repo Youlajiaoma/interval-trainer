@@ -1,10 +1,11 @@
-/* Refresh application and recording assets as one release. */
-const CACHE_NAME = 'interval-trainer-pwa-v2.18.9';
+/* The shared version file supplies the app version and deployment build ID. */
+importScripts('./build-info.js');
+const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${self.TonaloomBuildInfo.build}`;
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './','./index.html','./styles.css?v=2.18.8','./sight.css?v=2.18.8','./logic.js','./modules.js',
-  './review.js?v=2.18.8','./statistics.js?v=2.18.8','./audio.js','./storage.js','./app.js?v=2.18.8','./sight.js?v=2.18.8','./staff-interval.js','./vendor/vexflow-loader.js',
+  './','./index.html','./styles.css?v=2.18.10','./sight.css?v=2.18.10','./logic.js','./modules.js',
+  './review.js?v=2.18.10','./statistics.js?v=2.18.10','./audio.js','./storage.js','./app.js?v=2.18.10','./vendor/vexflow-loader.js','./sight.js?v=2.18.10','./staff-interval.js','./build-info.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',

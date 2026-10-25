@@ -8,6 +8,14 @@ const vm = require('node:vm');
 const {readSource} = require('./helpers/app-harness.cjs');
 const site = path.resolve(__dirname, '../site');
 
+function serviceWorkerEnvironment() {
+  const worker = {registration:{scope:'https://isolated.test/'}, addEventListener(){}};
+  return {URL, self:worker, importScripts(file) {
+    assert.equal(file, './build-info.js');
+    vm.runInNewContext(readSource('build-info.js'), {self:worker});
+  }};
+}
+
 test('C2 至 C7 的 61 个钢琴采样键均有非空音频数据', () => {
   const context = {window: {}};
   vm.runInNewContext(readSource('assets/piano-samples.js'), context);
@@ -44,8 +52,29 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
   assert.equal(fs.readdirSync(path.join(site, 'assets/melodic-recordings')).filter(file => file.endsWith('.m4a')).length, 0);
 });
 
+test('页面显示版本和构建编号，版本值来自统一版本文件', () => {
+  const worker = {};
+  vm.runInNewContext(readSource('build-info.js'), {self:worker});
+  assert.equal(worker.TonaloomBuildInfo.version, '2.18.10');
+  assert.equal(worker.TonaloomBuildInfo.build, 'local');
+  const html = readSource('index.html');
+  assert.match(html, /id="app-version"/);
+  assert.match(html, /id="app-build"/);
+});
+
+test('主页版本标记能显示本地开发状态和发布构建编号', () => {
+  const elements = {'app-version':{textContent:''},'app-build':{textContent:''}};
+  const document = {getElementById:id => elements[id]};
+  const source = readSource('build-info.js');
+  vm.runInNewContext(source, {self:{}, document});
+  assert.equal(elements['app-version'].textContent, '2.18.10');
+  assert.equal(elements['app-build'].textContent, '本地开发版');
+  vm.runInNewContext(source.replace("build:'local'", "build:'abc1234'"), {self:{}, document});
+  assert.equal(elements['app-build'].textContent, '构建 abc1234');
+});
+
 test('网页引用的脚本与样式均列入离线清单，新增公共脚本可离线加载', () => {
-  const env = {URL, self:{registration:{scope:'https://isolated.test/'}, addEventListener() {}}};
+  const env = serviceWorkerEnvironment();
   const core = vm.runInNewContext(readSource('sw.js')+'; CORE_FILES', env);
   const urls = new Set(Array.from(core, file => new URL(file, 'https://isolated.test/').href));
   const html = readSource('index.html');
@@ -60,7 +89,7 @@ test('网页引用的脚本与样式均列入离线清单，新增公共脚本�
 });
 
 test('离线录音清单与实际出题录音完全对应，没有遗漏或重复', () => {
-  const env = {URL, self:{registration:{scope:'https://isolated.test/'}, addEventListener() {}}};
+  const env = serviceWorkerEnvironment();
   const files = Array.from(vm.runInNewContext(readSource('sw.js')+'; AUDIO_FILES', env));
   const context = {window:{}};
   vm.runInNewContext(readSource('assets/melodic-recordings.js'), context);

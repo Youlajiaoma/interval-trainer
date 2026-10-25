@@ -24,6 +24,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set deployed build ID
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          build_id = os.environ['BUILD_COMMIT'][:7]
+          path = Path('site/build-info.js')
+          source = path.read_text(encoding='utf-8')
+          marker = "build:'local'"
+          if source.count(marker) != 1:
+              raise SystemExit('Expected exactly one local build marker')
+          path.write_text(source.replace(marker, f"build:'{build_id}'"), encoding='utf-8')
+          PY
       - name: Bundle VexFlow for offline notation
         run: |
           mkdir -p site/vendor

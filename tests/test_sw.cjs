@@ -19,11 +19,15 @@ const cacheAPI={
  async keys(){return [...backend.keys()]},async delete(name){return backend.delete(name)}
 };
 const selfObj={registration:{scope:root},clients:{claim:async()=>{claims++}},addEventListener:(name,handler)=>{handlers[name]=handler},skipWaiting() {skipWaiting++}};
-const env={self:selfObj,caches:cacheAPI,URL,fetch:async(req)=>{if(!online)throw Error('network off');return response(asUrl(req))}};
+const env={self:selfObj,caches:cacheAPI,URL,importScripts(file){
+ const script=fs.readFileSync(path.join(site,file.replace(/^\.\//,'')),'utf8');
+ vm.runInNewContext(script,{self:selfObj});
+},fetch:async(req)=>{if(!online)throw Error('network off');return response(asUrl(req))}};
 vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
 (async()=>{
  let installation;handlers.install({waitUntil:p=>{installation=p}});await installation;
  assert([...backend.values()][0].size>=13);
+ assert(backend.has('interval-trainer-pwa-v2.18.10-local'),'cache name should match the displayed app version');
  const old=await cacheAPI.open('interval-trainer-pwa-old');
  const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.wav',root).href;
  const staleUrl=new URL('assets/melodic-recordings/maj2_up_piano.m4a',root).href;
