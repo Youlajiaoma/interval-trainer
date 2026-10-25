@@ -31,11 +31,17 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
       assert(file.startsWith('assets/melodic-recordings/'));
       const bytes = fs.readFileSync(path.join(site, file));
       assert(bytes.length > 100);
-      assert.equal(bytes.subarray(4, 8).toString(), 'ftyp', '应为可识别的录音容器：' + file);
+      assert.equal(bytes.subarray(0, 4).toString(), 'RIFF', '应为 WAV 文件：' + file);
+      assert.equal(bytes.subarray(8, 12).toString(), 'WAVE', '应为 WAV 文件：' + file);
+      assert.equal(bytes.readUInt16LE(20), 3, '应为浮点 WAV：' + file);
+      assert.equal(bytes.readUInt16LE(22), 2, '应为双声道录音：' + file);
+      assert.equal(bytes.readUInt32LE(24), 44100, '采样率应为 44.1 kHz：' + file);
+      assert.equal(bytes.readUInt16LE(34), 32, '应为 32 位录音：' + file);
       paths.push(file);
     }
   }
   assert.equal(new Set(paths).size, 96);
+  assert.equal(fs.readdirSync(path.join(site, 'assets/melodic-recordings')).filter(file => file.endsWith('.m4a')).length, 0);
 });
 
 test('网页引用的脚本与样式均列入离线清单，新增公共脚本可离线加载', () => {

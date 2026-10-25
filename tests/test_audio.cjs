@@ -73,11 +73,11 @@ test('采样解码失败后可以重新加载，不保留失败的加载请求',
 test('旋律录音按网页路径加载且共用解码结果，下载失败可以重试', async () => {
   const {state, channel} = environment(), a = channel(.52), b = channel(.42);
   state.failFetch = true;
-  await assert.rejects(a.recording('assets/tune.m4a'), /503/);
+  await assert.rejects(a.recording('assets/tune.wav'), /503/);
   state.failFetch = false;
-  const [first, second] = await Promise.all([a.recording('assets/tune.m4a'), b.recording('./assets/tune.m4a')]);
+  const [first, second] = await Promise.all([a.recording('assets/tune.wav'), b.recording('./assets/tune.wav')]);
   assert.equal(first, second);
-  assert.deepEqual(state.fetches, ['https://isolated.test/app/assets/tune.m4a', 'https://isolated.test/app/assets/tune.m4a']);
+  assert.deepEqual(state.fetches, ['https://isolated.test/app/assets/tune.wav', 'https://isolated.test/app/assets/tune.wav']);
   assert.deepEqual(state.decodes, [200]);
   a.playRecording(first, 5.06);
   assert.equal(state.voices[0].playbackRate.value, 1, '原始旋律录音不移调');
@@ -115,7 +115,7 @@ test('停止播放时先平滑淡出当前声音，且不影响其他模块', as
 
 test('正在播放的旋律录音也会淡出，短时间内重复停止不会重置淡出', async () => {
   const {state, channel} = environment(), audio = channel(.52);
-  const buffer = await audio.recording('assets/tune.m4a');
+  const buffer = await audio.recording('assets/tune.wav');
   audio.playRecording(buffer, 4.9);
   const voice = state.voices[0];
   audio.stop();

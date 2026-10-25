@@ -12,6 +12,7 @@ const cacheAPI={
  async open(name){if(!backend.has(name))backend.set(name,new Map());const entries=backend.get(name);return {
   async addAll(urls){const rows=urls.map(u=>{if(!online)throw Error('offline');return [String(u),response(String(u))]});for(const [url,res] of rows)entries.set(url,res);},
   async match(req){return entries.get(asUrl(req))},
+  async delete(req){return entries.delete(asUrl(req))},
   async put(req,res){entries.set(asUrl(req),res)},
   async keys(){return [...entries.keys()].map(url=>({url}))}
  };},
@@ -24,14 +25,17 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
  let installation;handlers.install({waitUntil:p=>{installation=p}});await installation;
  assert([...backend.values()][0].size>=13);
  const old=await cacheAPI.open('interval-trainer-pwa-old');
- const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.m4a',root).href;
+ const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.wav',root).href;
+ const staleUrl=new URL('assets/melodic-recordings/maj2_up_piano.m4a',root).href;
  await old.put({url:savedUrl},response(savedUrl));
+ await old.put({url:staleUrl},{ok:true,url:staleUrl,body:Buffer.from('old audio')});
  let activation;handlers.activate({waitUntil:p=>{activation=p}});await activation;
  assert.equal(claims,1);
  assert(!backend.has('interval-trainer-pwa-old'),'old core caches should be removed after recording migration');
  const recordings=backend.get('interval-trainer-recordings-v1');
  assert.equal(recordings.size,96,'all supplied recordings should be warmed');
  assert(recordings.has(savedUrl),'previous recordings should be retained');
+ assert(!recordings.has(staleUrl),'old M4A recordings should be removed');
  handlers.message({data:{type:'SKIP_WAITING'}});assert.equal(skipWaiting,1);
  online=false;
  async function offlineGet(p,mode='same-origin'){let result;handlers.fetch({request:{url:new URL(p,root).toString(),method:'GET',mode},respondWith:x=>result=x});return result;}
@@ -44,7 +48,7 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
  const assets=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(match=>match[1]);
  assets.push(...[...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g)].map(match=>match[1]));
  for(const asset of assets)assert((await offlineGet(asset)).body.length>0,'offline dependency including its version: '+asset);
- assert((await offlineGet('assets/melodic-recordings/min2_up_piano.m4a')).body.length>100);
+ assert((await offlineGet('assets/melodic-recordings/min2_up_piano.wav')).body.length>100);
  assert((await offlineGet('unknown-page','navigate')).body.length>1000);
  await assert.rejects(offlineGet('unknown-asset.js'),/network off/);
  for(const request of [{url:'https://elsewhere.test/app.js',method:'GET'},
