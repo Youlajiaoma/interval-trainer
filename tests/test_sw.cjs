@@ -27,7 +27,7 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
 (async()=>{
  let installation;handlers.install({waitUntil:p=>{installation=p}});await installation;
  assert([...backend.values()][0].size>=13);
- assert(backend.has('interval-trainer-pwa-v2.18.10-local'),'cache name should match the displayed app version');
+ assert(backend.has('interval-trainer-pwa-v2.18.11-local'),'cache name should match the displayed app version');
  const old=await cacheAPI.open('interval-trainer-pwa-old');
  const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.wav',root).href;
  const staleUrl=new URL('assets/melodic-recordings/maj2_up_piano.m4a',root).href;

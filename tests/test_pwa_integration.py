@@ -40,6 +40,26 @@ with sync_playwright() as p:
     page.locator('#home-harmonic').click()
     assert page.locator('.answer-button').count()==13
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==1
+    page.locator('#back-home').click()
+    page.locator('#home-daily-tasks').click()
+    page.locator('#daily-harmonic-enabled').check()
+    page.locator('#daily-harmonic-minus').click()
+    assert page.locator('#daily-harmonic-target').inner_text()=='10'
+    page.locator('#daily-tasks-save').click()
+    page.wait_for_selector('#daily-tasks-dialog',state='hidden')
+    page.locator('#home-harmonic').click()
+    for index in range(9):
+        page.locator('#reveal-answer').click()
+        if index < 8:
+            page.locator('#next-question').click()
+    page.wait_for_function('window.TonaloomDailyTasks.progress("harmonic").complete')
+    page.locator('#back-home').click()
+    assert page.locator('#home-harmonic-marker').inner_text()=='✓'
+    page.evaluate('async()=>await window.IntervalPwaStorageAdapter.flush()')
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('window.IntervalAppReady === true')
+    assert page.locator('#home-harmonic-marker').inner_text()=='✓'
+    assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==10
     assert not errors,errors
-    print('PASS: installed SW, offline reload, IDB history persists, stats work')
+    print('PASS: installed SW, offline reload, IDB history, stats and daily goal settings/completion persist')
     browser.close()

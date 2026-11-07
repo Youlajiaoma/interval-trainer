@@ -250,6 +250,7 @@
     const backup = {format:'interval-trainer-backup', version:3, exportedAt:new Date().toISOString(),
       settings:JSON.parse(JSON.stringify({schema:2, activeModule:activeMode, modules:moduleSettings}))};
     for (const module of modules.list) backup[module.backupField] = modules.get(module.id).backup?.() || null;
+    backup.dailyTasks = window.TonaloomDailyTasks.backup();
     return JSON.stringify(backup, null, 2);
   }
   async function restoreBackup(data) {
@@ -267,6 +268,7 @@
     const keys = window.IntervalPwaStorage;
     const entries = [[keys.SETTINGS_KEY, restoredSettings]];
     for (const module of modules.list) entries.push(...modules.get(module.id).backupEntries(obj));
+    entries.push(...window.TonaloomDailyTasks.backupEntries(obj));
     // Validate and serialize every module before changing any stored or live data.
     await storage.replaceEntries(entries);
     window.location.reload();
@@ -432,8 +434,8 @@
     state.selected=null;state.submitted=false;state.revealed=false;state.hasPlayed=false;
     hintUsed=false;firstPlayAt=null;
     state.options=logic.INTERVALS.filter(i=>candidates.includes(i.semitones));
-    $('next-question').textContent='显示答案';
-    $('next-question').classList.add('is-skip');$('play-label').textContent='播放';
+    $('reveal-answer').classList.remove('hidden');
+    $('next-question').classList.add('hidden');$('play-label').textContent='播放';
     setAudioStatus('');renderAnswerCaption();drawAnswerButtons();updateStats();syncHintButton();
     return true;
   }
@@ -458,14 +460,11 @@
       responseMs: firstPlayAt === null ? null : Math.max(0, Date.now() - firstPlayAt) });
     if (!review.storageAvailable) toast('当前设备无法持久保存学习记录，请检查存储权限');
     renderFeedback(); updateStats(); renderAnswerCaption(); syncHintButton();
-    $('next-question').innerHTML = '下一题 <span aria-hidden="true">→</span>';
-    $('next-question').classList.remove('is-skip');
+    $('reveal-answer').classList.add('hidden');
+    $('next-question').classList.remove('hidden');
   }
   function advanceQuestion() {
-    if (state.current && !state.submitted) {
-      submitAnswer(true);
-      return;
-    }
+    if (!state.submitted) return;
     if (newQuestion() && settings.autoPlayNext) void play('main');
   }
   function scheduleTone(sample, at, duration, gainMultiplier) {
@@ -528,6 +527,7 @@
     }
     // Leaving a module is navigation, not a wrong answer or a skipped question.
     if ($('settings-dialog').open) $('settings-dialog').close();
+    if ($('daily-tasks-dialog').open) $('daily-tasks-dialog').close();
     stopVoices();
     currentScreen='home';
     document.body.classList.remove('module-active');
@@ -537,6 +537,7 @@
     $('practice-navigation').classList.add('hidden');
     $('practice').classList.add('hidden');
     syncModeControls();
+    window.TonaloomDailyTasks.render();
   }
   function enterPractice(mode){
     const changed=activeMode!==mode;
@@ -565,7 +566,9 @@
   }
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
-    for (const module of modules.list) $(module.homeId).addEventListener('click',()=>modules.get(module.id).enter?.());
+    for (const module of modules.list) $(module.homeId).addEventListener('click',()=>{
+      modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render();
+    });
     $('back-home').addEventListener('click',showHome);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
@@ -573,6 +576,7 @@
     $('hint').addEventListener('click', () => play('hint'));
     $('submit-answer').addEventListener('click', () => submitAnswer(false));
     $('next-question').addEventListener('click', advanceQuestion);
+    $('reveal-answer').addEventListener('click', () => submitAnswer(true));
   }
   function setupBackProtection() {
     // Installed PWA: reserve one same-URL history entry for Android system Back.
@@ -588,6 +592,8 @@
         $('stats-dialog').close();
       } else if ($('settings-dialog').open) {
         $('settings-dialog').close();
+      } else if ($('daily-tasks-dialog').open) {
+        $('daily-tasks-dialog').close();
       } else if (modules.list.some(module => modules.get(module.id).isActive?.())) {
         showHome();
         lastBack = Date.now();

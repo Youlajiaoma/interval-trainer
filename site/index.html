@@ -12,15 +12,15 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.18.10">
-  <link rel="stylesheet" href="sight.css?v=2.18.10">
+  <link rel="stylesheet" href="styles.css?v=2.18.11">
+  <link rel="stylesheet" href="sight.css?v=2.18.11">
 </head>
 <body>
   <div class="app-shell">
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.18.10</span>
+        <span id="app-version">2.18.11</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -31,32 +31,35 @@
 <button class="home-module" id="home-harmonic" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M14 8v32M25 13v22M36 8v32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="24" r="5" fill="currentColor"/><circle cx="25" cy="24" r="5" fill="currentColor"/><circle cx="36" cy="24" r="5" fill="currentColor"/></svg></span>
           <span class="home-module-text"><strong>和声音程</strong></span>
-          <span class="home-module-arrow" aria-hidden="true">→</span>
+          <span class="home-module-arrow" id="home-harmonic-marker" aria-hidden="true">→</span>
         </button>
 <button class="home-module" id="home-melodic" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M12 34V12l22-4v23" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="8" cy="35" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 8 35)"/><ellipse cx="30" cy="32" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 30 32)"/></svg></span>
           <span class="home-module-text"><strong>旋律音程</strong></span>
-          <span class="home-module-arrow" aria-hidden="true">→</span>
+          <span class="home-module-arrow" id="home-melodic-marker" aria-hidden="true">→</span>
         </button>
       </div></section>
       <section class="home-category" aria-labelledby="category-score"><h3 class="home-category-title" id="category-score">识谱</h3><div class="home-modules">
 <button class="home-module" id="home-sight" type="button">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 9h34M8 17h34M8 25h34M8 33h34M8 41h34"/><ellipse cx="27" cy="29" rx="6" ry="4" fill="currentColor" transform="rotate(-17 27 29)"/><path d="M33 29V6" stroke-width="3"/></svg></span>
           <span class="home-module-text"><strong>音符辨认</strong></span>
-          <span class="home-module-arrow" aria-hidden="true">→</span>
+          <span class="home-module-arrow" id="home-sight-marker" aria-hidden="true">→</span>
         </button>
 <button class="home-module" id="home-staff-interval" type="button">
     <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M6 9H42M6 17H42M6 25H42M6 33H42M6 41H42" stroke="currentColor" stroke-width="2"/><ellipse cx="16" cy="28" rx="5.8" ry="3.8" fill="currentColor" transform="rotate(-18 16 28)"/><path d="M22 28V7" stroke="currentColor" stroke-width="2.8"/><ellipse cx="34" cy="16" rx="5.8" ry="3.8" fill="currentColor" transform="rotate(-18 34 16)"/><path d="M40 16V4" stroke="currentColor" stroke-width="2.8"/></svg></span>
     <span class="home-module-text"><strong>音程辨认</strong></span>
-    <span class="home-module-arrow" aria-hidden="true">→</span>
+    <span class="home-module-arrow" id="home-staff-interval-marker" aria-hidden="true">→</span>
   </button>
       </div></section>
-      <button class="home-stats-link" id="home-stats" type="button">查看练习统计 <span aria-hidden="true">↗</span></button>
+      <div class="home-tools">
+        <button class="home-stats-link" id="home-stats" type="button">查看练习统计 <span aria-hidden="true">↗</span></button>
+        <button class="home-stats-link" id="home-daily-tasks" type="button" aria-haspopup="dialog" aria-controls="daily-tasks-dialog">每日任务 <span aria-hidden="true">↗</span></button>
+      </div>
     </main>
 
     <nav class="practice-navigation hidden" id="practice-navigation" aria-label="练习页面导航">
       <button class="home-back" id="back-home" type="button" aria-label="返回主页">← HOME</button>
-      <span class="practice-mode-title" id="practice-mode-title">和声音程</span>
+      <span class="practice-mode-heading"><span class="practice-mode-title" id="practice-mode-title">和声音程</span><span class="daily-practice-check hidden" id="daily-practice-check" role="img" aria-label="" aria-live="polite">✓</span></span>
       <button class="settings-trigger hidden" id="open-settings" type="button" title="练习设置" aria-label="练习设置" aria-haspopup="dialog" aria-controls="settings-dialog">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.87l.06.06-1.88 1.88-.06-.06A1.7 1.7 0 0 0 16 18.4l-.15.06V21h-3v-.08a1.7 1.7 0 0 0-1.7-1.68l-.22.03-1.2.7-1.5-2.6.06-.04A1.7 1.7 0 0 0 8 15.48l-.1-.17L5.2 15v-3l.09-.01A1.7 1.7 0 0 0 6.9 10.4l-.02-.2-.68-1.2 2.6-1.5.06.06A1.7 1.7 0 0 0 10.71 7l.19-.1V4h3v.08a1.7 1.7 0 0 0 1.69 1.68l.2-.02 1.2-.69 1.5 2.6-.06.05a1.7 1.7 0 0 0-.34 1.87l.1.17 2.61.25v3l-.09.01A1.7 1.7 0 0 0 19.4 15Z" transform="translate(-.4,-.5) scale(.99)"/></svg>
       </button>
@@ -82,7 +85,8 @@
         <div class="answer-grid" id="answer-grid"></div>
         <button class="confirm-button hidden" id="submit-answer" type="button" disabled>确认答案</button>
         <div class="action-row">
-          <button class="next-button is-skip" id="next-question" type="button">显示答案</button>
+          <button class="reveal-button" id="reveal-answer" type="button">显示答案</button>
+          <button class="next-button hidden" id="next-question" type="button">下一题 <span aria-hidden="true">→</span></button>
         </div>
       </section>
     </main>
@@ -113,6 +117,29 @@
     </main>
   </div>
 
+  <dialog class="settings-dialog" id="daily-tasks-dialog" aria-labelledby="daily-tasks-title">
+    <div class="settings-header"><h2 id="daily-tasks-title">每日任务</h2><button class="close-button" id="daily-tasks-close" type="button" aria-label="关闭每日任务设置">×</button></div>
+    <div class="settings-content">
+      <section class="settings-section daily-task-section">
+        <label class="option-row" for="daily-harmonic-enabled"><span>和声音程</span><input id="daily-harmonic-enabled" type="checkbox" aria-controls="daily-harmonic-quantity"></label>
+        <div id="daily-harmonic-quantity" class="daily-task-quantity hidden" role="group" aria-label="和声音程每日任务量"><button id="daily-harmonic-minus" type="button" aria-label="和声音程减少10题">−</button><span><output id="daily-harmonic-target" aria-live="polite">20</output> 题</span><button id="daily-harmonic-plus" type="button" aria-label="和声音程增加10题">+</button></div>
+      </section>
+      <section class="settings-section daily-task-section">
+        <label class="option-row" for="daily-melodic-enabled"><span>旋律音程</span><input id="daily-melodic-enabled" type="checkbox" aria-controls="daily-melodic-quantity"></label>
+        <div id="daily-melodic-quantity" class="daily-task-quantity hidden" role="group" aria-label="旋律音程每日任务量"><button id="daily-melodic-minus" type="button" aria-label="旋律音程减少10题">−</button><span><output id="daily-melodic-target" aria-live="polite">20</output> 题</span><button id="daily-melodic-plus" type="button" aria-label="旋律音程增加10题">+</button></div>
+      </section>
+      <section class="settings-section daily-task-section">
+        <label class="option-row" for="daily-sight-enabled"><span>音符辨认</span><input id="daily-sight-enabled" type="checkbox" aria-controls="daily-sight-quantity"></label>
+        <div id="daily-sight-quantity" class="daily-task-quantity hidden" role="group" aria-label="音符辨认每日任务量"><button id="daily-sight-minus" type="button" aria-label="音符辨认减少10题">−</button><span><output id="daily-sight-target" aria-live="polite">20</output> 题</span><button id="daily-sight-plus" type="button" aria-label="音符辨认增加10题">+</button></div>
+      </section>
+      <section class="settings-section daily-task-section">
+        <label class="option-row" for="daily-staff-enabled"><span>音程辨认</span><input id="daily-staff-enabled" type="checkbox" aria-controls="daily-staff-quantity"></label>
+        <div id="daily-staff-quantity" class="daily-task-quantity hidden" role="group" aria-label="音程辨认每日任务量"><button id="daily-staff-minus" type="button" aria-label="音程辨认减少10题">−</button><span><output id="daily-staff-target" aria-live="polite">20</output> 题</span><button id="daily-staff-plus" type="button" aria-label="音程辨认增加10题">+</button></div>
+      </section>
+      <p id="daily-tasks-error" class="daily-tasks-error hidden" role="alert"></p>
+    </div>
+    <div class="settings-footer"><button class="settings-done" id="daily-tasks-save" type="button">保存</button></div>
+  </dialog>
   <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
     <div class="settings-header"><div><h2 id="settings-title">和声音程设置</h2></div><button class="close-button" id="close-settings" type="button" aria-label="关闭设置">×</button></div>
     <div class="settings-content">
@@ -212,13 +239,14 @@
   <script src="modules.js"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.18.10"></script>
-  <script src="statistics.js?v=2.18.10"></script>
+  <script src="review.js?v=2.18.11"></script>
+  <script src="statistics.js?v=2.18.11"></script>
   <script src="audio.js"></script>
   <script src="storage.js"></script>
-  <script src="app.js?v=2.18.10"></script>
+  <script src="daily-tasks.js?v=2.18.11"></script>
+  <script src="app.js?v=2.18.11"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.18.10"></script>
+  <script src="sight.js?v=2.18.11"></script>
   <script src="staff-interval.js"></script>
   <script src="build-info.js"></script>
   <script src="pwa-register.js"></script>

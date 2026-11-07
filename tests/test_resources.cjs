@@ -55,7 +55,7 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
 test('页面显示版本和构建编号，版本值来自统一版本文件', () => {
   const worker = {};
   vm.runInNewContext(readSource('build-info.js'), {self:worker});
-  assert.equal(worker.TonaloomBuildInfo.version, '2.18.10');
+  assert.equal(worker.TonaloomBuildInfo.version, '2.18.11');
   assert.equal(worker.TonaloomBuildInfo.build, 'local');
   const html = readSource('index.html');
   assert.match(html, /id="app-version"/);
@@ -67,7 +67,7 @@ test('主页版本标记能显示本地开发状态和发布构建编号', () =>
   const document = {getElementById:id => elements[id]};
   const source = readSource('build-info.js');
   vm.runInNewContext(source, {self:{}, document});
-  assert.equal(elements['app-version'].textContent, '2.18.10');
+  assert.equal(elements['app-version'].textContent, '2.18.11');
   assert.equal(elements['app-build'].textContent, '本地开发版');
   vm.runInNewContext(source.replace("build:'local'", "build:'abc1234'"), {self:{}, document});
   assert.equal(elements['app-build'].textContent, '构建 abc1234');

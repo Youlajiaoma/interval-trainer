@@ -17,10 +17,12 @@ node tests/run.cjs --help
 ```
 
 - `--details`：补充失败断言的详细原因。
-- `--full`：还要求三项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
-- 不带 `--full` 时，不启动浏览器；三项浏览器检查仍会列为跳过，不会省略它们。
+- `--full`：还要求四项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
+- 不带 `--full` 时，不启动浏览器；四项浏览器检查仍会列为跳过，不会省略它们。
 
-基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs` 和 `test_staff_interval.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs` 和 `test_daily_tasks_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+
+每日任务的基础检查在 `test_daily_tasks.cjs`，覆盖设置保存与取消、10 题步长、四模块独立达标、达标后继续练习、两个谱号合计、跨天重算、备份兼容与多窗口同步。`test_daily_tasks_browser.cjs` 在 320、390、900 像素宽度下验证实际设置面板、完成对勾和左右分开的答题操作；它在隔离页面中运行，不接触日常浏览器记录。
 
 需要单独排查某项时，可以直接使用 Node 自带测试入口，例如：
 

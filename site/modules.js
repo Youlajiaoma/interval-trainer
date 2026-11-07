@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const settingsKey = 'interval-trainer-settings';
+  const dailyTasksKey = 'tonaloom-daily-tasks-v1';
   const definitions = [
     {id:'harmonic', name:'和声音程', homeId:'home-harmonic', statsId:'stats-harmonic', backupField:'harmonic',
       hearing:true, settingsKey, reviews:[{key:'interval-trainer-review-v1', maxIndex:12}]},
@@ -22,9 +23,9 @@
     return item;
   }
   root.TonaloomModules = Object.freeze({
-    list, settingsKey,
+    list, settingsKey, dailyTasksKey,
     reviewDefinitions:Object.freeze(list.flatMap(module => module.reviews)),
-    storageKeys:Object.freeze([...new Set(list.flatMap(module =>
+    storageKeys:Object.freeze([dailyTasksKey,...new Set(list.flatMap(module =>
       [...module.reviews.map(review => review.key), module.settingsKey, module.sessionKey].filter(Boolean)))]),
     get(id) { return Object.freeze({...definition(id), ...implementations.get(id)}); },
     register(id, behavior) {

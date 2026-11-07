@@ -127,11 +127,13 @@
     }
     function updateItem(key, update) {
       if (!db || failure) throw new Error(failure || 'IndexedDB 未就绪');
-      const optimistic = update(cache.get(key) ?? null);
+      const cached = cache.get(key) ?? null, optimistic = update(cached);
       const queue = changes.get(key) || [];
       const change = {apply:update};
       queue.push(change); changes.set(key, queue);
       setCached(key, optimistic);
+      // Notify this window too, after the caller finishes updating its state.
+      if (optimistic !== cached) Promise.resolve().then(() => notify([key]));
       let saved;
       const operation = transact(db, 'readwrite', (store, fail) => {
         const r = store.get(key);

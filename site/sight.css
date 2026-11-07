@@ -22,7 +22,7 @@
 .sight-key:active{background:#d2c3f9}
 .sight-key.is-correct,.sight-key.is-correct:disabled{background:#baf3d1;border-color:#65b38e;color:#124b36;opacity:1}
 .sight-key:disabled{opacity:.9}
-.sight-reveal{display:block;margin:10px auto 0;border:0;background:transparent;color:#aeb0c6;font-size:12px;padding:9px 16px}
+.sight-reveal{display:block;margin:10px auto 0 0;border:0;background:transparent;color:#aeb0c6;font-size:12px;padding:9px 0}
 .sight-reveal:disabled{opacity:.4}
 .sight-complete{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0;padding:20px;border:1px solid #414158;border-radius:13px;background:#202233}
 .sight-complete strong{font-size:22px;color:#dfd4ff}
@@ -60,7 +60,7 @@
 .staff-interval-options{display:grid;gap:7px;margin-top:36px}
 .staff-interval-options .answer-row{gap:8px}
 .staff-interval-options .answer-button{min-height:43px;padding:7px 3px;font-size:13px}
-.staff-interval-actions{display:flex;justify-content:center;min-height:40px;margin-top:8px}
+.staff-interval-actions{display:flex;justify-content:flex-start;min-height:40px;margin-top:8px}
 .staff-interval-reveal{background:none;color:#adaabe;border:0;font-size:12px;padding:8px 15px}
 .staff-interval-actions .next-button{min-height:38px;padding:8px 28px}
 @media(max-width:620px){
