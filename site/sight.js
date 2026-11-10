@@ -379,6 +379,7 @@ function renderKeyboard(){
 function render(){
  if(!session)return;
  const finished=session.pos===20;
+ const wasFinished=!$('sight-complete').classList.contains('hidden');
  const note=currentNote();
  if(note&&note.questionStartedAt==null){note.questionStartedAt=Date.now();save(SESSION_KEY,session);}
  $('sight-count').textContent=String(Math.min(20,session.pos+1)).padStart(2,'0');
@@ -389,6 +390,7 @@ function render(){
  $('sight-keys').classList.toggle('hidden',finished);
  $('sight-complete').classList.toggle('hidden',!finished);
  if(finished)$('sight-complete-score').textContent=`${session.correct} / 20  ·  ${Math.round(100*session.correct/20)}%`;
+ if(finished!==wasFinished)root.TonaloomMotion.reveal(finished?$('sight-complete'):$('sight-score'));
 }
 function blinkWrong(){
  if(pendingTimer)clearTimeout(pendingTimer);
@@ -484,15 +486,15 @@ function statistics(period,now){
 function clearHistory(){
  review.treble.reset();review.bass.reset();
 }
-function openStats(){ if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); modules.showStatistics(definition.id); }
-function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); $('sight-range-below').value=String(settings.rangeBelow); $('sight-range-above').value=String(settings.rangeAbove); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } $('sight-settings-dialog').showModal(); }
+function openStats(){ if($('sight-settings-dialog').open)root.TonaloomMotion.close($('sight-settings-dialog')); modules.showStatistics(definition.id); }
+function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); $('sight-range-below').value=String(settings.rangeBelow); $('sight-range-above').value=String(settings.rangeAbove); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } root.TonaloomMotion.open($('sight-settings-dialog')); }
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();
  active=true; document.body.classList.add('module-active'); document.documentElement.classList.remove('practice-scroll-locked');
  $('home-screen').classList.add('hidden'); $('practice').classList.add('hidden'); $('practice-navigation').classList.remove('hidden'); $('practice-mode-title').textContent=definition.name; $('open-settings').classList.remove('hidden'); $('sight-practice').classList.remove('hidden'); $('sight-warning').textContent=''; render(); window.scrollTo(0,0);
 }
-function leave(){ if(!active)return; active=false; audio.stop(); document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)$('sight-settings-dialog').close(); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); window.scrollTo(0,0); }
+function leave(){ if(!active)return; active=false; audio.stop(); document.body.classList.remove('module-active'); flashingIndex=-1;if(flashTimer){clearTimeout(flashTimer);flashTimer=null;} if($('sight-settings-dialog').open)root.TonaloomMotion.close($('sight-settings-dialog')); $('sight-practice').classList.add('hidden'); $('practice-navigation').classList.add('hidden'); $('open-settings').classList.add('hidden'); $('home-screen').classList.remove('hidden'); window.scrollTo(0,0); }
 function backup(){return {treble:review.treble.snapshot(),bass:review.bass.snapshot(),settings:{clef:settings.clef,accidentals:Boolean(settings.accidentals),rangeBelow:settings.rangeBelow,rangeAbove:settings.rangeAbove}};}
 function normalizedSettings(value){
  const count=n=>Number.isInteger(n)&&n>=0&&n<=3?n:3;
@@ -549,11 +551,11 @@ function init(){
  $('sight-range-above').addEventListener('change',e=>{settings.rangeAbove=normalizedSettings({...settings,rangeAbove:Number(e.target.value)}).rangeAbove;save(SETTINGS_KEY,settings);});
  $('sight-reveal').addEventListener('click',()=>answer(null,true));
  $('sight-next-set').addEventListener('click',()=>{makeGroup();render();});
- $('sight-close-settings').addEventListener('click',()=>$('sight-settings-dialog').close());
- $('sight-settings-done').addEventListener('click',()=>$('sight-settings-dialog').close());
+ $('sight-close-settings').addEventListener('click',()=>root.TonaloomMotion.close($('sight-settings-dialog')));
+ $('sight-settings-done').addEventListener('click',()=>root.TonaloomMotion.close($('sight-settings-dialog')));
  $('sight-open-stats').addEventListener('click',openStats);
- $('sight-abandon').addEventListener('click',()=>{ if(!confirm('重新开始当前20音练习？未完成的题目会被替换。'))return; makeGroup(); $('sight-settings-dialog').close(); render(); });
- $('sight-settings-dialog').addEventListener('click',e=>{ if(e.target===$('sight-settings-dialog'))e.target.close(); });
+ $('sight-abandon').addEventListener('click',()=>{ if(!confirm('重新开始当前20音练习？未完成的题目会被替换。'))return; makeGroup(); root.TonaloomMotion.close($('sight-settings-dialog')); render(); });
+ $('sight-settings-dialog').addEventListener('click',e=>{ if(e.target===$('sight-settings-dialog'))root.TonaloomMotion.close(e.target); });
  function openSettingsRefresh(){ for(const b of document.querySelectorAll('.sight-clef-options button')){ const on=b.dataset.clef===settings.clef; b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on)); } }
  for(const btn of document.querySelectorAll('.sight-clef-options button'))btn.addEventListener('click',()=>{ settings.clef=btn.dataset.clef; save(SETTINGS_KEY,settings); openSettingsRefresh(); });
  modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,clearHistory,statistics});

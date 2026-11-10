@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id);
   const logic = window.IntervalLogic;
   const modules = window.TonaloomModules;
+  const motion = window.TonaloomMotion;
   const recordedLibrary = window.MELODIC_RECORDINGS;
   const lowChoices = [36, 48, 60, 72, 84];
   const highChoices = [48, 60, 72, 84, 96];
@@ -78,7 +79,7 @@
     const mode = definition.id, manager = mode === 'harmonic' ? harmonicReview : melodicReview;
     modules.register(mode, {
       enter:() => enterPractice(mode), isActive:() => currentScreen === 'practice' && activeMode === mode,
-      openSettings:() => { syncSettingsForm(); $('settings-dialog').showModal(); },
+      openSettings:() => { syncSettingsForm(); motion.open($('settings-dialog')); },
       reviewManager:() => manager, enabled:() => moduleSettings[mode].enabled,
       backup:() => manager.snapshot(), clearHistory:() => manager.reset(),
       backupEntries:obj => {
@@ -233,16 +234,16 @@
       const sess=sessions[settings.mode];sess.questionNo=0;sess.correct=0;sess.answered=0; state.previous = null;
       if(currentScreen==='practice') newQuestion();
       else {state.current=null;currentQuestionMode=null;}
-      $('settings-dialog').close(); toast('本次计数已清零，历史记录保留');
+      motion.close($('settings-dialog')); toast('本次计数已清零，历史记录保留');
     });
     const dialog = $('settings-dialog');
     $('open-settings').addEventListener('click', () => {
       const active = modules.list.map(module => modules.get(module.id)).find(module => module.isActive?.());
       active?.openSettings();
     });
-    $('close-settings').addEventListener('click', () => dialog.close());
-    $('settings-done').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    $('close-settings').addEventListener('click', () => motion.close(dialog));
+    $('settings-done').addEventListener('click', () => motion.close(dialog));
+    dialog.addEventListener('click', e => { if (e.target === dialog) motion.close(dialog); });
     setupStatsControls();
     syncSettingsForm();
   }
@@ -305,24 +306,28 @@
       renderStatistics();
       if (open) {
         storage.refresh?.().catch(() => {});
-        if (!statsDialog.open) statsDialog.showModal();
+        motion.open(statsDialog);
       }
     });
     window.addEventListener('interval-trainer-storage-updated', () => {
       if (statsDialog.open) renderStatistics();
     });
-    for (const module of modules.list) {
-      $(module.statsId).addEventListener('click', () => modules.showStatistics(module.id));
+    for (const [index,module] of modules.list.entries()) {
+      $(module.statsId).addEventListener('click', () => {
+        const previous = modules.list.findIndex(item => item.id === modules.statisticsMode);
+        if (previous === index) return;
+        motion.content($('stats-panels'),() => modules.showStatistics(module.id),index > previous ? 'forward' : 'back');
+      });
     }
     $('open-stats').addEventListener('click', () => {
-      $('settings-dialog').close();
+      motion.close($('settings-dialog'));
       modules.showStatistics(settings.mode);
     });
     statsDialog.addEventListener('close', () => {
       if (modules.statisticsMode === 'sight') modules.showStatistics(settings.mode, false);
     });
-    $('close-stats').addEventListener('click', () => statsDialog.close());
-    statsDialog.addEventListener('click', e => { if(e.target === statsDialog) statsDialog.close(); });
+    $('close-stats').addEventListener('click', () => motion.close(statsDialog));
+    statsDialog.addEventListener('click', e => { if(e.target === statsDialog) motion.close(statsDialog); });
     $('export-backup').addEventListener('click', async () => {
       // Include answers saved by other windows. If storage has failed, retain
       // the existing ability to export the in-memory record for recovery.
@@ -526,8 +531,8 @@
       if (module.isActive?.()) module.leave?.();
     }
     // Leaving a module is navigation, not a wrong answer or a skipped question.
-    if ($('settings-dialog').open) $('settings-dialog').close();
-    if ($('daily-tasks-dialog').open) $('daily-tasks-dialog').close();
+    if ($('settings-dialog').open) motion.close($('settings-dialog'));
+    if ($('daily-tasks-dialog').open) motion.close($('daily-tasks-dialog'));
     stopVoices();
     currentScreen='home';
     document.body.classList.remove('module-active');
@@ -567,9 +572,9 @@
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
     for (const module of modules.list) $(module.homeId).addEventListener('click',()=>{
-      modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render();
+      motion.navigate(() => { modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render(); });
     });
-    $('back-home').addEventListener('click',showHome);
+    $('back-home').addEventListener('click',() => motion.navigate(showHome,'back'));
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
     syncModeControls();
@@ -589,13 +594,13 @@
     history.pushState(marker, '', location.href);
     window.addEventListener('popstate', () => {
       if ($('stats-dialog').open) {
-        $('stats-dialog').close();
+        motion.close($('stats-dialog'));
       } else if ($('settings-dialog').open) {
-        $('settings-dialog').close();
+        motion.close($('settings-dialog'));
       } else if ($('daily-tasks-dialog').open) {
-        $('daily-tasks-dialog').close();
+        motion.close($('daily-tasks-dialog'));
       } else if (modules.list.some(module => modules.get(module.id).isActive?.())) {
-        showHome();
+        motion.navigate(showHome,'back');
         lastBack = Date.now();
         toast('再按一次返回退出');
       } else if (Date.now() - lastBack < 2200) {

@@ -21,7 +21,7 @@ window.IntervalPwaStorage={MELODY_KEY:'interval-trainer-review-melodic-v1',initi
  replaceBoth:async(s,r)=>{tdata.set('interval-trainer-settings',s);tdata.set('interval-trainer-review-v1',r)},
  flush:async()=>{}})};
 </script>'''
-for script in ('logic.js','modules.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js','audio.js','daily-tasks.js'):
+for script in ('motion.js','logic.js','modules.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js','audio.js','daily-tasks.js'):
     src=src.replace(f'<script src="{script}"></script>',f'<script>\n{(root/script).read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="storage.js"></script>', adapter)
 src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text(encoding="utf-8")}\n</script>')
@@ -58,7 +58,7 @@ with sync_playwright() as pw:
     page.locator('#stats-period').select_option('7')
     assert page.locator('#stats-trend svg').count()==1
     page.locator('#close-stats').click()
-    assert page.locator('#stats-dialog').is_hidden()
+    page.locator('#stats-dialog').wait_for(state='hidden')
     page.locator('#next-question').click()
     page.locator('.answer-button').nth(1).click()
     assert page.locator('#answered-number').inner_text()=='2'

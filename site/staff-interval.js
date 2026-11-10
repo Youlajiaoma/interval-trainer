@@ -161,11 +161,13 @@ function renderOptions(){
 function render(){
  if(!active||!set)return;
  const completed=set.pos===10;
+ const wasCompleted=!$('staff-interval-summary').classList.contains('hidden');
  const q=current();
  $('staff-interval-count').textContent=String(set.pos);
  $('staff-interval-correct').textContent=String(countCorrect());
  $('staff-interval-summary').classList.toggle('hidden',!completed);
  $('staff-interval-work').classList.remove('hidden');
+ if(completed!==wasCompleted)root.TonaloomMotion.reveal(completed?$('staff-interval-summary'):$('staff-interval-work'));
  void drawScore();
  if(completed){
   $('staff-interval-result').textContent='本组完成：首次答对 '+countCorrect()+' / 10';
@@ -214,7 +216,7 @@ function reveal(){
 }
 function openSettings(){
  if(!active)return;
- $('staff-interval-settings').showModal();
+ root.TonaloomMotion.open($('staff-interval-settings'));
 }
 function enter(){
  if(!initialized)return;
@@ -237,7 +239,7 @@ function enter(){
 }
 function leave(){
  if(!active)return;active=false;audio.stop();drawSerial++;clearTimeout(advanceTimer);clearTimeout(flashTimer);flashing=-1;
- if($('staff-interval-settings').open)$('staff-interval-settings').close();
+ if($('staff-interval-settings').open)root.TonaloomMotion.close($('staff-interval-settings'));
  $('staff-interval-practice').classList.add('hidden');
  $('practice-navigation').classList.add('hidden');
  $('open-settings').classList.add('hidden');
@@ -254,12 +256,12 @@ function init(){
  review=root.IntervalReview.createReviewManager(store(),REVIEW_KEY);
  $('staff-interval-reveal').addEventListener('click',reveal);
  $('staff-interval-next-set').addEventListener('click',()=>{makeSet();render();});
- $('staff-interval-settings-close').addEventListener('click',()=>$('staff-interval-settings').close());
- $('staff-open-stats').addEventListener('click',()=>{ $('staff-interval-settings').close();modules.showStatistics(definition.id); });
- $('staff-interval-settings-done').addEventListener('click',()=>$('staff-interval-settings').close());
+ $('staff-interval-settings-close').addEventListener('click',()=>root.TonaloomMotion.close($('staff-interval-settings')));
+ $('staff-open-stats').addEventListener('click',()=>{ root.TonaloomMotion.close($('staff-interval-settings'));modules.showStatistics(definition.id); });
+ $('staff-interval-settings-done').addEventListener('click',()=>root.TonaloomMotion.close($('staff-interval-settings')));
  $('staff-interval-reset').addEventListener('click',()=>{
   if(!root.confirm('重新开始本组10题？当前进度将被替换。'))return;
-  makeSet();$('staff-interval-settings').close();render();
+  makeSet();root.TonaloomMotion.close($('staff-interval-settings'));render();
  });
  modules.register(definition.id,{enter,leave,openSettings,isActive:()=>active,backup,backupEntries,
   reviewManager:()=>review,enabled:()=>OPTIONS.map(item=>item.semitones),clearHistory:()=>review.reset()});
