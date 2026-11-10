@@ -12,7 +12,7 @@ async function settle(page,selector) {
 async function motion(page,selector) {
   return page.locator(selector).evaluate(element => element.getAnimations()
     .filter(animation => animation.effect.getKeyframes().some(frame => frame.transform))
-    .map(animation => ({frames:animation.effect.getKeyframes(),duration:animation.effect.getTiming().duration})));
+    .map(animation => ({frames:animation.effect.getKeyframes(),duration:animation.effect.getTiming().duration,easing:animation.effect.getTiming().easing})));
 }
 (async () => {
   const browser = await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH||undefined});
@@ -41,7 +41,7 @@ async function motion(page,selector) {
       const menuMotion = await motion(page,'#daily-tasks-dialog');
       assert.equal(menuMotion.length,reduced ? 0 : 1);
       if (!reduced) {
-        assert(menuMotion[0].frames[0].transform.includes('translateX'));
+        assert.equal(menuMotion[0].frames[0].transform,'translateY(18px)');
         await page.locator('#daily-tasks-dialog').evaluate(element => {
           const animation = element.getAnimations().find(item => item.effect.getKeyframes().some(frame => frame.transform));
           animation.pause(); animation.currentTime = 65;
@@ -57,6 +57,7 @@ async function motion(page,selector) {
         const dialog = document.getElementById('daily-tasks-dialog'); return {open:dialog.open,inert:dialog.inert};
       });
       assert.equal(closeState.open,!reduced); assert.equal(closeState.inert,!reduced);
+      if (!reduced) assert.equal((await motion(page,'#daily-tasks-dialog'))[0].frames.at(-1).transform,'translateY(18px)');
       await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
       assert.equal(await page.evaluate(() => document.activeElement.id),'home-daily-tasks');
       await page.click('#home-daily-tasks'); await settle(page,'#daily-tasks-dialog');
@@ -78,7 +79,9 @@ async function motion(page,selector) {
         await page.click('#open-settings'); await settle(page,'#'+dialogId);
         await page.click('#'+doneId); await page.waitForSelector('#'+dialogId,{state:'hidden'});
         await page.click('#open-settings'); await settle(page,'#'+dialogId);
-        await page.click('#'+statsId); await settle(page,'#stats-dialog');
+        await page.click('#'+statsId);
+        assert.deepEqual(await motion(page,'#stats-dialog'),menuMotion,'统计与每日任务使用相同的方向、时长和曲线');
+        await settle(page,'#stats-dialog');
         assert(!await page.locator('#'+dialogId).evaluate(dialog => dialog.open));
         assert.equal(await page.evaluate(() => document.activeElement.closest('dialog')?.id),'stats-dialog');
         const nextMode = entry.id === 'harmonic' ? 'sight' : 'harmonic';
