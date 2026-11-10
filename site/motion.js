@@ -56,7 +56,7 @@
     });
   }
   function position(dialog) {
-    return dialog.classList.contains('stats-dialog') ? 'translateY(18px)' : 'translateX(40px)';
+    return dialog.classList.contains('stats-dialog') || dialog.id === 'daily-tasks-dialog' ? 'translateY(18px)' : 'translateX(40px)';
   }
   function frame(dialog) {
     const style = root.getComputedStyle(dialog);

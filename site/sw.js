@@ -4,7 +4,7 @@ const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${se
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './motion.js?v=2.18.13',
+  './motion.js?v=2.18.13-up',
   './','./index.html','./styles.css?v=2.18.13','./sight.css?v=2.18.13','./logic.js','./modules.js',
   './review.js?v=2.18.13','./statistics.js?v=2.18.13','./audio.js','./storage.js','./app.js?v=2.18.13','./vendor/vexflow-loader.js','./sight.js?v=2.18.13','./staff-interval.js?v=2.18.13','./build-info.js',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
