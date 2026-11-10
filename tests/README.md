@@ -17,10 +17,12 @@ node tests/run.cjs --help
 ```
 
 - `--details`：补充失败断言的详细原因。
-- `--full`：还要求四项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
-- 不带 `--full` 时，不启动浏览器；四项浏览器检查仍会列为跳过，不会省略它们。
+- `--full`：还要求五项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
+- 不带 `--full` 时，不启动浏览器；五项浏览器检查仍会列为跳过，不会省略它们。
 
-基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs` 和 `test_daily_tasks_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs`、`test_daily_tasks_browser.cjs` 和 `test_motion_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+
+界面动画的基础检查在 `test_motion.cjs`，覆盖同步导航、退出完成时关闭、关闭中重开、Escape、减少动态效果和动画取消。`test_motion_browser.cjs` 在 320、390、900 像素宽度下检查四模块往返、全部设置与统计弹窗、焦点恢复、遮罩清理、快速连续切换和系统减少动态效果设置；另保存弹窗动画中间帧供排版检查。导航和音频清理不等待动画结束。
 
 每日任务的基础检查在 `test_daily_tasks.cjs`，覆盖设置保存与取消、10 题步长、四模块独立达标、达标后继续练习、两个谱号合计、跨天重算、备份兼容与多窗口同步。`test_daily_tasks_browser.cjs` 在 320、390、900 像素宽度下验证实际设置面板、完成对勾和左右分开的答题操作；它在隔离页面中运行，不接触日常浏览器记录。
 

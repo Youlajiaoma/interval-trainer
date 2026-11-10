@@ -12,15 +12,15 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.18.12">
-  <link rel="stylesheet" href="sight.css?v=2.18.12">
+  <link rel="stylesheet" href="styles.css?v=2.18.13">
+  <link rel="stylesheet" href="sight.css?v=2.18.13">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-viewport"><div class="app-shell">
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.18.12</span>
+        <span id="app-version">2.18.13</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -52,7 +52,7 @@
   </button>
       </div></section>
       <div class="home-tools">
-        <button class="home-stats-link" id="home-stats" type="button">查看练习统计 <span aria-hidden="true">↗</span></button>
+        <button class="home-stats-link" id="home-stats" type="button">练习统计 <span aria-hidden="true">↗</span></button>
         <button class="home-stats-link" id="home-daily-tasks" type="button" aria-haspopup="dialog" aria-controls="daily-tasks-dialog">每日任务 <span aria-hidden="true">↗</span></button>
       </div>
     </main>
@@ -115,10 +115,14 @@
         <button id="staff-interval-next-set" type="button">下一组 →</button>
       </div>
     </main>
-  </div>
+  </div></div>
 
   <dialog class="settings-dialog" id="daily-tasks-dialog" aria-labelledby="daily-tasks-title">
-    <div class="settings-header"><h2 id="daily-tasks-title">每日任务</h2><button class="close-button" id="daily-tasks-close" type="button" aria-label="关闭每日任务设置">×</button></div>
+    <header class="return-header">
+      <button class="page-back" id="daily-tasks-close" type="button" aria-label="返回上一页面">← <span>返回</span></button>
+      <h2 id="daily-tasks-title">每日任务</h2>
+      <span class="return-header-spacer" aria-hidden="true"></span>
+    </header>
     <div class="settings-content">
       <section class="settings-section daily-task-section">
         <label class="option-row" for="daily-harmonic-enabled"><span>和声音程</span><input id="daily-harmonic-enabled" type="checkbox" aria-controls="daily-harmonic-quantity"></label>
@@ -206,10 +210,10 @@
   </dialog>
   <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
     <div class="stats-shell">
-      <header class="stats-header">
-        <button id="close-stats" class="stats-back" type="button" aria-label="返回上一页面">← <span>返回</span></button>
+      <header class="stats-header return-header">
+        <button id="close-stats" class="page-back" type="button" aria-label="返回上一页面">← <span>返回</span></button>
         <h2 id="stats-title">练习统计</h2>
-        <span class="stats-header-spacer" aria-hidden="true"></span>
+        <span class="return-header-spacer" aria-hidden="true"></span>
       </header>
       <div class="stats-content">
         <nav class="stats-mode-switch" role="group" aria-label="统计类型">
@@ -220,6 +224,7 @@
         </nav>
         <div class="stats-intro"><div><h3>练习概览</h3></div>
         <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
+        <div id="stats-panels">
         <div id="stats-summary" class="stats-summary-grid"></div>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>正确率与练习量</h3></div><div id="stats-trend"></div></section>
         <section class="stats-panel"><div class="stats-panel-heading"><h3>练习日历</h3></div><div id="stats-calendar"></div></section>
@@ -231,23 +236,25 @@
           <input id="backup-file" type="file" accept=".json,application/json" class="hidden" aria-label="选择历史备份文件">
           <p class="storage-warning" id="stats-storage-warning"></p>
         </details>
+        </div>
       </div>
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="motion.js?v=2.18.13"></script>
   <script src="logic.js"></script>
   <script src="modules.js"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.18.12"></script>
-  <script src="statistics.js?v=2.18.12"></script>
+  <script src="review.js?v=2.18.13"></script>
+  <script src="statistics.js?v=2.18.13"></script>
   <script src="audio.js"></script>
   <script src="storage.js"></script>
-  <script src="daily-tasks.js?v=2.18.12"></script>
-  <script src="app.js?v=2.18.12"></script>
+  <script src="daily-tasks.js?v=2.18.13"></script>
+  <script src="app.js?v=2.18.13"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.18.12"></script>
-  <script src="staff-interval.js"></script>
+  <script src="sight.js?v=2.18.13"></script>
+  <script src="staff-interval.js?v=2.18.13"></script>
   <script src="build-info.js"></script>
   <script src="pwa-register.js"></script>
 </body>

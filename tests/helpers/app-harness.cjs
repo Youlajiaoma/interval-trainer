@@ -286,7 +286,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345, sourc
     }
   });
   document.baseURI = 'https://isolated.test/';
-  for (const file of ['logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'daily-tasks.js', 'assets/melodic-recordings.js']) {
+  for (const file of ['motion.js', 'logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'daily-tasks.js', 'assets/melodic-recordings.js']) {
     vm.runInContext(source(file), context, {filename: file});
   }
   const ready = vm.runInContext(source('app.js'), context, {filename: 'app.js'});

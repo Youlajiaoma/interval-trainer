@@ -119,7 +119,7 @@
       renderSummary(s);renderTrend(s);renderCalendar(s,now);renderIntervals(s);renderConfusions(s);
       const warn=$('stats-storage-warning');warn.textContent=s.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
     }
-    select.addEventListener('change',render);
+    select.addEventListener('change',() => root.TonaloomMotion.content($('stats-panels'),render));
     return {render};
   }
   root.IntervalStats=Object.freeze({init,readReview});

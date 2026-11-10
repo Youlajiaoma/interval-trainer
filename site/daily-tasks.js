@@ -59,7 +59,9 @@
       const prefix = 'daily-'+module.id, item = draft[module.id];
       $(prefix+'-enabled').checked = item.enabled;
       $(prefix+'-enabled').disabled = saving;
-      $(prefix+'-quantity').classList.toggle('hidden',!item.enabled);
+      const quantity = $(prefix+'-quantity'), wasHidden = quantity.classList.contains('hidden');
+      quantity.classList.toggle('hidden',!item.enabled);
+      if (wasHidden && item.enabled) root.TonaloomMotion.reveal(quantity);
       $(prefix+'-target').textContent = String(item.target);
       $(prefix+'-minus').disabled = saving || item.target <= 10;
       $(prefix+'-plus').disabled = saving || item.target >= maximum;
@@ -69,14 +71,14 @@
   function open() {
     draft = settings();
     $('daily-tasks-error').textContent = ''; $('daily-tasks-error').classList.add('hidden');
-    renderForm(); $('daily-tasks-dialog').showModal();
+    renderForm(); root.TonaloomMotion.open($('daily-tasks-dialog'));
   }
   async function save() {
     if (saving) return;
     saving = true; renderForm();
     try {
       await storage.replaceEntries([[key,JSON.stringify(draft)]]);
-      render(); $('daily-tasks-dialog').close();
+      render(); root.TonaloomMotion.close($('daily-tasks-dialog'));
     } catch {
       $('daily-tasks-error').textContent = '任务设置保存失败，请重试或检查浏览器存储权限。';
       $('daily-tasks-error').classList.remove('hidden');
@@ -109,8 +111,8 @@
       });
     }
     $('home-daily-tasks').addEventListener('click',open);
-    $('daily-tasks-close').addEventListener('click',() => $('daily-tasks-dialog').close());
-    $('daily-tasks-dialog').addEventListener('click',event => { if (event.target === $('daily-tasks-dialog')) event.target.close(); });
+    $('daily-tasks-close').addEventListener('click',() => root.TonaloomMotion.close($('daily-tasks-dialog')));
+    $('daily-tasks-dialog').addEventListener('click',event => { if (event.target === $('daily-tasks-dialog')) root.TonaloomMotion.close(event.target); });
     $('daily-tasks-save').addEventListener('click',save);
     root.addEventListener('interval-trainer-storage-updated',event => {
       if (event.detail?.some(item => relevant.has(item))) render();

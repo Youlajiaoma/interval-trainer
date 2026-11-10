@@ -13,6 +13,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .hidden{display:none!important}
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .app-shell{max-width:780px;margin:0 auto;padding:25px 26px 30px}
+.app-viewport{overflow-x:clip}
 .app-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
 .app-header h1{font-size:19px;letter-spacing:.4px;line-height:1.2;margin:0;font-weight:700}
 .app-version{display:flex;align-items:baseline;gap:8px;color:#aaa8c5;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -112,11 +113,12 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .stats-dialog:not([open]){display:none}
 .stats-dialog::backdrop{background:#080911ee}
 .stats-shell{height:100%;display:flex;flex-direction:column}
-.stats-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:66px;flex:none;border-bottom:1px solid #2c2e41;padding:0 max(20px,calc((100vw - 920px)/2))}
-.stats-header h2{font-size:17px;font-weight:700;margin:0}
-.stats-back{border:none;background:transparent;color:#aaa8c5;font-size:13px;padding:12px 3px;display:flex;gap:7px;align-items:center}
-.stats-back:hover{color:#eeeaff}
-.stats-header-spacer{width:83px}
+.return-header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;min-height:66px;flex:none;border-bottom:1px solid #2c2e41;padding:0 20px}
+.return-header h2{font-size:17px;font-weight:700;margin:0}
+.stats-header{padding:0 max(20px,calc((100vw - 920px)/2))}
+.page-back{justify-self:start;border:none;background:transparent;color:#aaa8c5;font-size:13px;padding:12px 3px;display:flex;gap:7px;align-items:center}
+.page-back:hover{color:#eeeaff}
+.return-header-spacer{justify-self:end;width:83px}
 .stats-content{--stats-card-gap:16px;width:100%;max-width:960px;min-height:0;overflow-y:auto;margin:0 auto;padding:26px 20px 70px;scrollbar-color:#3d3d53 transparent}
 .stats-summary-grid{margin-bottom:var(--stats-card-gap)}
 .stats-intro{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}
@@ -147,7 +149,7 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .stats-data-details{margin:0;border:1px solid #37384b;border-radius:12px;padding:15px 17px;color:#b7b6c9;font-size:12px}.stats-data-details summary{color:#c5badf;cursor:pointer}.stats-data-details p{line-height:1.8}
 .stats-data-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.stats-data-buttons button{background:#2a293d;color:#ded9f0;border:1px solid #56526c;border-radius:8px;padding:9px 12px;font-size:12px}.stats-data-buttons button.danger-text{color:#f1a5b9;border-color:#745564}.stats-data-buttons button:hover{background:#37334c}.storage-warning{color:#9f9db8}
 @media(max-width:620px){
-  .stats-header{min-height:57px;padding:0 15px}.stats-header h2{font-size:16px}.stats-back{font-size:12px}.stats-header-spacer{width:80px}
+  .return-header{min-height:57px;padding:0 15px}.return-header h2{font-size:16px}.page-back{font-size:12px}.return-header-spacer{width:80px}
   .stats-content{padding:22px 15px 55px}.stats-intro h3{font-size:19px}.stats-intro p{font-size:11px}.stats-intro select{min-width:96px;padding:9px 5px}
   .stats-kpi-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px}.stats-kpi{padding:13px 14px;gap:5px}.stats-kpi-value{font-size:25px}.stats-panel{padding:17px 13px 16px}.stats-panel-heading{margin-bottom:15px}
   .stats-interval-row{gap:7px}.stats-interval-name{width:95px;font-size:11px}.stats-interval-value{min-width:83px;font-size:10px}
@@ -237,3 +239,10 @@ body.module-active .app-shell{padding-top:14px}
 .daily-task-quantity button:disabled{opacity:.35}
 .daily-tasks-error{font-size:12px;color:#ffb7c8;line-height:1.6}
 @media(max-width:620px){body.module-active .app-shell{padding-top:10px}}
+
+/* Keep native modal/focus behavior through the closing frame. */
+.motion-dialog-opening::backdrop{animation:motion-backdrop-in 220ms ease-out both}
+.motion-dialog-closing::backdrop{animation:motion-backdrop-out 170ms ease-in both}
+@keyframes motion-backdrop-in{from{opacity:0}to{opacity:1}}
+@keyframes motion-backdrop-out{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.motion-dialog-opening::backdrop,.motion-dialog-closing::backdrop{animation:none}}

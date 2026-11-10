@@ -16,7 +16,7 @@ if ([...options].some(option => !allowed.has(option))) {
 if (options.has('--help')) {
   console.log('用法：node tests/run.cjs [--full] [--details]\n' +
     '默认：运行不需要额外依赖的基础和回归检查；缺少资源的附加检查明确跳过。\n' +
-    '--full：还要求离线缓存及四项浏览器检查；缺少条件也返回失败。\n' +
+    '--full：还要求离线缓存及五项浏览器检查；缺少条件也返回失败。\n' +
     '--details：显示失败断言的详细原因。\n' +
     '有任何功能失败时返回非零退出码。准备方式见 tests/README.md。');
   process.exit(0);
@@ -44,7 +44,7 @@ async function externalTest(name, executable, args) {
 
 async function main() {
   console.log('运行基础与回归检查；所有练习数据均与日常浏览器隔离。');
-  const optionalFiles = new Set(['test_sw.cjs', 'test_staff_interval.cjs', 'test_daily_tasks_browser.cjs']);
+  const optionalFiles = new Set(['test_sw.cjs', 'test_staff_interval.cjs', 'test_daily_tasks_browser.cjs', 'test_motion_browser.cjs']);
   const files = fs.readdirSync(__dirname).filter(file => /^test_.*\.cjs$/.test(file) && !optionalFiles.has(file))
     .sort().map(file => path.join(__dirname, file));
   for await (const event of run({files, concurrency: 1})) {
@@ -67,7 +67,7 @@ async function main() {
   else skipped('离线缓存模拟', '缺少 site/vendor/vexflow.js；发布流程会下载，本命令不会自动下载');
 
   if (!options.has('--full')) {
-    for (const name of ['手机和平板界面', '五线谱浏览器检查', '每日任务浏览器检查', 'PWA 浏览器离线与保存']) {
+    for (const name of ['手机和平板界面', '五线谱浏览器检查', '每日任务浏览器检查', '界面动画浏览器检查', 'PWA 浏览器离线与保存']) {
       skipped(name, '使用 --full 显式运行，需事先准备浏览器测试环境');
     }
   } else {
@@ -79,9 +79,11 @@ async function main() {
     if (!vendorReady || !nodeBrowserReady) {
       skipped('五线谱浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
       skipped('每日任务浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
+      skipped('界面动画浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
     } else {
       await externalTest('五线谱浏览器检查', process.execPath, ['tests/test_staff_interval.cjs']);
       await externalTest('每日任务浏览器检查', process.execPath, ['tests/test_daily_tasks_browser.cjs']);
+      await externalTest('界面动画浏览器检查', process.execPath, ['tests/test_motion_browser.cjs']);
     }
 
     const python = process.env.PYTHON || 'python';
