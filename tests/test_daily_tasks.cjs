@@ -5,7 +5,7 @@ const {createApp,createMemoryDatabase} = require('./helpers/app-harness.cjs');
 const {keys,reviewStore,sightSession} = require('./helpers/fixtures.cjs');
 const tasksKey = 'tonaloom-daily-tasks-v1', ids = ['harmonic','melodic','sight','staff'];
 function config(enabled = ids, target = 10) {
-  return Object.fromEntries(ids.map(id => [id,{enabled:enabled.includes(id),target}]));
+  return {...Object.fromEntries(ids.map(id => [id,{enabled:enabled.includes(id),target}])),singing:{enabled:false,target:20}};
 }
 async function appFor(t,options) {
   const app = await createApp(options); t.after(() => app.assertNoErrors()); return app;

@@ -68,7 +68,8 @@ async function motion(page,selector) {
       }
       const entries = await page.evaluate(() => TonaloomModules.list.map(module => ({id:module.id,home:module.homeId})));
       const settings = {harmonic:['settings-dialog','settings-done','open-stats'],melodic:['settings-dialog','settings-done','open-stats'],
-        sight:['sight-settings-dialog','sight-settings-done','sight-open-stats'],staff:['staff-interval-settings','staff-interval-settings-done','staff-open-stats']};
+        sight:['sight-settings-dialog','sight-settings-done','sight-open-stats'],staff:['staff-interval-settings','staff-interval-settings-done','staff-open-stats'],
+        singing:['singing-settings','singing-settings-done','singing-open-stats']};
       for (const entry of entries) {
         await page.evaluate(id => document.getElementById(id).click(),entry.home);
         const forward = await motion(page,'.app-shell'); assert.equal(forward.length,reduced ? 0 : 1);

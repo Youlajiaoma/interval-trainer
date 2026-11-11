@@ -1,7 +1,7 @@
 /* The app version is maintained here; deployment replaces the local build ID. */
 (function (scope) {
   'use strict';
-  const info = Object.freeze({version:'2.18.13', build:'local'});
+  const info = Object.freeze({version:'2.19.1', build:'local'});
   scope.TonaloomBuildInfo = info;
 
   if (typeof document === 'undefined') return;

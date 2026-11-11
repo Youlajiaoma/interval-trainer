@@ -12,15 +12,16 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.18.13">
-  <link rel="stylesheet" href="sight.css?v=2.18.13">
+  <link rel="stylesheet" href="styles.css?v=2.19.1">
+  <link rel="stylesheet" href="sight.css?v=2.19.1">
+  <link rel="stylesheet" href="singing.css?v=2.19.1">
 </head>
 <body>
   <div class="app-viewport"><div class="app-shell">
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.18.13</span>
+        <span id="app-version">2.19.1</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -37,6 +38,11 @@
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M12 34V12l22-4v23" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="8" cy="35" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 8 35)"/><ellipse cx="30" cy="32" rx="7" ry="4.5" fill="currentColor" transform="rotate(-18 30 32)"/></svg></span>
           <span class="home-module-text"><strong>旋律音程</strong></span>
           <span class="home-module-arrow" id="home-melodic-marker" aria-hidden="true">→</span>
+        </button>
+<button class="home-module" id="home-singing" type="button">
+          <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><rect x="18" y="5" width="12" height="24" rx="6"/><path d="M12 22v2a12 12 0 0 0 24 0v-2M24 36v7M17 43h14"/></svg></span>
+          <span class="home-module-text"><strong>模唱</strong></span>
+          <span class="home-module-arrow" id="home-singing-marker" aria-hidden="true">→</span>
         </button>
       </div></section>
       <section class="home-category" aria-labelledby="category-score"><h3 class="home-category-title" id="category-score">识谱</h3><div class="home-modules">
@@ -115,7 +121,33 @@
         <button id="staff-interval-next-set" type="button">下一组 →</button>
       </div>
     </main>
+    <main id="singing-practice" class="singing-practice hidden" aria-label="模唱">
+      <div class="singing-controls">
+        <button id="singing-play" class="play-primary" type="button">播放钢琴</button>
+        <div id="singing-listener" class="singing-listener" data-state="idle" role="status" aria-live="polite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v4M8 22h8"/></svg>
+          <span id="singing-status">点击播放开始</span>
+        </div>
+      </div>
+      <div class="singing-readout"><output id="singing-frequency" aria-label="当前人声音高" aria-live="off">— Hz</output></div>
+      <svg id="singing-chart" class="singing-chart" role="img" aria-label="人声音高随时间变化的曲线，绿色为人声，紫色虚线为目标音及其八度"></svg>
+      <div class="singing-footer"><span class="singing-legend">💗加油宝</span><button id="singing-next" class="singing-next" type="button">下一题 →</button></div>
+      <p id="singing-error" class="singing-error hidden" role="alert"></p>
+    </main>
   </div></div>
+
+  <dialog class="settings-dialog" id="singing-settings" aria-labelledby="singing-settings-title">
+    <div class="settings-header"><h2 id="singing-settings-title">模唱设置</h2><button class="close-button" id="singing-settings-close" type="button" aria-label="关闭设置">×</button></div>
+    <div class="settings-content">
+      <section class="settings-section"><h3>钢琴出题音域</h3>
+        <div class="range-row"><label for="singing-low">最低音<select id="singing-low"></select></label><span class="range-separator">至</span><label for="singing-high">最高音<select id="singing-high"></select></label></div>
+        <p class="singing-setting-note">可用自己舒适的八度模唱，高低八度均算正确。</p>
+      </section>
+      <section class="settings-section"><label class="slider-label" for="singing-volume"><span>钢琴音量</span><strong id="singing-volume-value">65%</strong></label><input id="singing-volume" type="range" min="0" max="100" step="1" value="65"></section>
+      <button id="singing-open-stats" class="reset-link" type="button">练习统计 →</button>
+    </div>
+    <div class="settings-footer"><button class="settings-done" id="singing-settings-done" type="button">完成</button></div>
+  </dialog>
 
   <dialog class="settings-dialog" id="daily-tasks-dialog" aria-labelledby="daily-tasks-title">
     <header class="return-header">
@@ -139,6 +171,10 @@
       <section class="settings-section daily-task-section">
         <label class="option-row" for="daily-staff-enabled"><span>音程辨认</span><input id="daily-staff-enabled" type="checkbox" aria-controls="daily-staff-quantity"></label>
         <div id="daily-staff-quantity" class="daily-task-quantity hidden" role="group" aria-label="音程辨认每日任务量"><button id="daily-staff-minus" type="button" aria-label="音程辨认减少10题">−</button><span><output id="daily-staff-target" aria-live="polite">20</output> 题</span><button id="daily-staff-plus" type="button" aria-label="音程辨认增加10题">+</button></div>
+      </section>
+      <section class="settings-section daily-task-section">
+        <label class="option-row" for="daily-singing-enabled"><span>模唱</span><input id="daily-singing-enabled" type="checkbox" aria-controls="daily-singing-quantity"></label>
+        <div id="daily-singing-quantity" class="daily-task-quantity hidden" role="group" aria-label="模唱每日任务量"><button id="daily-singing-minus" type="button" aria-label="模唱减少10题">−</button><span><output id="daily-singing-target" aria-live="polite">20</output> 题</span><button id="daily-singing-plus" type="button" aria-label="模唱增加10题">+</button></div>
       </section>
       <p id="daily-tasks-error" class="daily-tasks-error hidden" role="alert"></p>
     </div>
@@ -221,6 +257,7 @@
           <button id="stats-melodic" type="button" aria-pressed="false">旋律统计</button>
           <button id="stats-sight" type="button" aria-pressed="false">音符辨认</button>
           <button id="stats-staff" type="button" aria-pressed="false">音程辨认</button>
+          <button id="stats-singing" type="button" aria-pressed="false">模唱</button>
         </nav>
         <div class="stats-intro"><div><h3>练习概览</h3></div>
         <select id="stats-period" aria-label="统计时间范围"><option value="7">近 7 天</option><option value="30" selected>近 30 天</option><option value="90">近 90 天</option><option value="all">全部时间</option></select></div>
@@ -241,21 +278,23 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="motion.js?v=2.18.13-up"></script>
+  <script src="motion.js?v=2.19.1"></script>
   <script src="logic.js"></script>
-  <script src="modules.js"></script>
+  <script src="modules.js?v=2.19.1"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.18.13"></script>
-  <script src="statistics.js?v=2.18.13"></script>
+  <script src="review.js?v=2.19.1"></script>
+  <script src="statistics.js?v=2.19.1"></script>
   <script src="audio.js"></script>
   <script src="storage.js"></script>
-  <script src="daily-tasks.js?v=2.18.13"></script>
-  <script src="app.js?v=2.18.13"></script>
+  <script src="daily-tasks.js?v=2.19.1"></script>
+  <script src="pitch.js?v=2.19.1"></script>
+  <script src="singing.js?v=2.19.1"></script>
+  <script src="app.js?v=2.19.1"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.18.13"></script>
-  <script src="staff-interval.js?v=2.18.13"></script>
-  <script src="build-info.js"></script>
+  <script src="sight.js?v=2.19.1"></script>
+  <script src="staff-interval.js?v=2.19.1"></script>
+  <script src="build-info.js?v=2.19.1"></script>
   <script src="pwa-register.js"></script>
 </body>
 </html>
