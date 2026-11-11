@@ -9,7 +9,7 @@
   let target = null, correct = false, completed = false, hasPlayed = false, loadingAudio = false, guardUntil = Infinity;
   let stream = null, context = null, source = null, analyser = null, mutedOutput = null;
   let micRequest = 0, requesting = false, listening = false, micProblem = false;
-  let frame = 0, referenceTimer = null, samples, detect, judge, tracker;
+  let frame = 0, referenceTimer = null, captureTask = null, samples, detect, judge, tracker;
   let points = [], origin = 0, plotTime = 0, lastFrame = -Infinity, center = 60;
   const now = () => root.performance?.now() ?? Date.now();
   function normalize(value) {
@@ -103,11 +103,12 @@
     const token = audio.token, note = target;
     loadingAudio = true; renderStatus(); drawChart();
     try {
-      const deviceReady = audio.ready();
-      // Permission is requested within the play gesture; no samples are analysed
-      // until the reference and its short settling period have finished.
-      void prepareMicrophone(token, deviceReady);
-      const device = await deviceReady;
+      // Unlock playback within the click, then let any cancelled microphone
+      // request finish and release its tracks before scheduling the reference.
+      await audio.ready();
+      if (captureTask) await captureTask.catch(() => {});
+      if (!active || token !== audio.token || document.hidden) return;
+      const device = await audio.ready();
       const sample = await audio.piano(note);
       if (!active || token !== audio.token) return;
       context = device;
@@ -173,12 +174,21 @@
   function beginListeningWhenReady(token) {
     if (!active || token !== audio.token || !hasPlayed || correct || document.hidden) return;
     clearTimeout(referenceTimer); referenceTimer = null;
-    if (context.state !== 'running' || context.currentTime < guardUntil) {
-      referenceTimer = setTimeout(() => beginListeningWhenReady(token), context.state === 'running' ?
-        Math.max(30, (guardUntil - context.currentTime) * 1000 + 20) : 100);
+    if (context.state !== 'running') {
+      stopMic(); stopReference(); error('音频已暂停，请点击播放重试。'); renderStatus(); return;
+    }
+    if (context.currentTime < guardUntil) {
+      referenceTimer = setTimeout(() => beginListeningWhenReady(token), Math.max(30, (guardUntil - context.currentTime) * 1000 + 20));
       return;
     }
-    if (!stream || listening) { renderStatus(); return; }
+    // Opening capture itself can switch a phone's audio hardware/mode, even
+    // with disabled tracks. Do not request the device until the piano is over.
+    if (!stream) {
+      if (!requesting && !micProblem) void prepareMicrophone(token);
+      else renderStatus();
+      return;
+    }
+    if (listening) return;
     try {
       for (const track of stream.getAudioTracks()) track.enabled = true;
       source = context.createMediaStreamSource(stream);
@@ -194,39 +204,42 @@
       stopMic(); micProblem = true; error(micError(err)); renderStatus();
     }
   }
-  async function prepareMicrophone(playToken, deviceReady) {
+  async function prepareMicrophone(playToken) {
     if (!root.navigator.mediaDevices?.getUserMedia) {
       micProblem = true;
-      error('当前页面无法使用麦克风，请通过 HTTPS 或本机 localhost 打开，并使用支持麦克风的浏览器。'); return;
+      error('当前页面无法使用麦克风，请通过 HTTPS 或本机 localhost 打开，并使用支持麦克风的浏览器。'); renderStatus(); return;
     }
     const token = ++micRequest;
     requesting = true; renderStatus();
-    let acquired = null;
+    let acquired = null, capture = null;
     try {
-      const capture = root.navigator.mediaDevices.getUserMedia({audio:{channelCount:1,
+      capture = root.navigator.mediaDevices.getUserMedia({audio:{channelCount:1,
         echoCancellation:true, noiseSuppression:false, autoGainControl:false}, video:false}).then(value => {
         if (!active || token !== micRequest || document.hidden) for (const track of value.getTracks()) track.stop();
         else for (const track of value.getAudioTracks()) track.enabled = false;
         return value;
       });
-      const results = await Promise.allSettled([deviceReady, capture]);
-      if (results[1].status === 'fulfilled') acquired = results[1].value;
-      if (results[0].status === 'rejected') throw results[0].reason;
-      if (results[1].status === 'rejected') throw results[1].reason;
+      captureTask = capture;
+      acquired = await capture;
       if (!active || token !== micRequest || document.hidden) {
         for (const track of acquired.getTracks()) track.stop(); return;
       }
-      context = results[0].value;
       stream = acquired;
       for (const track of stream.getAudioTracks()) track.addEventListener('ended', () => {
         if (token !== micRequest || !active) return;
         stopMic(); micProblem = true; error('麦克风已断开，请点击重播重试。'); renderStatus();
       }, {once:true});
+      // Capture may suspend/interrupt the shared device when mobile audio
+      // routing changes. The reference has finished, so it is safe to resume.
+      context = await audio.ready();
+      if (!active || token !== micRequest || document.hidden) {
+        for (const track of acquired.getTracks()) track.stop(); return;
+      }
       requesting = false; renderStatus(); beginListeningWhenReady(playToken);
     } catch (err) {
       for (const track of acquired?.getTracks() || []) track.stop();
       if (active && token === micRequest) { stopMic(); micProblem = true; error(micError(err)); renderStatus(); }
-    }
+    } finally { if (captureTask === capture) captureTask = null; }
   }
   function syncSettings() {
     $('singing-low').value = String(settings.low); $('singing-high').value = String(settings.high);

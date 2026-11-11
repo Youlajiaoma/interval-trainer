@@ -22,7 +22,7 @@ node tests/run.cjs --help
 
 基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs`、`test_daily_tasks_browser.cjs`、`test_motion_browser.cjs` 和 `test_singing_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
 
-模唱的基础检查在 `test_pitch.cjs` 和 `test_singing.cjs`，覆盖基频、自然抖动、相邻半音、整八度、持续发声、噪声、短时跳变过滤、真实持续变化、音域、导航和备份兼容。`test_singing_browser.cjs` 在 320、390、900 像素下，用 Web Audio 模拟麦克风输入，检查钢琴结束后自动检测、绿色麦克风、正确后自动停止、异常点断线、授权延迟与异常、离开时释放设备、统计和保存。模拟输入通过不等于真人和实体麦克风验证；详见 [模唱音准判定](../docs/singing-pitch.md)。
+模唱的基础检查在 `test_pitch.cjs` 和 `test_singing.cjs`，覆盖基频、自然抖动、相邻半音、整八度、持续发声、噪声、短时跳变过滤、真实持续变化、音域、导航和备份兼容；以可控时钟验证完整播放后才申请麦克风、旧授权释放和设备中断恢复。`test_singing_browser.cjs` 在 320、390、900 像素下，用 Web Audio 模拟麦克风输入和手机打开收音设备时的声音中断，检查钢琴实际播放完整 1.5 秒、绿色麦克风、正确后自动停止、异常点断线、授权延迟与异常、离开时释放设备、统计和保存。模拟输入通过不等于真人、安卓 Chrome 或 iPhone 真机验证；详见 [模唱音准判定](../docs/singing-pitch.md)。
 
 界面动画的基础检查在 `test_motion.cjs`，覆盖同步导航、退出完成时关闭、关闭中重开、Escape、减少动态效果和动画取消。`test_motion_browser.cjs` 在 320、390、900 像素宽度下检查各模块往返、全部设置与统计弹窗、焦点恢复、遮罩清理、快速连续切换和系统减少动态效果设置；另保存弹窗动画中间帧供排版检查。导航和音频清理不等待动画结束。
 

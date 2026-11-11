@@ -11,7 +11,7 @@
   }
   async function ready() {
     const ctx = getContext();
-    if (ctx.state === 'suspended') await ctx.resume();
+    if (ctx.state === 'suspended' || ctx.state === 'interrupted') await ctx.resume();
     return ctx;
   }
   async function load(key, read) {
