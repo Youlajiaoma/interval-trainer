@@ -89,9 +89,15 @@
     const value = backup.dailyTasks;
     if (!value || typeof value !== 'object' || Array.isArray(value) || modules.list.some(module => {
       const item = value[module.id];
+      // Backups made before the singing module have no goal for this module.
+      if (item === undefined && module.optionalGoal) return false;
       return !item || typeof item.enabled !== 'boolean' || !validTarget(item.target);
     })) throw Error('每日任务设置不正确');
-    return [[key,JSON.stringify(normalize(value))]];
+    const restored = normalize(value), current = settings();
+    for (const module of modules.list) {
+      if (module.optionalGoal && value[module.id] === undefined) restored[module.id] = current[module.id];
+    }
+    return [[key,JSON.stringify(restored)]];
   }
   function scheduleMidnight() {
     clearTimeout(midnightTimer);

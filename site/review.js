@@ -80,7 +80,7 @@
   function normalizeStore(raw, maxIndex = 12) {
     if (!raw || raw.version !== 1 || typeof raw !== 'object' || Array.isArray(raw)) throw Error('不支持的记录格式');
     const data = newStore();
-    data.cardRange = [13, 21, 63].includes(raw.cardRange) ? raw.cardRange : 13;
+    data.cardRange = maxIndex === 11 ? 12 : [13, 21, 63].includes(raw.cardRange) ? raw.cardRange : 13;
     const isValid = n => Number.isInteger(n) && n >= 0 && n <= maxIndex;
     for (let n = 0; n <= maxIndex; n++) {
       const c = raw.cards?.[n]; if (!c || typeof c !== 'object') continue;

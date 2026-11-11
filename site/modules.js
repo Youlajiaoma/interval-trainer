@@ -13,7 +13,10 @@
       reviews:[{part:'treble', key:'interval-trainer-review-sight-treble-v1', maxIndex:62},
         {part:'bass', key:'interval-trainer-review-sight-bass-v1', maxIndex:62}]},
     {id:'staff', name:'音程辨认', homeId:'home-staff-interval', statsId:'stats-staff', backupField:'staffInterval',
-      sessionKey:'tonaloom-staff-interval-v1', reviews:[{key:'tonaloom-staff-interval-review-v1', maxIndex:12}]}
+      sessionKey:'tonaloom-staff-interval-v1', reviews:[{key:'tonaloom-staff-interval-review-v1', maxIndex:12}]},
+    {id:'singing', name:'模唱', homeId:'home-singing', statsId:'stats-singing', backupField:'singing',
+      settingsKey:'tonaloom-singing-settings-v1', optionalGoal:true,
+      reviews:[{key:'tonaloom-singing-review-v1', maxIndex:11}]}
   ].map(item => Object.freeze({...item, reviews:Object.freeze(item.reviews.map(Object.freeze))}));
   const list = Object.freeze(definitions), implementations = new Map();
   let statisticsMode = 'harmonic', showStatistics = null;

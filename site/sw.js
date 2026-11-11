@@ -4,11 +4,11 @@ const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${se
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const CORE_FILES = [
-  './motion.js?v=2.18.13-up',
-  './','./index.html','./styles.css?v=2.18.13','./sight.css?v=2.18.13','./logic.js','./modules.js',
-  './review.js?v=2.18.13','./statistics.js?v=2.18.13','./audio.js','./storage.js','./app.js?v=2.18.13','./vendor/vexflow-loader.js','./sight.js?v=2.18.13','./staff-interval.js?v=2.18.13','./build-info.js',
+  './motion.js?v=2.19.1',
+  './','./index.html','./styles.css?v=2.19.1','./sight.css?v=2.19.1','./logic.js','./modules.js?v=2.19.1',
+  './review.js?v=2.19.1','./statistics.js?v=2.19.1','./audio.js','./storage.js','./app.js?v=2.19.1','./vendor/vexflow-loader.js','./sight.js?v=2.19.1','./staff-interval.js?v=2.19.1','./build-info.js','./build-info.js?v=2.19.1',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
-  './daily-tasks.js?v=2.18.13',
+  './daily-tasks.js?v=2.19.1','./pitch.js?v=2.19.1','./singing.js?v=2.19.1','./singing.css?v=2.19.1',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',
   './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt','./LICENSE_VEXFLOW_MIT.txt'

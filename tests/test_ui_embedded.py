@@ -9,6 +9,7 @@ src=(root/'index.html').read_text(encoding='utf-8')
 src=re.sub(r'((?:src|href)="[^"?]+)\?v=[^"]*"', r'\1"', src)
 src=src.replace('<link rel="stylesheet" href="styles.css">','<style>'+(root/'styles.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sight.css').read_text(encoding='utf-8')+'</style>')
+src=src.replace('<link rel="stylesheet" href="singing.css">','<style>'+(root/'singing.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="manifest" href="manifest.webmanifest">','')
 src=re.sub(r'<link rel="(?:icon|apple-touch-icon)"[^>]*>', '',src)
 # This in-page test uses a memory adapter. IndexedDB persistence is separately
@@ -21,7 +22,7 @@ window.IntervalPwaStorage={MELODY_KEY:'interval-trainer-review-melodic-v1',initi
  replaceBoth:async(s,r)=>{tdata.set('interval-trainer-settings',s);tdata.set('interval-trainer-review-v1',r)},
  flush:async()=>{}})};
 </script>'''
-for script in ('motion.js','logic.js','modules.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js','audio.js','daily-tasks.js'):
+for script in ('motion.js','logic.js','modules.js','assets/piano-samples.js','assets/melodic-recordings.js','review.js','statistics.js','audio.js','daily-tasks.js','pitch.js','singing.js'):
     src=src.replace(f'<script src="{script}"></script>',f'<script>\n{(root/script).read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="storage.js"></script>', adapter)
 src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text(encoding="utf-8")}\n</script>')

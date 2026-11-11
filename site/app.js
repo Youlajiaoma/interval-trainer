@@ -599,6 +599,8 @@
         motion.close($('settings-dialog'));
       } else if ($('daily-tasks-dialog').open) {
         motion.close($('daily-tasks-dialog'));
+      } else if ($('singing-settings').open) {
+        motion.close($('singing-settings'));
       } else if (modules.list.some(module => modules.get(module.id).isActive?.())) {
         motion.navigate(showHome,'back');
         lastBack = Date.now();

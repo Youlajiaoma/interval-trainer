@@ -27,7 +27,7 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
 (async()=>{
  let installation;handlers.install({waitUntil:p=>{installation=p}});await installation;
  assert([...backend.values()][0].size>=13);
- assert(backend.has('interval-trainer-pwa-v2.18.13-local'),'cache name should match the displayed app version');
+ assert(backend.has('interval-trainer-pwa-v2.19.1-local'),'cache name should match the displayed app version and build');
  const old=await cacheAPI.open('interval-trainer-pwa-old');
  const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.wav',root).href;
  const staleUrl=new URL('assets/melodic-recordings/maj2_up_piano.m4a',root).href;
@@ -47,7 +47,7 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
  assert((await offlineGet('assets/piano-samples.js')).body.length>100000);
  assert((await offlineGet('')).body.length>1000);
  assert((await offlineGet('audio.js')).body.length>1000);
- assert((await offlineGet('modules.js')).body.length>1000);
+ assert((await offlineGet('modules.js?v=2.19.1')).body.length>1000);
  const html=fs.readFileSync(path.join(site,'index.html'),'utf8');
  const assets=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(match=>match[1]);
  assets.push(...[...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g)].map(match=>match[1]));

@@ -60,6 +60,23 @@ with sync_playwright() as p:
     page.wait_for_function('window.IntervalAppReady === true')
     assert page.locator('#home-harmonic-marker').inner_text()=='✓'
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==10
+    page.locator('#home-singing').click()
+    assert page.locator('#singing-chart').is_visible()
+    page.locator('#open-settings').click()
+    page.locator('#singing-low').select_option('61')
+    page.locator('#singing-high').select_option('61')
+    page.locator('#singing-settings-done').click()
+    page.locator('#singing-settings').wait_for(state='hidden')
+    page.locator('#singing-play').click()
+    page.wait_for_function('document.getElementById("singing-play").textContent === "重播钢琴"')
+    page.evaluate('async()=>await window.IntervalPwaStorageAdapter.flush()')
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#home-singing').click()
+    page.locator('#open-settings').click()
+    assert page.locator('#singing-low').input_value()=='61'
+    assert page.locator('#singing-high').input_value()=='61'
+    assert page.evaluate('TonaloomModules.get("singing").reviewManager().snapshot().totalAnswers')==0
     assert not errors,errors
-    print('PASS: installed SW, offline reload, IDB history, stats and daily goal settings/completion persist')
+    print('PASS: installed SW, offline reload, IDB history, daily goals, singing resources, piano and range persistence')
     browser.close()

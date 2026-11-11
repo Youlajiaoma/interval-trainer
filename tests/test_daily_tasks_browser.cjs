@@ -82,7 +82,8 @@ const ids = ['harmonic','melodic','sight','staff'];
       await page.screenshot({path:path.join(screenshots,`${width}-home.png`)});
       assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth));
       await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
-      assert(await page.evaluate(() => TonaloomModules.list.every(module => TonaloomDailyTasks.progress(module.id).complete)));
+      assert(await page.evaluate(ids => ids.every(id => TonaloomDailyTasks.progress(id).complete), ids));
+      assert(!await page.evaluate(() => TonaloomDailyTasks.progress('singing').enabled), '未开启的新增模唱任务保持关闭');
       if (width === 390) {
         const second = await context.newPage(); await second.goto('http://127.0.0.1:8767/');
         await second.waitForFunction(() => window.IntervalAppReady);

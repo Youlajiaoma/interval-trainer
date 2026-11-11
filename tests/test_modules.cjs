@@ -13,9 +13,9 @@ async function appFor(t) {
 
 test('模块目录保留原有存储、记录范围及备份字段，新增独立每日任务设置', async t => {
   const app = await appFor(t), catalog = app.window.TonaloomModules;
-  assert.deepEqual(Array.from(catalog.storageKeys).sort(), [...Object.values(keys),'tonaloom-daily-tasks-v1'].sort());
-  assert.deepEqual(Array.from(catalog.reviewDefinitions, item => item.maxIndex), [12, 12, 62, 62, 12]);
-  assert.deepEqual(Array.from(catalog.list, item => item.backupField), ['harmonic', 'melodic', 'sight', 'staffInterval']);
+  assert.deepEqual(Array.from(catalog.storageKeys).sort(), [...Object.values(keys),'tonaloom-daily-tasks-v1','tonaloom-singing-settings-v1','tonaloom-singing-review-v1'].sort());
+  assert.deepEqual(Array.from(catalog.reviewDefinitions, item => item.maxIndex), [12, 12, 62, 62, 12, 11]);
+  assert.deepEqual(Array.from(catalog.list, item => item.backupField), ['harmonic', 'melodic', 'sight', 'staffInterval', 'singing']);
   assert.equal(app.window.IntervalPwaStorage.REVIEW_KEY, keys.harmonic);
   assert.equal(app.window.IntervalPwaStorage.SIGHT_TREBLE_KEY, keys.treble);
   assert.equal(app.window.IntervalPwaStorage.STAFF_REVIEW_KEY, keys.staff);
