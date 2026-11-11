@@ -3,7 +3,60 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {createApp, createMemoryDatabase} = require('./helpers/app-harness.cjs');
 const KEY = 'tonaloom-singing-settings-v1';
-async function appFor(t, options) { const app = await createApp(options); t.after(() => app.assertNoErrors()); return app; }
+async function appFor(t, options) {
+  const app = await createApp(options), origin = app.clock.now;
+  Object.defineProperty(app.window.AudioContext.prototype, 'currentTime', {
+    get() { return (app.clock.now - origin) / 1000; }, set() {}, configurable:true
+  });
+  t.after(() => app.assertNoErrors()); return app;
+}
+function microphone(app, acquire) {
+  const track = {readyState:'live', enabled:true, addEventListener() {}, stop() { this.readyState = 'ended'; }};
+  const stream = {getTracks:() => [track], getAudioTracks:() => [track]};
+  const nodes = () => ({connect() {}, disconnect() {}});
+  app.window.AudioContext.prototype.sampleRate = 48000;
+  app.window.AudioContext.prototype.createMediaStreamSource = nodes;
+  app.window.AudioContext.prototype.createAnalyser = () => ({...nodes(), fftSize:8192, getFloatTimeDomainData(data) { data.fill(0); }});
+  app.window.requestAnimationFrame = () => 1; app.window.cancelAnimationFrame = () => {};
+  app.window.navigator.mediaDevices = {getUserMedia:() => acquire(stream)};
+  return track;
+}
+test('完整播放1.5秒钢琴并等待尾音后才打开麦克风，重播也不在播放中申请设备', async t => {
+  const app = await appFor(t), calls = [];
+  const track = microphone(app, async stream => { calls.push(app.clock.now); return stream; });
+  await app.click('home-singing'); const start = app.clock.now;
+  await app.click('singing-play');
+  assert.equal(calls.length, 0, '点击播放时先不请求麦克风');
+  await app.advance(1600); assert.equal(calls.length, 0, '钢琴结束前后不发生设备切换');
+  await app.advance(500); assert.equal(calls.length, 1); assert(calls[0] - start >= 1950);
+  assert.equal(app.get('singing-listener').getAttribute('data-state'), 'listening');
+  await app.click('singing-play'); assert.equal(track.readyState, 'ended');
+  assert.equal(calls.length, 1, '重播同步关闭旧麦克风，等播放完成再重新申请');
+  await app.click('back-home'); await app.advance(2200); assert.equal(calls.length, 1, '退出后不迟到开启麦克风');
+});
+test('麦克风打开引发音频暂停后先恢复音频设备，再亮起模唱提示', async t => {
+  const app = await appFor(t);
+  let device, resumed = 0;
+  const decode = app.window.AudioContext.prototype.decodeAudioData;
+  app.window.AudioContext.prototype.decodeAudioData = function(bytes) { device = this; return decode.call(this, bytes); };
+  app.window.AudioContext.prototype.resume = async function() { resumed++; this.state = 'running'; };
+  microphone(app, async stream => { device.state = 'interrupted'; return stream; });
+  await app.click('home-singing'); await app.click('singing-play'); await app.advance(2100);
+  assert.equal(resumed, 1); assert.equal(device.state, 'running');
+  assert.equal(app.get('singing-listener').getAttribute('data-state'), 'listening');
+});
+test('旧麦克风请求未完成时等待其释放，避免迟到开启设备打断重播', async t => {
+  const app = await appFor(t); let resolve;
+  const track = microphone(app, stream => new Promise(finish => { resolve = () => finish(stream); }));
+  await app.click('home-singing'); await app.click('singing-play'); await app.advance(2100);
+  assert(resolve); assert.equal(app.audioEvents.filter(event => event.type === 'start').length, 1);
+  await app.click('singing-play');
+  assert.equal(app.audioEvents.filter(event => event.type === 'start').length, 1);
+  resolve(); await app.settle();
+  assert.equal(track.readyState, 'ended');
+  assert.equal(app.audioEvents.filter(event => event.type === 'start').length, 2);
+  await app.click('back-home');
+});
 test('模唱入口、设置和返回共用现有导航，进入不播放也不请求麦克风', async t => {
   const app = await appFor(t), before = await app.backup();
   await app.click('home-singing');
@@ -36,6 +89,7 @@ test('音域包含端点及半音，重播使用同一音高，下一题和音�
 });
 test('不支持麦克风时说明启动方式，不产生答题记录', async t => {
   const app = await appFor(t); await app.click('home-singing'); await app.click('singing-play');
+  await app.advance(2100);
   assert.match(app.get('singing-error').textContent, /HTTPS.*localhost/);
   assert.equal((await app.backup()).singing.review.totalAnswers, 0);
 });

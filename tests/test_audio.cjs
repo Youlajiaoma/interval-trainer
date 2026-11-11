@@ -60,6 +60,14 @@ test('音符超出钢琴采样范围时使用边界采样，播放倍率仍对�
   assert.equal(high.rate, 2 ** (1/12));
   await assert.rejects(audio.piano(35), /缺少钢琴采样/);
 });
+test('音频设备进入 interrupted 状态时重新播放会恢复，共用同一个音频设备', async () => {
+  const {state, channel} = environment(), audio = channel(.52);
+  const context = await audio.ready();
+  context.state = 'interrupted';
+  assert.equal(await audio.ready(), context);
+  assert.equal(context.state, 'running'); assert.equal(context.resumes, 2);
+  assert.equal(state.contexts.length, 1);
+});
 
 test('采样解码失败后可以重新加载，不保留失败的加载请求', async () => {
   const {state, channel} = environment(), audio = channel(.52);
