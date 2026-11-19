@@ -1,13 +1,11 @@
 /* Keep separate stems in one temporary multichannel transport and one clock.
  * The media element supplies background/loop/seek behavior; Web Audio applies
- * independent gains. No mixed recording is written or uploaded.
+ * independent gains. Prepared transports are saved locally, never uploaded.
  */
 (function (root) {
   'use strict';
-  function gains(value) {
-    const balance = Number.isFinite(value) ? Math.max(-100,Math.min(100,value)) : 0;
-    return {melody:balance < 0 ? (100+balance)/100 : 1, harmony:balance > 0 ? (100-balance)/100 : 1};
-  }
+  const stemIds = ['melody','harmony','guitar'];
+  const transportCache = 'interval-trainer-harmony-transports-v1';
   function pack(stems) {
     if (![2,3].includes(stems.length) || stems.some(stem => stem.numberOfChannels < 1 || stem.numberOfChannels > 2 || stem.sampleRate !== stems[0].sampleRate)) {
       throw Error('需要两至三段采样率相同的单声道或立体声音频');
@@ -30,18 +28,42 @@
   }
   function create(media) {
     const channel = root.TonaloomAudio.createChannel(1), cache = new Map(), transports = new Set();
-    let epoch = 0, silentURL = null, graph = null, balance = 0, muted = false;
-    let guitarVolume = 100, guitarMuted = false, silent = false;
+    let epoch = 0, silentURL = null, graph = null, silent = false;
+    const volumes = [100,100,100], muted = [false,false,false];
     function prepare(urls) {
       const key = JSON.stringify(urls), ownEpoch = epoch;
       if (!cache.has(key)) {
-        const pending = Promise.all(urls.map(url => channel.recording(url))).then(stems => {
+        const pending = (async () => {
+          let disk, request, blob, transport;
+          try {
+            if (root.caches) {
+              disk = await root.caches.open(transportCache);
+              const sources = urls.map(url => new URL(url,root.document.baseURI).href);
+              request = new URL('./__harmony_transport__?sources='+encodeURIComponent(JSON.stringify(sources)),root.document.baseURI).href;
+              const saved = await disk.match(request);
+              if (saved) {
+                transport = {stereo:saved.headers.get('X-Tonaloom-Stereo') === 'true',
+                  stemCount:Number(saved.headers.get('X-Tonaloom-Stems')),duration:Number(saved.headers.get('X-Tonaloom-Duration'))};
+                if (transport.stemCount === urls.length && Number.isFinite(transport.duration) && transport.duration > 0) blob = await saved.blob();
+              }
+            }
+          } catch { /* A restricted cache must not prevent normal playback. */ }
+          if (!blob) {
+            const stems = await Promise.all(urls.map(url => channel.recording(url)));
+            if (ownEpoch !== epoch) throw Error('混合音轨加载已取消');
+            transport = pack(stems);
+            blob = new Blob([transport.bytes],{type:'audio/wav'});
+            if (disk && request) try {
+              await disk.put(request,new Response(blob,{headers:{'Content-Type':'audio/wav',
+                'X-Tonaloom-Stereo':String(transport.stereo),'X-Tonaloom-Stems':String(transport.stemCount),
+                'X-Tonaloom-Duration':String(transport.duration)}}));
+            } catch { /* Original recordings remain playable if storage is full. */ }
+          }
           if (ownEpoch !== epoch) throw Error('混合音轨加载已取消');
-          const transport = pack(stems);
-          const url = URL.createObjectURL(new Blob([transport.bytes],{type:'audio/wav'}));
+          const url = URL.createObjectURL(blob);
           transports.add(url);
           return {stereo:transport.stereo,stemCount:transport.stemCount,duration:transport.duration,url};
-        });
+        })();
         cache.set(key,pending);
         pending.catch(() => { if (cache.get(key) === pending) cache.delete(key); });
       }
@@ -56,7 +78,7 @@
         source.connect(splitter);
         mergers.forEach((node,i) => { node.connect(levels[i]); levels[i].connect(context.destination); });
         graph = {context,source,splitter,mergers,levels,stemCount:0};
-        setBalance(balance,true);
+        updateLevels(true);
       }
       return context;
     }
@@ -80,33 +102,34 @@
         splitter.connect(mergers[stem],transport.stereo ? stem*2+side : stem,side);
       }
       media.pause(); media.src = transport.url; media.load();
-      setBalance(balance,true);
+      updateLevels(true);
     }
     function single() {
       if (graph) { graph.source.disconnect(); graph.source.connect(graph.context.destination); }
     }
-    function setBalance(value,immediate = false) {
-      balance = Number.isFinite(value) ? Math.max(-100,Math.min(100,value)) : 0;
+    function updateLevels(immediate = false) {
       if (graph) {
-        const values = gains(balance), at = graph.context.currentTime;
-        const targets = [muted ? 0 : values.melody,muted ? 0 : values.harmony,
-          guitarMuted || graph.stemCount !== 3 ? 0 : guitarVolume/100];
+        const at = graph.context.currentTime;
         graph.levels.forEach((node,i) => {
-          const target = silent ? 0 : targets[i], parameter = node.gain;
+          const target = silent || muted[i] || i >= graph.stemCount ? 0 : volumes[i]/100, parameter = node.gain;
           parameter.cancelScheduledValues(at);
           parameter.setValueAtTime(immediate ? target : parameter.value,at);
           if (!immediate) parameter.linearRampToValueAtTime(target,at+.008);
         });
       }
-      return gains(balance);
     }
-    function setMuted(value) { muted = Boolean(value); setBalance(balance,muted); }
-    function setGuitarVolume(value) {
-      guitarVolume = Number.isFinite(value) ? Math.max(0,Math.min(100,value)) : 100;
-      setBalance(balance); return guitarVolume;
+    function stemIndex(id) {
+      const index = stemIds.indexOf(id);
+      if (index < 0) throw Error('未知音轨：'+id);
+      return index;
     }
-    function setGuitarMuted(value) { guitarMuted = Boolean(value); setBalance(balance,guitarMuted); }
-    function setSilent(value) { silent = Boolean(value); setBalance(balance,silent); }
+    function setVolume(id,value) {
+      const index = stemIndex(id);
+      volumes[index] = Number.isFinite(value) ? Math.max(0,Math.min(100,value)) : 100;
+      updateLevels(); return volumes[index];
+    }
+    function setMuted(id,value) { muted[stemIndex(id)] = Boolean(value); updateLevels(Boolean(value)); }
+    function setSilent(value) { silent = Boolean(value); updateLevels(silent); }
     function release() {
       epoch++;
       for (const url of transports) URL.revokeObjectURL(url);
@@ -115,7 +138,7 @@
       silentURL = null;
     }
     return {prepare,prime,ready,assign,single,resume:() => graph ? channel.ready() : undefined,
-      setBalance,setMuted,setGuitarVolume,setGuitarMuted,setSilent,release};
+      setVolume,setMuted,setSilent,release};
   }
-  root.TonaloomHarmonyMix = Object.freeze({gains,pack,create});
+  root.TonaloomHarmonyMix = Object.freeze({pack,create});
 })(window);

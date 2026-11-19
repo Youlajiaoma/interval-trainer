@@ -3,19 +3,30 @@
   'use strict';
   const $ = id => document.getElementById(id), modules = root.TonaloomModules;
   const songs = root.TonaloomHarmonySongs, definition = modules.get('harmony-practice');
-  let active = false, song = null, index = -1, view = 'songs', mode = 'sequence';
+  let active = false, song = null, index = -1, view = 'songs';
   let audio, generation = 0, wantsPlay = false, sessionOwned = false, previousAudioSession;
-  let mixer, loadingMix = false, loadedMix = false, balance = 0;
-  let guitarVolume = 100, guitarMuted = false;
-  let muted = false, scrubbing = false, scrubKind = null, resumeAfterScrub = false, finishingScrub = false, scrubTimer;
+  let mixer, loadingMix = false, loadedMix = false;
+  const stemIds = ['melody','harmony','guitar'], volumes = {melody:100,harmony:100,guitar:100}, muted = {melody:false,harmony:false,guitar:false};
+  let scrubbing = false, scrubKind = null, resumeAfterScrub = false, finishingScrub = false, scrubTimer;
   const seekKeys = new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown']);
   const actions = ['play','pause','stop','previoustrack','nexttrack','seekto','seekbackward','seekforward'];
   const track = () => song?.tracks[index];
   const isMix = () => Array.isArray(track()?.mix);
   const hasGuitar = () => isMix() && track().mix.length === 3;
-  const mixSources = item => item.mix.map(id => song.stems?.[id] ?? song.tracks.find(stem => stem.id === id)?.src);
+  const mixSources = (item,entry = song) => item.mix.map(id => entry.stems?.[id] ?? entry.tracks.find(stem => stem.id === id)?.src);
   const hasSource = () => isMix() ? [2,3].includes(mixSources(track()).length) && mixSources(track()).every(src => typeof src === 'string' && src.length > 0)
     : typeof track()?.src === 'string' && track().src.length > 0;
+  function warmSongs() {
+    // Prepare silently before a song is chosen. Only play() unlocks output.
+    let pending = Promise.resolve();
+    for (const entry of songs) for (const item of entry.tracks) {
+      if (!Array.isArray(item.mix)) continue;
+      const urls = mixSources(item,entry);
+      if ([2,3].includes(urls.length) && urls.every(url => typeof url === 'string' && url.length > 0)) {
+        pending = pending.then(() => mixer.prepare(urls)).catch(() => {});
+      }
+    }
+  }
   function message(text = '') {
     $('harmony-message').textContent = text;
     $('harmony-message').classList.toggle('hidden',!text);
@@ -45,17 +56,6 @@
     if (sessionOwned) {
       try { root.navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch {}
     }
-  }
-  function renderMode() {
-    audio.loop = loadingMix || mode === 'loop';
-    const once = song?.tracks.length === 1 ? '单次播放' : '顺序播放';
-    const label = mode === 'loop' ? '循环播放' : once, next = mode === 'loop' ? once : '循环播放';
-    $('harmony-mode-label').textContent = label;
-    $('harmony-mode').dataset.mode = mode;
-    $('harmony-mode').setAttribute('aria-label',`播放模式：${label}，点击切换为${next}`);
-    $('harmony-mode-icon').innerHTML = mode === 'loop'
-      ? '<path d="M17 3l4 4-4 4M3 11V9a2 2 0 0 1 2-2h16M7 21l-4-4 4-4m14 0v2a2 2 0 0 1-2 2H3"/>'
-      : '<path d="M4 6h14m-3-3 3 3-3 3M4 12h10M4 18h14m-3-3 3 3-3 3"/>';
   }
   function releaseSession() {
     if (sessionOwned) {
@@ -115,7 +115,7 @@
           const prepared = await Promise.all([mixer.prepare(mixSources(track())),mixer.prime()]);
           if (!active || token !== generation) return;
           mixer.assign(prepared[0]); loadedMix = true; loadingMix = false;
-          renderMode(); message();
+          message();
         } else device = mixer.ready();
       }
       // A page restored from the browser's back cache may have released its src.
@@ -137,8 +137,7 @@
     position();
   }
   function updateOutputMute() {
-    audio.muted = scrubbing || (isMix() && muted && !hasGuitar());
-    mixer.setMuted(scrubbing || (isMix() && muted));
+    audio.muted = scrubbing;
     mixer.setSilent(scrubbing);
   }
   function beginScrub(kind) {
@@ -174,40 +173,32 @@
     if (hasSource() && !isMix()) audio.src = track().src;
     else { audio.removeAttribute('src'); if (!hasSource()) releaseSession(); }
     audio.load();
+    audio.loop = true;
     $('harmony-directory').classList.add('hidden'); $('harmony-player').classList.remove('hidden');
     $('harmony-track-title').textContent = track().title;
     $('harmony-track-number').textContent = `${String(index+1).padStart(2,'0')} / ${String(song.tracks.length).padStart(2,'0')}`;
     for (const id of ['harmony-track-number','harmony-previous','harmony-next']) $(id).classList.toggle('hidden',song.tracks.length === 1);
     $('harmony-previous').disabled = index === 0; $('harmony-next').disabled = index === song.tracks.length-1;
     $('harmony-play').disabled = !hasSource();
-    $('harmony-balance').classList.toggle('hidden',!isMix());
+    $('harmony-melody').classList.toggle('hidden',!isMix());
+    $('harmony-harmony').classList.toggle('hidden',!isMix());
     $('harmony-guitar').classList.toggle('hidden',!hasGuitar());
-    updateBalance(); updateGuitar();
-    renderMode(); renderPlayback(); position();
+    for (const id of stemIds) updateStem(id);
+    renderPlayback(); position();
     if (hasSource()) {
       void play();
     } else message('音频待添加');
   }
-  function updateGuitar() {
-    mixer.setGuitarVolume(guitarVolume); mixer.setGuitarMuted(guitarMuted);
-    const level = `${guitarMuted ? 0 : guitarVolume}%`, label = guitarMuted ? '取消静音吉他' : '静音吉他';
-    $('harmony-guitar-input').value = String(guitarVolume);
-    $('harmony-guitar-input').setAttribute('aria-valuetext',level);
-    $('harmony-guitar-level').textContent = level;
-    $('harmony-guitar-mute').classList.toggle('is-active',guitarMuted);
-    $('harmony-guitar-mute').setAttribute('aria-pressed',String(guitarMuted));
-    $('harmony-guitar-mute').setAttribute('aria-label',label); $('harmony-guitar-mute').setAttribute('title',label);
-  }
-  function updateBalance() {
-    const values = mixer.setBalance(balance), melody = `${Math.round((muted ? 0 : values.melody)*100)}%`, harmony = `${Math.round((muted ? 0 : values.harmony)*100)}%`;
-    updateOutputMute();
-    $('harmony-balance-input').value = String(balance);
-    $('harmony-balance-input').setAttribute('aria-valuetext',`旋律 ${melody}，和声 ${harmony}`);
-    $('harmony-melody-level').textContent = melody; $('harmony-harmony-level').textContent = harmony;
-    const label = muted ? '取消静音旋律和声' : '静音旋律和声';
-    $('harmony-mute').classList.toggle('is-active',muted);
-    $('harmony-mute').setAttribute('aria-pressed',String(muted));
-    $('harmony-mute').setAttribute('aria-label',label); $('harmony-mute').setAttribute('title',label);
+  function updateStem(id) {
+    const name = {melody:'旋律',harmony:'和声',guitar:'吉他'}[id];
+    mixer.setVolume(id,volumes[id]); mixer.setMuted(id,muted[id]);
+    const level = `${muted[id] ? 0 : volumes[id]}%`, label = `${muted[id] ? '取消静音' : '静音'}${name}`;
+    $(`harmony-${id}-input`).value = String(volumes[id]);
+    $(`harmony-${id}-input`).setAttribute('aria-valuetext',level);
+    $(`harmony-${id}-level`).textContent = level;
+    const button = $(`harmony-${id}-mute`);
+    button.classList.toggle('is-active',muted[id]); button.setAttribute('aria-pressed',String(muted[id]));
+    button.setAttribute('aria-label',label); button.setAttribute('title',label);
   }
   function skip(direction) {
     if (active && view === 'player' && song?.tracks[index+direction]) {
@@ -254,7 +245,7 @@
     for (const id of ['home-screen','practice','sight-practice','staff-interval-practice','singing-practice','open-settings']) $(id).classList.add('hidden');
     $('harmony-practice').classList.remove('hidden'); $('practice-navigation').classList.remove('hidden');
     $('harmony-navigation-spacer').classList.remove('hidden');
-    directory('songs');
+    directory('songs'); warmSongs();
   }
   function leave() {
     if (!active) return;
@@ -269,9 +260,12 @@
   }
   function init() {
     audio = $('harmony-audio');
+    audio.loop = true;
     mixer = root.TonaloomHarmonyMix.create(audio);
+    warmSongs();
+    root.addEventListener('online',warmSongs);
+    root.navigator.serviceWorker?.addEventListener('controllerchange',warmSongs);
     $('harmony-play').addEventListener('click',() => wantsPlay ? pause() : void play());
-    $('harmony-mode').addEventListener('click',() => { mode = mode === 'sequence' ? 'loop' : 'sequence'; renderMode(); });
     $('harmony-previous').addEventListener('click',() => skip(-1));
     $('harmony-next').addEventListener('click',() => skip(1));
     const seekControl = $('harmony-seek');
@@ -287,10 +281,10 @@
     seekControl.addEventListener('change',() => { if (scrubKind === 'input') finishScrub(); });
     seekControl.addEventListener('blur',finishScrub);
     for (const event of ['pointerup','pointercancel']) root.addEventListener(event,() => { if (scrubKind === 'pointer') finishScrub(); });
-    $('harmony-mute').addEventListener('click',() => { muted = !muted; updateBalance(); });
-    $('harmony-balance-input').addEventListener('input',() => { balance = Number($('harmony-balance-input').value); updateBalance(); });
-    $('harmony-guitar-mute').addEventListener('click',() => { guitarMuted = !guitarMuted; updateGuitar(); });
-    $('harmony-guitar-input').addEventListener('input',() => { guitarVolume = Number($('harmony-guitar-input').value); updateGuitar(); });
+    for (const id of stemIds) {
+      $(`harmony-${id}-mute`).addEventListener('click',() => { muted[id] = !muted[id]; updateStem(id); });
+      $(`harmony-${id}-input`).addEventListener('input',() => { volumes[id] = Number($(`harmony-${id}-input`).value); updateStem(id); });
+    }
     for (const player of [audio]) {
     for (const name of ['timeupdate','loadedmetadata','durationchange','seeked']) player.addEventListener(name,() => { if (active && view === 'player' && audio === player) position(); });
     player.addEventListener('seeked',completeScrub);
@@ -302,10 +296,7 @@
     });
     player.addEventListener('ended',() => {
       if (!active || view !== 'player' || audio !== player || loadingMix || scrubbing || !wantsPlay || !hasSource() || !audio.ended) return;
-      wantsPlay = false;
-      if (mode === 'loop') { seek(0); void play(); }
-      else if (song.tracks[index+1]) selectTrack(index+1);
-      else { renderPlayback(); position(); }
+      seek(0); void play();
     });
     player.addEventListener('error',() => {
       if (!active || view !== 'player' || audio !== player || loadingMix || !hasSource() || !audio.error) return;

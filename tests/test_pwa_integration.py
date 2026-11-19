@@ -11,6 +11,12 @@ with sync_playwright() as p:
     browser=p.chromium.launch(headless=True,executable_path=chromium)
     context=browser.new_context(viewport={'width':390,'height':844},accept_downloads=True)
     page=context.new_page()
+    context.add_init_script('''
+      window.harmonyDecodeCount=0;
+      const Device=window.AudioContext||window.webkitAudioContext;
+      if(Device){const decode=Device.prototype.decodeAudioData;
+        Device.prototype.decodeAudioData=function(...args){harmonyDecodeCount++;return decode.apply(this,args);};}
+    ''')
     errors=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto(url,wait_until='domcontentloaded')
@@ -33,10 +39,37 @@ with sync_playwright() as p:
         page.locator('#export-backup').click()
     assert d.value.suggested_filename.endswith('.json')
     page.wait_for_function('navigator.serviceWorker.controller !== null',timeout=30000)
+    # Installation saves all original stems before any song has been played.
+    page.wait_for_function('''async()=>{
+      const recordings=await caches.open('interval-trainer-harmony-recordings-v1');
+      return (await Promise.all(Object.values(TonaloomHarmonySongs[0].stems).map(src=>recordings.match(new URL(src,document.baseURI).href)))).every(Boolean);
+    }''',timeout=30000)
+    page.wait_for_function("async()=>(await (await caches.open('interval-trainer-harmony-transports-v1')).keys()).length>0",timeout=30000)
+    assert page.locator('#harmony-audio').evaluate('(a)=>a.paused')
     # The SW must cache piano assets before this test passes offline.
     context.set_offline(True)
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#home-harmony-practice').click()
+    page.evaluate('''()=>{
+      document.getElementById('harmony-directory').addEventListener('click',()=>window.songClickAt=performance.now(),{once:true});
+      document.getElementById('harmony-audio').addEventListener('playing',function(){if(this.duration>1)window.songStartedAt=performance.now();});
+    }''')
+    page.locator('#harmony-directory button').first.click()
+    page.wait_for_function("document.getElementById('harmony-audio').duration>1 && !document.getElementById('harmony-audio').paused && document.getElementById('harmony-audio').currentTime>.03")
+    assert page.evaluate('harmonyDecodeCount')==0,'Reopening must reuse the prepared local file without decoding again'
+    assert page.locator('#harmony-audio').evaluate('(a)=>a.loop')
+    local_start=page.evaluate('Math.round(songStartedAt-songClickAt)')
+    partial=page.evaluate('''async()=>{
+      const response=await fetch(TonaloomHarmonySongs[0].stems.melody,{headers:{Range:'bytes=44-143'}});
+      return {status:response.status,length:(await response.arrayBuffer()).byteLength};
+    }''')
+    assert partial=={'status':206,'length':100},partial
+    page.locator('#back-home').click()
+    page.locator('#harmony-directory').wait_for(state='visible')
+    page.locator('#back-home').click()
+    page.locator('#home-screen').wait_for(state='visible')
+    print(f'PASS: first song playback offline after reload, no decoding, local start {local_start} ms, offline range seeking')
     page.locator('#home-harmonic').click()
     assert page.locator('.answer-button').count()==13
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==1
@@ -78,5 +111,14 @@ with sync_playwright() as p:
     assert page.locator('#singing-high').input_value()=='61'
     assert page.evaluate('TonaloomModules.get("singing").reviewManager().snapshot().totalAnswers')==0
     assert not errors,errors
-    print('PASS: installed SW, offline reload, IDB history, daily goals, singing resources, piano and range persistence')
+    page.close()
+    page=context.new_page()
+    page.goto(url,wait_until='domcontentloaded')
+    page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#home-harmony-practice').click()
+    page.locator('#harmony-directory button').first.click()
+    page.wait_for_function("document.getElementById('harmony-audio').duration>1 && !document.getElementById('harmony-audio').paused")
+    assert page.evaluate('harmonyDecodeCount')==0
+    assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==10
+    print('PASS: closed/reopened page offline, local song reuse, installed SW, IDB history, daily goals, singing resources and range persistence')
     browser.close()

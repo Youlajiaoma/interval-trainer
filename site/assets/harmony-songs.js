@@ -10,4 +10,4 @@
       Object.freeze({id:'ensemble', title:'在他乡', mix:Object.freeze(['melody','harmony','guitar'])})
     ])})
   ]);
-})(window);
+})(typeof window !== 'undefined' ? window : self);
