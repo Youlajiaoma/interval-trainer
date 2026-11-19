@@ -55,11 +55,31 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
 test('页面显示版本和构建编号，版本值来自统一版本文件', () => {
   const worker = {};
   vm.runInNewContext(readSource('build-info.js'), {self:worker});
-  assert.equal(worker.TonaloomBuildInfo.version, '2.19.2');
+  assert.equal(worker.TonaloomBuildInfo.version, '2.20.0');
   assert.equal(worker.TonaloomBuildInfo.build, 'local');
   const html = readSource('index.html');
   assert.match(html, /id="app-version"/);
   assert.match(html, /id="app-build"/);
+});
+
+test('和声练唱已配置的音轨使用网页相对路径，且实际音频文件可读取', () => {
+  const context = {window:{}};
+  vm.runInNewContext(readSource('assets/harmony-songs.js'),context);
+  for (const song of context.window.TonaloomHarmonySongs) {
+    assert(song.id && song.title && song.tracks.length > 0);
+    for (const track of song.tracks) {
+      if (track.src === null) continue;
+      assert.equal(typeof track.src,'string');
+      assert(track.src.startsWith('assets/harmony-practice/'),`${song.title}/${track.title}应使用 assets/... 网页相对路径`);
+      assert(!track.src.includes('\\') && !track.src.split('/').includes('..'),'音频路径不能使用电脑盘符、反斜杠或上级目录');
+      const bytes = fs.readFileSync(path.join(site,track.src));
+      assert(bytes.length > 44,`音频文件不能是空文件：${track.src}`);
+      if (track.src.toLowerCase().endsWith('.wav')) {
+        assert.equal(bytes.subarray(0,4).toString(),'RIFF');
+        assert.equal(bytes.subarray(8,12).toString(),'WAVE');
+      }
+    }
+  }
 });
 
 test('主页版本标记能显示本地开发状态和发布构建编号', () => {
@@ -67,7 +87,7 @@ test('主页版本标记能显示本地开发状态和发布构建编号', () =>
   const document = {getElementById:id => elements[id]};
   const source = readSource('build-info.js');
   vm.runInNewContext(source, {self:{}, document});
-  assert.equal(elements['app-version'].textContent, '2.19.2');
+  assert.equal(elements['app-version'].textContent, '2.20.0');
   assert.equal(elements['app-build'].textContent, '本地开发版');
   vm.runInNewContext(source.replace("build:'local'", "build:'abc1234'"), {self:{}, document});
   assert.equal(elements['app-build'].textContent, '构建 abc1234');
@@ -85,7 +105,7 @@ test('网页引用的脚本与样式均列入离线清单，新增公共脚本�
     assert(urls.has(url.href), '网页依赖及其版本必须进入核心缓存：'+file);
     assert(fs.existsSync(path.join(site, url.pathname.slice(1))), '网页依赖文件必须存在：'+file);
   }
-  assert(urls.has('https://isolated.test/audio.js?v=2.19.2') && urls.has('https://isolated.test/modules.js?v=2.19.2'));
+  assert(urls.has('https://isolated.test/audio.js?v=2.20.0') && urls.has('https://isolated.test/modules.js?v=2.20.0'));
 });
 
 test('离线录音清单与实际出题录音完全对应，没有遗漏或重复', () => {

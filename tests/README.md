@@ -17,10 +17,12 @@ node tests/run.cjs --help
 ```
 
 - `--details`：补充失败断言的详细原因。
-- `--full`：还要求六项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
-- 不带 `--full` 时，不启动浏览器；六项浏览器检查仍会列为跳过，不会省略它们。
+- `--full`：还要求七项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
+- 不带 `--full` 时，不启动浏览器；七项浏览器检查仍会列为跳过，不会省略它们。
 
-基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs`、`test_daily_tasks_browser.cjs`、`test_motion_browser.cjs` 和 `test_singing_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs`、`test_daily_tasks_browser.cjs`、`test_motion_browser.cjs`、`test_singing_browser.cjs` 和 `test_harmony_practice_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
+
+和声练唱的 `test_harmony_practice.cjs` 覆盖空目录占位、四音轨顺序、原生循环、拖动进度、媒体控制、迟到播放请求及返回清理，并核对现有历史记录不变。`test_harmony_practice_browser.cjs` 在 320、390、900 像素下，以独立生成的短 WAV 验证真实原生播放、自动换轨、循环、暂停和进度；在 390 像素下还读取实际清单，检查已提供歌曲文件的播放及拖动，截图保存在临时目录。它不等同于 iPhone/安卓的锁屏或后台换曲实测。资源检查核对网页相对路径及音频文件；缓存模拟检查联网清单更新和离线回退。
 
 模唱的基础检查在 `test_pitch.cjs` 和 `test_singing.cjs`，覆盖基频、自然抖动、相邻半音、整八度、持续发声、噪声、短时跳变过滤、真实持续变化、音域、导航和备份兼容；以可控时钟验证完整播放后才申请麦克风、旧授权释放和设备中断恢复。`test_singing_browser.cjs` 在 320、390、900 像素下，用 Web Audio 模拟麦克风输入和手机打开收音设备时的声音中断，检查钢琴实际播放完整 1.5 秒、绿色麦克风、正确后自动停止、异常点断线、授权延迟与异常、离开时释放设备、统计和保存。模拟输入通过不等于真人、安卓 Chrome 或 iPhone 真机验证；详见 [模唱音准判定](../docs/singing-pitch.md)。
 

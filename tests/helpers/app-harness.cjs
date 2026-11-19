@@ -211,7 +211,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345, sourc
   const clefButtons = ['treble', 'bass', 'both'].map(clef => {
     const button = new Element('button'); button.dataset.clef = clef; return button;
   });
-  const document = {
+  const document = Object.assign(new Element('document'), {
     body: new Element('body'), documentElement: new Element('html'),
     getElementById: get,
     createElement: tag => new Element(tag),
@@ -226,7 +226,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345, sourc
       if (selector === '[data-staff-clef]') return [];
       throw Error('Unsupported document selector: ' + selector);
     }
-  };
+  });
   const clock = {now: new Date(2026, 9, 15, 10).getTime(), timers: new Map(), nextId: 0};
   const setTimer = (callback, delay = 0) => {
     const id = ++clock.nextId;
@@ -286,7 +286,7 @@ async function createApp({database = createMemoryDatabase(), seed = 12345, sourc
     }
   });
   document.baseURI = 'https://isolated.test/';
-  for (const file of ['motion.js', 'logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'daily-tasks.js', 'pitch.js', 'singing.js', 'assets/melodic-recordings.js']) {
+  for (const file of ['motion.js', 'logic.js', 'modules.js', 'review.js', 'statistics.js', 'audio.js', 'storage.js', 'daily-tasks.js', 'pitch.js', 'singing.js', 'assets/melodic-recordings.js', 'assets/harmony-songs.js', 'harmony-practice.js']) {
     vm.runInContext(source(file), context, {filename: file});
   }
   const ready = vm.runInContext(source('app.js'), context, {filename: 'app.js'});
