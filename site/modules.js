@@ -19,14 +19,16 @@
       reviews:[{key:'tonaloom-singing-review-v1', maxIndex:11}]}
   ].map(item => Object.freeze({...item, reviews:Object.freeze(item.reviews.map(Object.freeze))}));
   const list = Object.freeze(definitions), implementations = new Map();
+  // Listening activities share navigation, without answer counts or review data.
+  const activities = Object.freeze([...list, Object.freeze({id:'harmony-practice', name:'和声练唱', homeId:'home-harmony-practice'})]);
   let statisticsMode = 'harmonic', showStatistics = null;
   function definition(id) {
-    const item = list.find(module => module.id === id);
+    const item = activities.find(module => module.id === id);
     if (!item) throw Error(`未知练习模块：${id}`);
     return item;
   }
   root.TonaloomModules = Object.freeze({
-    list, settingsKey, dailyTasksKey,
+    list, activities, settingsKey, dailyTasksKey,
     reviewDefinitions:Object.freeze(list.flatMap(module => module.reviews)),
     storageKeys:Object.freeze([dailyTasksKey,...new Set(list.flatMap(module =>
       [...module.reviews.map(review => review.key), module.settingsKey, module.sessionKey].filter(Boolean)))]),

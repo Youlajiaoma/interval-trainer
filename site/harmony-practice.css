@@ -1,0 +1,29 @@
+.harmony-navigation-spacer{display:block;width:34px;height:34px}
+.harmony-directory{max-width:600px;margin:30px auto 0;display:flex;flex-direction:column}
+.harmony-entry{display:flex;align-items:center;gap:18px;width:100%;min-height:82px;padding:19px 4px;background:none;border:0;border-bottom:1px solid #2b2d40;text-align:left;color:#e8e6f6}
+.harmony-entry:hover{color:#cab9ff}
+.harmony-entry-number{flex:none;font-size:12px;color:#77758d;font-variant-numeric:tabular-nums}
+.harmony-entry-name{flex:1;min-width:0;font-size:17px;font-weight:650}
+.harmony-entry-arrow{color:#a998e6;font-size:20px}
+.harmony-player{max-width:460px;margin:clamp(36px,9vh,88px) auto 24px}
+.harmony-track-heading{margin-bottom:48px}
+.harmony-track-number{color:#858299;font-size:12px;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.harmony-track-heading h2{color:#f1ecff;font-size:30px;letter-spacing:.4px;margin:12px 0 0;font-weight:700;overflow-wrap:anywhere}
+.harmony-timeline input{display:block;margin:0;cursor:pointer}
+.harmony-times{display:flex;justify-content:space-between;margin-top:12px;color:#9390a8;font-size:12px;font-variant-numeric:tabular-nums}
+.harmony-player-controls{display:flex;justify-content:center;align-items:center;gap:34px;margin:31px 0 24px}
+.harmony-play,.harmony-skip{display:grid;place-items:center;flex:none;border:0;padding:0}
+.harmony-play{width:68px;height:68px;border-radius:50%;background:#ad99fb;color:#201733}
+.harmony-play:hover{background:#c6b7ff}
+.harmony-play svg{width:29px;height:29px}
+.harmony-skip{width:44px;height:44px;background:transparent;color:#c3b9dd;border-radius:50%}
+.harmony-skip:hover{background:#242034;color:#eee5ff}
+.harmony-skip svg{width:23px;height:23px}
+.harmony-mode{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto;min-height:44px;padding:8px 15px;background:transparent;border:0;color:#a9a3bb;font-size:12px;border-radius:8px}
+.harmony-mode svg{width:19px;height:19px}
+.harmony-mode:hover{color:#dbcaff}
+.harmony-mode[data-mode="loop"]{color:#c4adff}
+.harmony-message{margin:18px 0 0;text-align:center;color:#a8a1ba;font-size:12px;line-height:1.7}
+.harmony-practice button:disabled,.harmony-timeline input:disabled{opacity:.35;cursor:default}
+.harmony-practice button:focus-visible{outline:2px solid #c8baff;outline-offset:4px}
+@media(max-width:620px){.harmony-directory{margin-top:22px}.harmony-entry{min-height:78px}.harmony-entry-name{font-size:16px}.harmony-player{margin-top:42px;padding:0 8px}.harmony-track-heading{margin-bottom:40px}.harmony-track-heading h2{font-size:28px}}

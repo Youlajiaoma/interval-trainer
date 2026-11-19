@@ -3,11 +3,12 @@ const site=path.join(__dirname,'..','site');
 const root='https://example.test/interval-trainer/';
 const handlers={};
 const backend=new Map();
+const networkOverrides=new Map();
 let online=true;
 let claims=0,skipWaiting=0;
 const asUrl=req=>typeof req==='string'?req:req.url||req.href;
 function resource(u){const relative=new URL(u).pathname.replace('/interval-trainer/','')||'index.html';return path.join(site,relative);}
-function response(url){const p=resource(url);if(!fs.existsSync(p))throw Error('file missing '+url);return {ok:true,type:'basic',url,body:fs.readFileSync(p),clone(){return this;}};}
+function response(url){const p=resource(url);if(!fs.existsSync(p))throw Error('file missing '+url);return {ok:true,type:'basic',url,body:networkOverrides.get(url)||fs.readFileSync(p),clone(){return this;}};}
 const cacheAPI={
  async open(name){if(!backend.has(name))backend.set(name,new Map());const entries=backend.get(name);return {
   async addAll(urls){const rows=urls.map(u=>{if(!online)throw Error('offline');return [String(u),response(String(u))]});for(const [url,res] of rows)entries.set(url,res);},
@@ -27,7 +28,7 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
 (async()=>{
  let installation;handlers.install({waitUntil:p=>{installation=p}});await installation;
  assert([...backend.values()][0].size>=13);
- assert(backend.has('interval-trainer-pwa-v2.19.2-local'),'cache name should match the displayed app version and build');
+ assert(backend.has('interval-trainer-pwa-v2.20.0-local'),'cache name should match the displayed app version and build');
  const old=await cacheAPI.open('interval-trainer-pwa-old');
  const savedUrl=new URL('assets/melodic-recordings/min2_up_piano.wav',root).href;
  const staleUrl=new URL('assets/melodic-recordings/maj2_up_piano.m4a',root).href;
@@ -41,13 +42,19 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
  assert(recordings.has(savedUrl),'previous recordings should be retained');
  assert(!recordings.has(staleUrl),'old M4A recordings should be removed');
  handlers.message({data:{type:'SKIP_WAITING'}});assert.equal(skipWaiting,1);
- online=false;
  async function offlineGet(p,mode='same-origin'){let result;handlers.fetch({request:{url:new URL(p,root).toString(),method:'GET',mode},respondWith:x=>result=x});return result;}
+ const catalogPath=/src="(assets\/harmony-songs\.js[^\"]*)"/.exec(fs.readFileSync(path.join(site,'index.html'),'utf8'))[1];
+ const catalogUrl=new URL(catalogPath,root).href;
+ const refreshedCatalog=Buffer.from(fs.readFileSync(resource(catalogUrl),'utf8')+'\n// Refreshed song list\n');
+ networkOverrides.set(catalogUrl,refreshedCatalog);
+ assert.deepEqual((await offlineGet(catalogPath)).body,refreshedCatalog,'联网时歌曲清单必须更新，不能一直使用空音轨缓存');
+ online=false;
+ assert.deepEqual((await offlineGet(catalogPath)).body,refreshedCatalog,'离线时使用刚更新过的同一版本清单');
  assert((await offlineGet('index.html')).body.length>1000);
  assert((await offlineGet('assets/piano-samples.js')).body.length>100000);
  assert((await offlineGet('')).body.length>1000);
- assert((await offlineGet('audio.js?v=2.19.2')).body.length>1000);
- assert((await offlineGet('modules.js?v=2.19.2')).body.length>1000);
+ assert((await offlineGet('audio.js?v=2.20.0')).body.length>1000);
+ assert((await offlineGet('modules.js?v=2.20.0')).body.length>1000);
  const html=fs.readFileSync(path.join(site,'index.html'),'utf8');
  const assets=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(match=>match[1]);
  assets.push(...[...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g)].map(match=>match[1]));
@@ -56,7 +63,8 @@ vm.runInNewContext(fs.readFileSync(path.join(site,'sw.js'),'utf8'),env);
  assert((await offlineGet('unknown-page','navigate')).body.length>1000);
  await assert.rejects(offlineGet('unknown-asset.js'),/network off/);
  for(const request of [{url:'https://elsewhere.test/app.js',method:'GET'},
-   {url:new URL('/outside/app.js',root).href,method:'GET'}, {url:new URL('app.js',root).href,method:'POST'}]){
+   {url:new URL('/outside/app.js',root).href,method:'GET'}, {url:new URL('app.js',root).href,method:'POST'},
+   {url:new URL('assets/harmony-practice/zai-ta-xiang/melody.mp3',root).href,method:'GET',headers:{get:()=>'bytes=100-'}}]){
   handlers.fetch({request,respondWith(){throw Error('out-of-scope request intercepted')}});
  }
  console.log('PASS ServiceWorker simulation: install, recording migration/warming, activation, offline assets and request boundaries');

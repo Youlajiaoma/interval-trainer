@@ -527,7 +527,7 @@
     syncHintButton();
   }
   function showHome(){
-    for (const module of modules.list.map(item => modules.get(item.id))) {
+    for (const module of modules.activities.map(item => modules.get(item.id))) {
       if (module.isActive?.()) module.leave?.();
     }
     // Leaving a module is navigation, not a wrong answer or a skipped question.
@@ -571,10 +571,10 @@
   }
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
-    for (const module of modules.list) $(module.homeId).addEventListener('click',()=>{
+    for (const module of modules.activities) $(module.homeId).addEventListener('click',()=>{
       motion.navigate(() => { modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render(); });
     });
-    $('back-home').addEventListener('click',() => motion.navigate(showHome,'back'));
+    $('back-home').addEventListener('click',navigateBack);
     // The existing statistics dialog is shared with the home screen.
     $('home-stats').addEventListener('click',()=> $('open-stats').click());
     syncModeControls();
@@ -582,6 +582,10 @@
     $('submit-answer').addEventListener('click', () => submitAnswer(false));
     $('next-question').addEventListener('click', advanceQuestion);
     $('reveal-answer').addEventListener('click', () => submitAnswer(true));
+  }
+  function navigateBack() {
+    const active = modules.activities.map(module => modules.get(module.id)).find(module => module.isActive?.());
+    if (!active?.back?.()) motion.navigate(showHome,'back');
   }
   function setupBackProtection() {
     // Installed PWA: reserve one same-URL history entry for Android system Back.
@@ -601,10 +605,12 @@
         motion.close($('daily-tasks-dialog'));
       } else if ($('singing-settings').open) {
         motion.close($('singing-settings'));
-      } else if (modules.list.some(module => modules.get(module.id).isActive?.())) {
-        motion.navigate(showHome,'back');
-        lastBack = Date.now();
-        toast('再按一次返回退出');
+      } else if (modules.activities.some(module => modules.get(module.id).isActive?.())) {
+        navigateBack();
+        if (!$('home-screen').classList.contains('hidden')) {
+          lastBack = Date.now();
+          toast('再按一次返回退出');
+        }
       } else if (Date.now() - lastBack < 2200) {
         // Do not insert another guard. The next Back leaves the installed app.
         history.back();

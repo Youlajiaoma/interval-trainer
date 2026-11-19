@@ -1,0 +1,210 @@
+/* Song listening uses one native media element, including while backgrounded. */
+(function (root) {
+  'use strict';
+  const $ = id => document.getElementById(id), modules = root.TonaloomModules;
+  const songs = root.TonaloomHarmonySongs, definition = modules.get('harmony-practice');
+  let active = false, song = null, index = -1, view = 'songs', mode = 'sequence';
+  let audio, generation = 0, wantsPlay = false, sessionOwned = false, previousAudioSession;
+  const actions = ['play','pause','stop','previoustrack','nexttrack','seekto','seekbackward','seekforward'];
+  const track = () => song?.tracks[index];
+  const hasSource = () => typeof track()?.src === 'string' && track().src.length > 0;
+  function message(text = '') {
+    $('harmony-message').textContent = text;
+    $('harmony-message').classList.toggle('hidden',!text);
+  }
+  function time(value) {
+    const seconds = Number.isFinite(value) ? Math.max(0,Math.floor(value)) : 0;
+    return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+  }
+  function position() {
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    $('harmony-elapsed').textContent = time(current);
+    $('harmony-duration').textContent = time(duration);
+    $('harmony-seek').disabled = !hasSource() || duration <= 0;
+    $('harmony-seek').value = duration > 0 ? String(Math.min(100,current/duration*100)) : '0';
+    if (sessionOwned && duration > 0) {
+      try { root.navigator.mediaSession.setPositionState?.({duration,playbackRate:audio.playbackRate,position:Math.min(duration,current)}); } catch {}
+    }
+  }
+  function renderPlayback() {
+    const playing = wantsPlay && !audio.paused;
+    const label = wantsPlay ? '暂停' : '播放';
+    $('harmony-play').setAttribute('aria-label',label);
+    $('harmony-play-label').textContent = label;
+    $('harmony-play-icon').innerHTML = wantsPlay ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    if (sessionOwned) {
+      try { root.navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch {}
+    }
+  }
+  function renderMode() {
+    audio.loop = mode === 'loop';
+    const label = mode === 'loop' ? '循环播放' : '顺序播放', next = mode === 'loop' ? '顺序播放' : '循环播放';
+    $('harmony-mode-label').textContent = label;
+    $('harmony-mode').dataset.mode = mode;
+    $('harmony-mode').setAttribute('aria-label',`播放模式：${label}，点击切换为${next}`);
+    $('harmony-mode-icon').innerHTML = mode === 'loop'
+      ? '<path d="M17 3l4 4-4 4M3 11V9a2 2 0 0 1 2-2h16M7 21l-4-4 4-4m14 0v2a2 2 0 0 1-2 2H3"/>'
+      : '<path d="M4 6h14m-3-3 3 3-3 3M4 12h10M4 18h14m-3-3 3 3-3 3"/>';
+  }
+  function releaseSession() {
+    if (sessionOwned) {
+      for (const action of actions) try { root.navigator.mediaSession.setActionHandler(action,null); } catch {}
+      try {
+        root.navigator.mediaSession.playbackState = 'none';
+        root.navigator.mediaSession.metadata = null;
+        root.navigator.mediaSession.setPositionState?.();
+      } catch {}
+      sessionOwned = false;
+    }
+    if (previousAudioSession !== undefined) {
+      try { root.navigator.audioSession.type = previousAudioSession; } catch {}
+      previousAudioSession = undefined;
+    }
+  }
+  function claimSession() {
+    // Native playback avoids a Web Audio processing graph being suspended on lock.
+    if (root.navigator.audioSession && previousAudioSession === undefined) {
+      try { previousAudioSession = root.navigator.audioSession.type; root.navigator.audioSession.type = 'playback'; } catch {}
+    }
+    const session = root.navigator.mediaSession;
+    if (!session) return;
+    sessionOwned = true;
+    try {
+      if (root.MediaMetadata) session.metadata = new root.MediaMetadata({title:track().title,artist:song.title,album:definition.name});
+    } catch {}
+    const handlers = {
+      play:() => void play(), pause, stop:() => { pause(); seek(0); },
+      previoustrack:() => skip(-1), nexttrack:() => skip(1),
+      seekto:details => seek(details.seekTime),
+      seekbackward:details => seek(audio.currentTime-(details.seekOffset || 10)),
+      seekforward:details => seek(audio.currentTime+(details.seekOffset || 10))
+    };
+    for (const action of actions) try { session.setActionHandler(action,handlers[action]); } catch {}
+  }
+  function pause() {
+    generation++; wantsPlay = false; audio.pause(); renderPlayback(); position();
+  }
+  function stop() {
+    pause(); audio.removeAttribute('src'); audio.load(); releaseSession();
+  }
+  async function play() {
+    if (!active || view !== 'player' || !hasSource()) return;
+    const token = ++generation;
+    wantsPlay = true; message(); claimSession();
+    try {
+      // A page restored from the browser's back cache may have released its src.
+      if (!audio.src) { audio.src = track().src; audio.load(); }
+      else if (audio.error) audio.load();
+      // Call play directly in the user gesture; do not wait for a fetch or decode.
+      const pending = audio.play(); renderPlayback();
+      await pending;
+      if (active && token === generation) { renderPlayback(); position(); }
+    } catch (error) {
+      if (!active || token !== generation) return;
+      wantsPlay = false; renderPlayback();
+      message(error.name === 'NotAllowedError' ? '播放已暂停，请点击播放继续。' : '音频暂时无法播放，请重试。');
+    }
+  }
+  function seek(value) {
+    if (!active || view !== 'player' || !hasSource() || !Number.isFinite(audio.duration) || !Number.isFinite(value)) return;
+    try { audio.currentTime = Math.max(0,Math.min(audio.duration,value)); } catch {}
+    position();
+  }
+  function selectTrack(next) {
+    if (!active || !song?.tracks[next]) return;
+    // Preserve the active system media session across a background track change.
+    pause(); index = next; view = 'player';
+    if (hasSource()) audio.src = track().src;
+    else { audio.removeAttribute('src'); releaseSession(); }
+    audio.load();
+    $('harmony-directory').classList.add('hidden'); $('harmony-player').classList.remove('hidden');
+    $('harmony-track-title').textContent = track().title;
+    $('harmony-track-number').textContent = `${String(index+1).padStart(2,'0')} / ${String(song.tracks.length).padStart(2,'0')}`;
+    $('harmony-previous').disabled = index === 0; $('harmony-next').disabled = index === song.tracks.length-1;
+    $('harmony-play').disabled = !hasSource();
+    renderMode(); renderPlayback(); position();
+    if (hasSource()) {
+      void play();
+    } else message('音频待添加');
+  }
+  function skip(direction) {
+    if (active && view === 'player' && song?.tracks[index+direction]) {
+      root.TonaloomMotion.content($('harmony-player'),() => selectTrack(index+direction),direction > 0 ? 'forward' : 'back');
+    }
+  }
+  function entry(title, number, choose) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'harmony-entry';
+    for (const [className,text] of [['harmony-entry-number',String(number).padStart(2,'0')],['harmony-entry-name',title],['harmony-entry-arrow','→']]) {
+      const span = document.createElement('span'); span.className = className; span.textContent = text;
+      if (className !== 'harmony-entry-name') span.setAttribute('aria-hidden','true');
+      button.appendChild(span);
+    }
+    button.addEventListener('click',() => root.TonaloomMotion.navigate(choose));
+    return button;
+  }
+  function directory(level) {
+    stop(); view = level; index = -1;
+    if (level === 'songs') song = null;
+    $('harmony-player').classList.add('hidden'); $('harmony-directory').classList.remove('hidden');
+    $('practice-mode-title').textContent = song?.title || definition.name;
+    $('back-home').textContent = level === 'songs' ? '← HOME' : '← 返回';
+    $('back-home').setAttribute('aria-label',level === 'songs' ? '返回主页' : '返回歌曲目录');
+    const entries = level === 'songs' ? songs.map((item,i) => entry(item.title,i+1,() => { song = item; directory('tracks'); }))
+      : song.tracks.map((item,i) => entry(item.title,i+1,() => {
+        $('back-home').setAttribute('aria-label','返回音轨目录'); selectTrack(i);
+      }));
+    $('harmony-directory').replaceChildren(...entries);
+    $('harmony-directory').setAttribute('aria-label',level === 'songs' ? '歌曲目录' : `${song.title}音轨目录`);
+    root.scrollTo(0,0);
+  }
+  function enter() {
+    active = true; document.body.classList.add('module-active');
+    document.documentElement.classList.remove('practice-scroll-locked');
+    for (const id of ['home-screen','practice','sight-practice','staff-interval-practice','singing-practice','open-settings']) $(id).classList.add('hidden');
+    $('harmony-practice').classList.remove('hidden'); $('practice-navigation').classList.remove('hidden');
+    $('harmony-navigation-spacer').classList.remove('hidden');
+    directory('songs');
+  }
+  function leave() {
+    if (!active) return;
+    active = false; stop(); song = null; index = -1;
+    $('harmony-practice').classList.add('hidden'); $('harmony-navigation-spacer').classList.add('hidden');
+    $('back-home').textContent = '← HOME'; $('back-home').setAttribute('aria-label','返回主页');
+  }
+  function back() {
+    if (!active || view === 'songs') return false;
+    root.TonaloomMotion.navigate(() => directory(view === 'player' ? 'tracks' : 'songs'),'back');
+    return true;
+  }
+  function init() {
+    audio = $('harmony-audio');
+    $('harmony-play').addEventListener('click',() => wantsPlay ? pause() : void play());
+    $('harmony-mode').addEventListener('click',() => { mode = mode === 'sequence' ? 'loop' : 'sequence'; renderMode(); });
+    $('harmony-previous').addEventListener('click',() => skip(-1));
+    $('harmony-next').addEventListener('click',() => skip(1));
+    $('harmony-seek').addEventListener('input',() => seek(Number($('harmony-seek').value)/100*audio.duration));
+    for (const name of ['timeupdate','loadedmetadata','durationchange','seeked']) audio.addEventListener(name,() => { if (active && view === 'player') position(); });
+    audio.addEventListener('playing',() => { if (active && view === 'player' && wantsPlay) { message(); renderPlayback(); } });
+    audio.addEventListener('pause',() => {
+      if (!active || view !== 'player' || !audio.paused || audio.ended) return;
+      // System interruptions and external controls must also update the button.
+      wantsPlay = false; renderPlayback();
+    });
+    audio.addEventListener('ended',() => {
+      if (!active || view !== 'player' || !hasSource() || !audio.ended) return;
+      wantsPlay = false;
+      if (mode === 'loop') { seek(0); void play(); }
+      else if (song.tracks[index+1]) selectTrack(index+1);
+      else { renderPlayback(); position(); }
+    });
+    audio.addEventListener('error',() => {
+      if (!active || view !== 'player' || !hasSource() || !audio.error) return;
+      pause(); message('音频加载失败，请检查网络后重试。');
+    });
+    // Hiding/locking keeps playback alive. Only a real document exit releases it.
+    root.addEventListener('pagehide',() => { if (active) stop(); });
+    modules.register(definition.id,{enter,leave,back,isActive:() => active});
+  }
+  if (root.IntervalAppReady) init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
+})(window);
