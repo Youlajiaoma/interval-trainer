@@ -7,6 +7,12 @@ on:
     branches: [dev, main]
   workflow_dispatch:
   workflow_call:
+    inputs:
+      full:
+        description: Require every browser check before deployment
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -24,17 +30,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Run dependency-free checks
-        run: node tests/run.cjs
-      - name: Prepare isolated browser tools
-        run: |
-          npm install --prefix "$RUNNER_TEMP/tonaloom-browser-tools" --no-save --package-lock=false playwright@1.56.0
-          python -m pip install playwright==1.56.0
-          python -m playwright install --with-deps chromium
+      - name: Select checks for changed files
+        id: plan
+        env:
+          CI_FULL: ${{ inputs.full == true }}
+        run: node tests/ci-plan.cjs
       - name: Bundle notation dependency for offline checks
         run: |
           mkdir -p site/vendor
@@ -42,16 +42,43 @@ jobs:
             'https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js' \
             --output site/vendor/vexflow.js
           test "$(wc -c < site/vendor/vexflow.js)" -gt 100000
-      - name: Run complete checks against a local server
+      - name: Run dependency-free checks and offline cache simulation
+        run: node tests/run.cjs
+      - name: Cache browser tool package downloads
+        if: steps.plan.outputs.needs_browser == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/pip
+          key: ${{ runner.os }}-node24-python3.13-playwright1.56.0-python${{ steps.plan.outputs.needs_python }}-v1
+      - name: Set up Python
+        if: steps.plan.outputs.needs_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Prepare isolated browser tools
+        if: steps.plan.outputs.needs_browser == 'true'
+        env:
+          NEEDS_PYTHON: ${{ steps.plan.outputs.needs_python }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/tonaloom-browser-tools" --no-save --package-lock=false playwright@1.56.0
+          if [ "$NEEDS_PYTHON" = 'true' ]; then
+            python -m pip install playwright==1.56.0
+          fi
+          node "$RUNNER_TEMP/tonaloom-browser-tools/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Run selected browser checks against a local server
+        if: steps.plan.outputs.needs_browser == 'true'
         shell: bash
         env:
           NODE_PATH: ${{ runner.temp }}/tonaloom-browser-tools/node_modules
+          BROWSER_CHECKS: ${{ steps.plan.outputs.browser_checks }}
         run: |
-          python -m http.server 8000 --bind 127.0.0.1 --directory site > "$RUNNER_TEMP/tonaloom-http.log" 2>&1 &
+          python3 -m http.server 8000 --bind 127.0.0.1 --directory site > "$RUNNER_TEMP/tonaloom-http.log" 2>&1 &
           tonaloom_server_pid=$!
           trap 'kill "$tonaloom_server_pid" 2>/dev/null || true' EXIT
           for attempt in {1..40}; do
             if curl --fail --silent "$PWA_TEST_URL" > /dev/null; then break; fi
             sleep 0.25
           done
-          node tests/run.cjs --full
+          node tests/run.cjs --browser-only="$BROWSER_CHECKS"

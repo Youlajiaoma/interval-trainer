@@ -20,6 +20,14 @@ node tests/run.cjs --help
 - `--full`：还要求七项真实浏览器检查。任何检查失败或因缺少条件而跳过，均返回失败。
 - 不带 `--full` 时，不启动浏览器；七项浏览器检查仍会列为跳过，不会省略它们。
 
+自动检查也可以在基础检查通过后，只运行选定的浏览器项目，避免重复跑基础检查：
+
+```powershell
+node tests/run.cjs --browser-only=singing,harmony
+```
+
+可选项目为 `staff`（五线谱）、`daily`（每日任务）、`motion`（动画）、`singing`（模唱）、`harmony`（和声练唱）、`ui`（手机和平板界面）、`pwa`（离线与保存）。该命令不代表完整检查；选中的任一项目失败或缺少条件都会返回失败。它与 `--full` 不能同时使用。
+
 基础脚本按 `tests/test_*.cjs` 自动发现；`test_sw.cjs`、`test_staff_interval.cjs`、`test_daily_tasks_browser.cjs`、`test_motion_browser.cjs`、`test_singing_browser.cjs` 和 `test_harmony_practice_browser.cjs` 按额外条件处理。Python 浏览器脚本由完整检查明确调用。
 
 和声练唱的 `test_harmony_practice.cjs` 覆盖空目录占位、四音轨顺序、原生循环、拖动进度、媒体控制、迟到播放请求及返回清理，并核对现有历史记录不变。`test_harmony_practice_browser.cjs` 在 320、390、900 像素下，以独立生成的短 WAV 验证真实原生播放、自动换轨、循环、暂停和进度；在 390 像素下还读取实际清单，检查已提供歌曲文件的播放及拖动，截图保存在临时目录。它不等同于 iPhone/安卓的锁屏或后台换曲实测。资源检查核对网页相对路径及音频文件；缓存模拟检查联网清单更新和离线回退。
@@ -233,6 +241,19 @@ python -m http.server 8000 --directory site
 
 ## GitHub 自动检查配置
 
-`.github/workflows/checks.yml` 在未来 Push `dev`、向 `dev`／`main` 提出 PR、手动执行或被部署流程调用时运行。先检查不需要额外依赖的项目，再在 GitHub 临时环境准备 Node 24、Python 3.13、Node／Python 版 Playwright 1.56.0、Chromium 和与部署相同的 VexFlow 5.0.0，启动本机网页服务后运行 `--full`。完整检查有失败或跳过时不能通过。
+`.github/workflows/checks.yml` 在 Push `dev`、向 `dev`／`main` 提出 PR、手动执行或被部署流程调用时运行。每次先准备与部署相同的 VexFlow 5.0.0，再运行基础检查和离线缓存模拟，各运行一次。
 
-Pages 流程保留原有 `main` 和手动触发方式，增加检查成功后才部署的依赖。配置已按 GitHub 的工作流和变量使用规则核对，但尚未通过远程实际运行验证。将来首次获准 Push 后，应查看这项检查的执行结果；本地准备配置不等于已完成部署验证，也不等于授权 Push、Merge 或发布。
+`tests/ci-plan.cjs` 根据整个推送的前后差异（PR 则比较目标分支与合并结果）决定附加检查，执行范围显示在 GitHub 检查摘要中：
+
+| 改动范围 | 追加的浏览器检查 |
+|---|---|
+| 文档、基础测试或测试截图 | 无，不安装浏览器环境 |
+| 模唱、和声练唱或五线谱模块 | 对应模块 |
+| 每日任务 | 每日任务及动画 |
+| 离线缓存、安装配置或版本标识 | PWA 离线与保存 |
+| VexFlow 资源 | 五线谱及 PWA |
+| 公共页面、样式、音频、存储、测试工具、工作流或未识别的代码 | 全部七项 |
+
+多类修改合并检查范围。读取不到差异或首次推送时回退到完整检查。仅在需要时安装 Playwright 1.56.0 与 Chromium，只有 UI／PWA 检查需要 Python 版 Playwright；复用 npm／pip 下载缓存，不缓存浏览器本体。浏览器检查用 `--browser-only` 运行，任何选中项目失败或跳过均不能通过。
+
+向 `main` 提出的 PR、手动运行和正式 Pages 发布始终执行全部检查。Pages 显式传入 `full: true`，可复用工作流的该选项也默认开启；仍须检查成功后才部署。本轮仅修改并验证本地配置，GitHub 上的实际耗时和运行结果要在下次获准提交、推送后确认；没有更改应用版本、练习记录或部署目标。

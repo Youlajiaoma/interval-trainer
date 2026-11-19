@@ -6,17 +6,24 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {spawn} = require('node:child_process');
 const {run} = require('node:test');
+const {browserChecks} = require('./ci-plan.cjs');
 const root = path.resolve(__dirname, '..');
 const options = new Set(process.argv.slice(2));
 const allowed = new Set(['--help', '--full', '--details']);
-if ([...options].some(option => !allowed.has(option))) {
+const browserArguments = [...options].filter(option => option.startsWith('--browser-only='));
+const browserOnly = browserArguments.length ? browserArguments[0].slice('--browser-only='.length).split(',') : null;
+if ([...options].some(option => !allowed.has(option) && !option.startsWith('--browser-only=')) ||
+    browserArguments.length > 1 || (browserOnly && (options.has('--full') ||
+      browserOnly.some(id => !browserChecks.some(check => check.id === id))))) {
   console.error('未知选项。使用 node tests/run.cjs --help 查看用法。');
   process.exit(2);
 }
 if (options.has('--help')) {
-  console.log('用法：node tests/run.cjs [--full] [--details]\n' +
+  console.log('用法：node tests/run.cjs [--full | --browser-only=项目列表] [--details]\n' +
     '默认：运行不需要额外依赖的基础和回归检查；缺少资源的附加检查明确跳过。\n' +
     '--full：还要求离线缓存及七项浏览器检查；缺少条件也返回失败。\n' +
+    '--browser-only：只运行逗号分隔的浏览器项目，缺少条件也返回失败。\n' +
+    '可选项目：' + browserChecks.map(check => check.id).join(',') + '\n' +
     '--details：显示失败断言的详细原因。\n' +
     '有任何功能失败时返回非零退出码。准备方式见 tests/README.md。');
   process.exit(0);
@@ -43,81 +50,82 @@ async function externalTest(name, executable, args) {
 }
 
 async function main() {
-  console.log('运行基础与回归检查；所有练习数据均与日常浏览器隔离。');
-  const optionalFiles = new Set(['test_sw.cjs', 'test_staff_interval.cjs', 'test_daily_tasks_browser.cjs', 'test_motion_browser.cjs', 'test_singing_browser.cjs', 'test_harmony_practice_browser.cjs']);
-  const files = fs.readdirSync(__dirname).filter(file => /^test_.*\.cjs$/.test(file) && !optionalFiles.has(file))
-    .sort().map(file => path.join(__dirname, file));
-  for await (const event of run({files, concurrency: 1})) {
-    if (event.type !== 'test:pass' && event.type !== 'test:fail') continue;
-    const data = event.data;
-    const name = data.name.startsWith(root) ? path.relative(root, data.name) : data.name;
-    if (data.skip || data.todo) { skipped(name, String(data.skip || data.todo)); continue; }
-    if (event.type === 'test:pass') { totals.passed++; console.log('[通过] ' + name); }
-    else {
-      totals.failed++;
-      const error = data.details?.error?.cause || data.details?.error;
-      const message = String(error?.message || error || '检查未通过');
-      console.log('[失败] ' + name + '\n       ' + message.split('\n')[0]);
-      if (options.has('--details')) console.log(error?.stack || error);
-    }
-  }
-
   const vendorReady = fs.existsSync(path.join(root, 'site/vendor/vexflow.js'));
-  if (vendorReady) await externalTest('离线缓存模拟', process.execPath, ['tests/test_sw.cjs']);
-  else skipped('离线缓存模拟', '缺少 site/vendor/vexflow.js；发布流程会下载，本命令不会自动下载');
+  if (!browserOnly) {
+    console.log('运行基础与回归检查；所有练习数据均与日常浏览器隔离。');
+    const optionalFiles = new Set(['test_sw.cjs', ...browserChecks.filter(check => check.runtime === 'node').map(check => path.basename(check.file))]);
+    const files = fs.readdirSync(__dirname).filter(file => /^test_.*\.cjs$/.test(file) && !optionalFiles.has(file))
+      .sort().map(file => path.join(__dirname, file));
+    for await (const event of run({files, concurrency: 1})) {
+      if (event.type !== 'test:pass' && event.type !== 'test:fail') continue;
+      const data = event.data;
+      const name = data.name.startsWith(root) ? path.relative(root, data.name) : data.name;
+      if (data.skip || data.todo) { skipped(name, String(data.skip || data.todo)); continue; }
+      if (event.type === 'test:pass') { totals.passed++; console.log('[通过] ' + name); }
+      else {
+        totals.failed++;
+        const error = data.details?.error?.cause || data.details?.error;
+        const message = String(error?.message || error || '检查未通过');
+        console.log('[失败] ' + name + '\n       ' + message.split('\n')[0]);
+        if (options.has('--details')) console.log(error?.stack || error);
+      }
+    }
+    if (vendorReady) await externalTest('离线缓存模拟', process.execPath, ['tests/test_sw.cjs']);
+    else skipped('离线缓存模拟', '缺少 site/vendor/vexflow.js；发布流程会下载，本命令不会自动下载');
+  } else console.log('只运行所选浏览器检查；基础检查由前一步单独执行。');
 
-  if (!options.has('--full')) {
-    for (const name of ['手机和平板界面', '五线谱浏览器检查', '每日任务浏览器检查', '界面动画浏览器检查', '模唱浏览器检查', '和声练唱浏览器检查', 'PWA 浏览器离线与保存']) {
-      skipped(name, '使用 --full 显式运行，需事先准备浏览器测试环境');
+  const selected = browserChecks.filter(check => options.has('--full') || browserOnly?.includes(check.id));
+  if (!selected.length) {
+    for (const check of browserChecks) {
+      skipped(check.name, '使用 --full 显式运行，需事先准备浏览器测试环境');
     }
   } else {
+    const nodeChecks = selected.filter(check => check.runtime === 'node');
     let nodeBrowserReady = false;
-    try {
+    if (nodeChecks.length) try {
       const {chromium} = require('playwright');
       nodeBrowserReady = fs.existsSync(process.env.CHROMIUM_PATH || chromium.executablePath());
     } catch { /* Report missing prerequisites below instead of installing. */ }
     if (!vendorReady || !nodeBrowserReady) {
-      skipped('五线谱浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
-      skipped('每日任务浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
-      skipped('界面动画浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
-      skipped('模唱浏览器检查', '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
-      skipped('和声练唱浏览器检查', '需要 Node 版 Playwright 和 Chromium');
+      for (const check of nodeChecks) skipped(check.name, '需要 Node 版 Playwright、Chromium 和本地 VexFlow 文件');
     } else {
-      await externalTest('五线谱浏览器检查', process.execPath, ['tests/test_staff_interval.cjs']);
-      await externalTest('每日任务浏览器检查', process.execPath, ['tests/test_daily_tasks_browser.cjs']);
-      await externalTest('界面动画浏览器检查', process.execPath, ['tests/test_motion_browser.cjs']);
-      await externalTest('模唱浏览器检查', process.execPath, ['tests/test_singing_browser.cjs']);
-      await externalTest('和声练唱浏览器检查', process.execPath, ['tests/test_harmony_practice_browser.cjs']);
+      for (const check of nodeChecks) await externalTest(check.name, process.execPath, [check.file]);
     }
 
-    const python = process.env.PYTHON || 'python';
-    const probe = await command(python, ['-B', '-c',
-      'import os\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright\n' +
-      'with sync_playwright() as p:\n' +
-      '    executable = os.environ.get("CHROMIUM_PATH") or ("/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else p.chromium.executable_path)\n' +
-      '    assert Path(executable).is_file(), "Chromium unavailable"'], true);
-    if (probe.code !== 0) {
-      skipped('手机和平板界面', '需要 Python、Python 版 Playwright 和 Chromium');
-      skipped('PWA 浏览器离线与保存', '需要 Python、Python 版 Playwright 和 Chromium');
-    } else {
-      await externalTest('手机和平板界面', python, ['-B', 'tests/test_ui_embedded.py']);
-      let serverReady = false;
-      try {
-        const url = new URL(process.env.PWA_TEST_URL || 'http://localhost:8000/');
-        if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.protocol !== 'http:') {
-          throw Error('PWA tests require a local HTTP server');
+    const pythonChecks = selected.filter(check => check.runtime === 'python');
+    if (pythonChecks.length) {
+      const python = process.env.PYTHON || 'python';
+      const probe = await command(python, ['-B', '-c',
+        'import os\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright\n' +
+        'with sync_playwright() as p:\n' +
+        '    executable = os.environ.get("CHROMIUM_PATH") or ("/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else p.chromium.executable_path)\n' +
+        '    assert Path(executable).is_file(), "Chromium unavailable"'], true);
+      if (probe.code !== 0) {
+        for (const check of pythonChecks) skipped(check.name, '需要 Python、Python 版 Playwright 和 Chromium');
+      } else for (const check of pythonChecks) {
+        if (check.id === 'pwa') {
+          let serverReady = false;
+          try {
+            const url = new URL(process.env.PWA_TEST_URL || 'http://localhost:8000/');
+            if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.protocol !== 'http:') {
+              throw Error('PWA tests require a local HTTP server');
+            }
+            const response = await fetch(url, {signal: AbortSignal.timeout(2000), redirect: 'error'});
+            const html = await response.text();
+            serverReady = response.ok && html.includes('id="home-harmonic"') && /<script\s+src="app\.js(?:\?[^"]*)?"/.test(html);
+          } catch { /* Never start a server or contact a production site automatically. */ }
+          if (!vendorReady || !serverReady) {
+            skipped(check.name, '需要本地 VexFlow 文件及已启动的本地 Tonaloom 网页服务');
+            continue;
+          }
         }
-        const response = await fetch(url, {signal: AbortSignal.timeout(2000), redirect: 'error'});
-        const html = await response.text();
-        serverReady = response.ok && html.includes('id="home-harmonic"') && /<script\s+src="app\.js(?:\?[^"]*)?"/.test(html);
-      } catch { /* Never start a server or contact a production site automatically. */ }
-      if (!vendorReady || !serverReady) skipped('PWA 浏览器离线与保存', '需要本地 VexFlow 文件及已启动的本地 Tonaloom 网页服务');
-      else await externalTest('PWA 浏览器离线与保存', python, ['-B', 'tests/test_pwa_integration.py']);
+        await externalTest(check.name, python, ['-B', check.file]);
+      }
     }
   }
   console.log(`\n结果：通过 ${totals.passed}，失败 ${totals.failed}，跳过 ${totals.skipped}。`);
   if (totals.failed) console.log('功能检查未通过；审查中尚未修复的问题也按失败计入。');
   if (totals.skipped) console.log('跳过的检查没有得到通过结论。');
-  process.exitCode = totals.failed || (options.has('--full') && totals.skipped) ? 1 : 0;
+  process.exitCode = totals.failed || ((options.has('--full') || browserOnly) && totals.skipped) ? 1 : 0;
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

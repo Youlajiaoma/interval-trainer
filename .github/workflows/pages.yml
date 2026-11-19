@@ -13,6 +13,8 @@ concurrency:
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
+    with:
+      full: true
     permissions:
       contents: read
   deploy:
