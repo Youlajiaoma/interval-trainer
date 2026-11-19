@@ -68,26 +68,59 @@ const mixDouble = readSource('harmony-mix.js')+`\n(function(){
   prepare(urls){state.prepared.push(urls);return state.pending||Promise.resolve({url:'blob:stems'});},
   prime(){media.src='blob:silent';media.load();return media.play();},ready:async()=>{},resume:async()=>{},single(){},
   assign(value){state.assigned++;media.pause();media.src=value.url;media.load();},
-  setBalance(value){return state.levels=gains(value);},setMuted(value){state.muted=value;},release(){state.released++;}
+  setBalance(value){return state.levels=gains(value);},setMuted(value){state.muted=value;},
+  setGuitarVolume(value){state.guitarVolume=value;},setGuitarMuted(value){state.guitarMuted=value;},
+  setSilent(value){state.silent=value;},release(){state.released++;}
  };}};
 })();`;
 
-test('在他乡目录只保留混合与伴奏，原音轨仅供混合使用且顺序不再经过单轨入口', async t => {
+test('在他乡从歌曲目录直达三轨播放页，返回歌曲目录即停止，不再显示音轨选择', async t => {
   const {app,media,choose} = await setup(t,null,{'harmony-mix.js':mixDouble});
+  const before = new Map(app.database.records);
   await app.click('home-harmony-practice'); await choose(0);
-  assert.deepEqual(app.get('harmony-directory').children.map(item => item.children[1].textContent),['旋律+和声','伴奏']);
-  await choose(0);
-  assert.equal(app.get('harmony-track-number').textContent,'01 / 02');
+  assert(app.get('harmony-directory').classList.contains('hidden'));
+  assert(!app.get('harmony-player').classList.contains('hidden'));
+  assert.equal(app.get('harmony-track-title').textContent,'在他乡');
+  for (const id of ['harmony-track-number','harmony-previous','harmony-next']) assert(app.get(id).classList.contains('hidden'));
+  assert.equal(app.get('harmony-mode-label').textContent,'单次播放');
   assert(!media.paused); assert(!app.get('harmony-balance').classList.contains('hidden'));
+  assert(!app.get('harmony-guitar').classList.contains('hidden'));
+  assert.equal(app.get('back-home').getAttribute('aria-label'),'返回歌曲目录');
   assert.deepEqual(Array.from(app.window.mixTest.prepared.at(-1)),[
-    'assets/harmony-practice/zai-ta-xiang/melody.wav','assets/harmony-practice/zai-ta-xiang/harmony.wav'
+    'assets/harmony-practice/zai-ta-xiang/melody.wav?v=c0f9b8edcd8d',
+    'assets/harmony-practice/zai-ta-xiang/harmony.wav?v=5e875bc7f4b5',
+    'assets/harmony-practice/zai-ta-xiang/guitar.wav?v=aedd4595fdff'
   ]);
   media.ended=true; media.paused=true; media.dispatchEvent({type:'ended'}); await app.settle();
-  assert.equal(app.get('harmony-track-title').textContent,'伴奏');
-  assert.equal(app.get('harmony-track-number').textContent,'02 / 02');
-  assert(app.get('harmony-next').disabled); assert(media.paused);
-  assert.equal(app.get('harmony-message').textContent,'音频待添加');
-  await app.click('back-home'); assert.equal(app.get('harmony-directory').children.length,2);
+  assert.equal(app.get('harmony-track-title').textContent,'在他乡'); assert(media.paused);
+  await app.click('harmony-play'); assert(!media.paused);
+  await app.click('back-home'); assert.equal(app.get('harmony-directory').children.length,1);
+  assert(!app.get('harmony-directory').classList.contains('hidden')); assert(media.paused); assert.equal(media.src,'');
+  await app.click('back-home'); assert(!app.get('home-screen').classList.contains('hidden'));
+  assert.deepEqual(app.database.records,before);
+});
+
+test('吉他音量0至100及M独立于旋律和声，不重播、跳转或重置原音量', async t => {
+  const {app,media,choose} = await setup(t,null,{'harmony-mix.js':mixDouble});
+  await app.click('home-harmony-practice'); await choose(0); media.currentTime=10;
+  const state=app.window.mixTest, source=media.src, plays=media.plays.length;
+  const input=app.get('harmony-guitar-input');
+  for (const value of [0,37,100]) {
+    input.value=String(value); input.dispatchEvent({type:'input'});
+    assert.equal(state.guitarVolume,value); assert.equal(app.get('harmony-guitar-level').textContent,`${value}%`);
+    assert.equal(state.levels.melody,1); assert.equal(state.levels.harmony,1);
+  }
+  await app.click('harmony-mute'); assert(state.muted); assert(!media.muted); assert(!state.guitarMuted);
+  await app.click('harmony-guitar-mute'); assert(state.guitarMuted); assert.equal(app.get('harmony-guitar-level').textContent,'0%');
+  assert.equal(app.get('harmony-guitar-mute').getAttribute('aria-pressed'),'true');
+  input.value='37'; input.dispatchEvent({type:'input'}); assert.equal(state.guitarVolume,37); assert(state.guitarMuted);
+  await app.click('harmony-mute'); assert(!state.muted); assert(state.guitarMuted);
+  await app.click('harmony-guitar-mute'); assert(!state.guitarMuted); assert.equal(app.get('harmony-guitar-level').textContent,'37%');
+  assert.equal(input.value,'37'); assert.equal(media.src,source); assert.equal(media.currentTime,10); assert.equal(media.plays.length,plays);
+  app.get('harmony-seek').disabled=false;
+  app.get('harmony-seek').dispatchEvent({type:'pointerdown'}); assert(media.muted); assert(state.silent);
+  input.value='80'; input.dispatchEvent({type:'input'}); assert(state.silent);
+  app.window.dispatchEvent({type:'pointerup'}); await app.settle(); assert(!media.muted); assert(!state.silent); assert(!media.paused);
 });
 
 test('混合入口读取两份原音轨，平衡不改变进度，单轨页不显示平衡条', async t => {

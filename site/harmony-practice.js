@@ -6,13 +6,15 @@
   let active = false, song = null, index = -1, view = 'songs', mode = 'sequence';
   let audio, generation = 0, wantsPlay = false, sessionOwned = false, previousAudioSession;
   let mixer, loadingMix = false, loadedMix = false, balance = 0;
+  let guitarVolume = 100, guitarMuted = false;
   let muted = false, scrubbing = false, scrubKind = null, resumeAfterScrub = false, finishingScrub = false, scrubTimer;
   const seekKeys = new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown']);
   const actions = ['play','pause','stop','previoustrack','nexttrack','seekto','seekbackward','seekforward'];
   const track = () => song?.tracks[index];
   const isMix = () => Array.isArray(track()?.mix);
+  const hasGuitar = () => isMix() && track().mix.length === 3;
   const mixSources = item => item.mix.map(id => song.stems?.[id] ?? song.tracks.find(stem => stem.id === id)?.src);
-  const hasSource = () => isMix() ? mixSources(track()).length === 2 && mixSources(track()).every(src => typeof src === 'string' && src.length > 0)
+  const hasSource = () => isMix() ? [2,3].includes(mixSources(track()).length) && mixSources(track()).every(src => typeof src === 'string' && src.length > 0)
     : typeof track()?.src === 'string' && track().src.length > 0;
   function message(text = '') {
     $('harmony-message').textContent = text;
@@ -46,7 +48,8 @@
   }
   function renderMode() {
     audio.loop = loadingMix || mode === 'loop';
-    const label = mode === 'loop' ? '循环播放' : '顺序播放', next = mode === 'loop' ? '顺序播放' : '循环播放';
+    const once = song?.tracks.length === 1 ? '单次播放' : '顺序播放';
+    const label = mode === 'loop' ? '循环播放' : once, next = mode === 'loop' ? once : '循环播放';
     $('harmony-mode-label').textContent = label;
     $('harmony-mode').dataset.mode = mode;
     $('harmony-mode').setAttribute('aria-label',`播放模式：${label}，点击切换为${next}`);
@@ -134,8 +137,9 @@
     position();
   }
   function updateOutputMute() {
-    const silent = scrubbing || (isMix() && muted);
-    audio.muted = silent; mixer.setMuted(silent);
+    audio.muted = scrubbing || (isMix() && muted && !hasGuitar());
+    mixer.setMuted(scrubbing || (isMix() && muted));
+    mixer.setSilent(scrubbing);
   }
   function beginScrub(kind) {
     if (!active || view !== 'player' || $('harmony-seek').disabled) return;
@@ -173,14 +177,26 @@
     $('harmony-directory').classList.add('hidden'); $('harmony-player').classList.remove('hidden');
     $('harmony-track-title').textContent = track().title;
     $('harmony-track-number').textContent = `${String(index+1).padStart(2,'0')} / ${String(song.tracks.length).padStart(2,'0')}`;
+    for (const id of ['harmony-track-number','harmony-previous','harmony-next']) $(id).classList.toggle('hidden',song.tracks.length === 1);
     $('harmony-previous').disabled = index === 0; $('harmony-next').disabled = index === song.tracks.length-1;
     $('harmony-play').disabled = !hasSource();
     $('harmony-balance').classList.toggle('hidden',!isMix());
-    updateBalance();
+    $('harmony-guitar').classList.toggle('hidden',!hasGuitar());
+    updateBalance(); updateGuitar();
     renderMode(); renderPlayback(); position();
     if (hasSource()) {
       void play();
     } else message('音频待添加');
+  }
+  function updateGuitar() {
+    mixer.setGuitarVolume(guitarVolume); mixer.setGuitarMuted(guitarMuted);
+    const level = `${guitarMuted ? 0 : guitarVolume}%`, label = guitarMuted ? '取消静音吉他' : '静音吉他';
+    $('harmony-guitar-input').value = String(guitarVolume);
+    $('harmony-guitar-input').setAttribute('aria-valuetext',level);
+    $('harmony-guitar-level').textContent = level;
+    $('harmony-guitar-mute').classList.toggle('is-active',guitarMuted);
+    $('harmony-guitar-mute').setAttribute('aria-pressed',String(guitarMuted));
+    $('harmony-guitar-mute').setAttribute('aria-label',label); $('harmony-guitar-mute').setAttribute('title',label);
   }
   function updateBalance() {
     const values = mixer.setBalance(balance), melody = `${Math.round((muted ? 0 : values.melody)*100)}%`, harmony = `${Math.round((muted ? 0 : values.harmony)*100)}%`;
@@ -215,7 +231,13 @@
     $('practice-mode-title').textContent = song?.title || definition.name;
     $('back-home').textContent = level === 'songs' ? '← HOME' : '← 返回';
     $('back-home').setAttribute('aria-label',level === 'songs' ? '返回主页' : '返回歌曲目录');
-    const entries = level === 'songs' ? songs.map((item,i) => entry(item.title,i+1,() => { song = item; directory('tracks'); }))
+    const entries = level === 'songs' ? songs.map((item,i) => entry(item.title,i+1,() => {
+      song = item;
+      if (song.tracks.length === 1) {
+        $('back-home').textContent = '← 返回'; $('back-home').setAttribute('aria-label','返回歌曲目录');
+        selectTrack(0);
+      } else directory('tracks');
+    }))
       : song.tracks.map((item,i) => entry(item.title,i+1,() => {
         $('back-home').setAttribute('aria-label','返回音轨目录'); selectTrack(i);
       }));
@@ -242,7 +264,7 @@
   }
   function back() {
     if (!active || view === 'songs') return false;
-    root.TonaloomMotion.navigate(() => directory(view === 'player' ? 'tracks' : 'songs'),'back');
+    root.TonaloomMotion.navigate(() => directory(view === 'player' && song.tracks.length > 1 ? 'tracks' : 'songs'),'back');
     return true;
   }
   function init() {
@@ -267,6 +289,8 @@
     for (const event of ['pointerup','pointercancel']) root.addEventListener(event,() => { if (scrubKind === 'pointer') finishScrub(); });
     $('harmony-mute').addEventListener('click',() => { muted = !muted; updateBalance(); });
     $('harmony-balance-input').addEventListener('input',() => { balance = Number($('harmony-balance-input').value); updateBalance(); });
+    $('harmony-guitar-mute').addEventListener('click',() => { guitarMuted = !guitarMuted; updateGuitar(); });
+    $('harmony-guitar-input').addEventListener('input',() => { guitarVolume = Number($('harmony-guitar-input').value); updateGuitar(); });
     for (const player of [audio]) {
     for (const name of ['timeupdate','loadedmetadata','durationchange','seeked']) player.addEventListener(name,() => { if (active && view === 'player' && audio === player) position(); });
     player.addEventListener('seeked',completeScrub);

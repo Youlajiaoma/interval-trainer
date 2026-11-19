@@ -17,6 +17,16 @@ function wav(frequency,channels = 1) {
   for (let i=0;i<count;i++) for (let ch=0;ch<channels;ch++) bytes.writeInt16LE(Math.round(2000*Math.sin(2*Math.PI*frequency*i/rate)*Math.min(1,i/200,(count-i)/200)),44+(i*channels+ch)*2);
   return bytes;
 }
+function wavDuration(bytes) {
+  let rate=0, length=0;
+  for (let at=12;at+8<=bytes.length;) {
+    const type=bytes.toString('ascii',at,at+4), size=bytes.readUInt32LE(at+4);
+    if (type==='fmt ') rate=bytes.readUInt32LE(at+16);
+    if (type==='data') length=size;
+    at+=8+size+(size%2);
+  }
+  assert(rate>0 && length>0); return length/rate;
+}
 async function settle(page) {
   await page.locator('.app-shell').evaluate(element => Promise.allSettled(element.getAnimations().map(animation => animation.finished)));
 }
@@ -26,6 +36,7 @@ async function playing(page) { await page.waitForFunction(() => { const a = docu
 async function fits(page) {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),'页面不可横向溢出');
   for (const id of ['harmony-play','harmony-previous','harmony-next','harmony-mode','harmony-seek']) {
+    if (await page.locator('#'+id).isHidden()) continue;
     const box = await page.locator('#'+id).boundingBox();
     assert(box && box.x >= 0 && box.x+box.width <= page.viewportSize().width,`${id}应完整显示`);
     assert(box.y >= 0 && box.y+box.height <= page.viewportSize().height,`${id}不应超出屏幕`);
@@ -36,16 +47,20 @@ async function fits(page) {
   try {
     for (const width of [320,390,900]) {
       const context = await browser.newContext({viewport:{width,height:844},serviceWorkers:'block'});
-      let fixtures = false, mixedFixtures = false, actualCatalog = false, audioRequests = 0;
+      let fixtures = false, mixedFixtures = false, guitarFixtures = false, actualCatalog = false, audioRequests = 0;
+      const actualSources = new Set();
       await context.route('http://127.0.0.1:8773/**',async route => {
         const url = new URL(route.request().url());
         if (url.pathname === '/assets/harmony-songs.js' && !actualCatalog) {
           const testTracks = fixtures ? tracks.map((item,i) => mixedFixtures && i===0 ? {id:item.id,title:item.title,mix:['1','2']} : item)
             : tracks.map(item => ({...item,src:null}));
-          return route.fulfill({contentType:'application/javascript',body:`window.TonaloomHarmonySongs = ${JSON.stringify([{id:'test',title:'在他乡',tracks:testTracks}])};`});
+          const catalog = guitarFixtures ? [{id:'test',title:'在他乡',stems:{melody:tracks[1].src,harmony:tracks[2].src,guitar:tracks[3].src},
+            tracks:[{id:'ensemble',title:'在他乡',mix:['melody','harmony','guitar']}]}] : [{id:'test',title:'在他乡',tracks:testTracks}];
+          return route.fulfill({contentType:'application/javascript',body:`window.TonaloomHarmonySongs = ${JSON.stringify(catalog)};`});
         }
         if (url.pathname.startsWith('/assets/harmony-practice/')) {
           audioRequests++;
+          if (actualCatalog) actualSources.add(url.pathname);
           assert(fixtures || actualCatalog,'空清单不应请求不存在的音频');
           const number = Number(path.basename(url.pathname,'.wav'));
           const bytes = actualCatalog ? fs.readFileSync(path.join(site,url.pathname)) : wav(260+number*80,mixedFixtures && width===900 ? 2 : 1);
@@ -163,19 +178,19 @@ async function fits(page) {
       await page.click('#harmony-mode');
       assert(await page.locator('#harmony-audio').evaluate(a=>a.loop));
       const mixSource=await page.locator('#harmony-audio').evaluate(a=>a.currentSrc);
-      async function spectrum() {
+      async function spectrum(frequencies = [340,420]) {
         // Allow one FFT window and the 8ms gain ramp to settle before measuring.
         await page.waitForTimeout(250);
         // Avoid measuring the fixture's edge fades or the native loop boundary.
         await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return a.currentTime>.4 && a.currentTime<.65;});
-        return page.evaluate(() => {
+        return page.evaluate(frequencies => {
           const {analyser,context}=mixCapture, bins=new Float32Array(analyser.frequencyBinCount);
           analyser.getFloatFrequencyData(bins);
-          return [340,420].map(hz=>{
+          return frequencies.map(hz=>{
             const center=Math.round(hz/context.sampleRate*analyser.fftSize);
             return Math.max(...bins.slice(center-1,center+2));
           });
-        });
+        },frequencies);
       }
       const baseline=await spectrum(); assert(baseline.every(value=>Number.isFinite(value) && value>-60));
       for (const [value,expected] of [[-100,[0,1]],[-50,[.5,1]],[50,[1,.5]],[100,[1,0]],[0,[1,1]]]) {
@@ -239,30 +254,94 @@ async function fits(page) {
       assert(await page.locator('#harmony-message').isHidden(),'混合播放自动切到单轨不重新要求播放许可');
       await back(page); assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && !a.hasAttribute('src')));
       await back(page); await back(page);
+
+      // A single song opens its synchronized three-stem player directly.
+      guitarFixtures = true; await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
+      await page.click('#home-harmony-practice'); await settle(page); await choose(page,0); await playing(page);
+      await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return a.duration>1 && !a.paused;});
+      assert(await page.locator('#harmony-directory').isHidden());
+      for (const id of ['harmony-previous','harmony-next','harmony-track-number']) assert(await page.locator('#'+id).isHidden());
+      assert.equal(await page.locator('#harmony-mode-label').innerText(),'单次播放');
+      assert(await page.locator('#harmony-guitar').isVisible());
+      assert.equal(await page.locator('#harmony-practice audio').count(),1);
+      await page.click('#harmony-mode');
+      const threeSource=await page.locator('#harmony-audio').evaluate(a=>a.currentSrc);
+      const threeBaseline=await spectrum([340,420,500]);
+      assert(threeBaseline.every(value=>Number.isFinite(value) && value>-60),'三轨都应实际输出声音');
+      async function checkThree(expected) {
+        const actual=await spectrum([340,420,500]);
+        expected.forEach((level,i)=>{
+          const delta=actual[i]-threeBaseline[i];
+          if (!level) assert(delta<-30,`三轨静音泄漏：${i}, ${delta}dB`);
+          else assert(Math.abs(delta-20*Math.log10(level))<1.6,`三轨增益不符：${i}, ${delta}dB`);
+        });
+        assert.equal(await page.locator('#harmony-audio').evaluate(a=>a.currentSrc),threeSource,'音量控制不能重新加载音频');
+      }
+      for (const value of [0,25,50,100]) {
+        await page.locator('#harmony-guitar-input').evaluate((input,value)=>{input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}));},value);
+        await checkThree([1,1,value/100]);
+      }
+      await page.click('#harmony-mute'); await checkThree([0,0,1]);
+      assert(await page.locator('#harmony-audio').evaluate(a=>!a.muted && !a.paused),'双轨M不能静音吉他');
+      await page.click('#harmony-guitar-mute'); await silentOutput();
+      await page.locator('#harmony-guitar-input').evaluate(input=>{input.value='37';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await silentOutput();
+      await page.click('#harmony-mute'); await checkThree([1,1,0]);
+      await page.click('#harmony-guitar-mute'); await checkThree([1,1,.37]);
+      assert.equal(await page.locator('#harmony-guitar-level').innerText(),'37%');
+      await page.locator('#harmony-balance-input').evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await checkThree([1,.5,.37]);
+      const threeSeek=await page.locator('#harmony-seek').boundingBox();
+      await page.mouse.move(threeSeek.x+threeSeek.width*.5,threeSeek.y+threeSeek.height/2); await page.mouse.down();
+      await page.mouse.move(threeSeek.x+threeSeek.width*.3,threeSeek.y+threeSeek.height/2);
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && a.muted)); await silentOutput();
+      await page.locator('#harmony-guitar-input').evaluate(input=>{input.value='80';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await silentOutput(); await page.mouse.up();
+      await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return !a.paused && !a.muted;});
+      await checkThree([1,.5,.8]);
+      const guitarMuteBox=await page.locator('#harmony-guitar-mute').boundingBox(), guitarSliderBox=await page.locator('#harmony-guitar-input').boundingBox();
+      assert(guitarMuteBox.x+guitarMuteBox.width<=guitarSliderBox.x && guitarSliderBox.x+guitarSliderBox.width<=width);
+      await fits(page); await page.screenshot({path:path.join(screenshots,`${width}-guitar.png`)});
+      const threeWraps=await page.evaluate(()=>harmonyWraps);
+      await page.waitForFunction(before=>harmonyWraps>before,threeWraps,{timeout:5000});
+      await page.click('#harmony-mode');
+      await page.waitForFunction(()=>document.getElementById('harmony-audio').ended);
+      assert.equal(await page.locator('#harmony-track-title').innerText(),'在他乡');
+      if (width === 390) {
+        await page.evaluate(()=>history.back()); await page.waitForSelector('#harmony-directory',{state:'visible'}); await settle(page);
+      } else await back(page);
+      assert.equal(await page.locator('#harmony-directory button').count(),1);
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && !a.hasAttribute('src')));
+      await back(page); assert(await page.locator('#home-screen').isVisible());
+
       await page.click('#home-harmonic'); await settle(page); assert.equal(await page.locator('#answer-grid button').count(),13);
       await back(page); await page.click('#home-stats'); await page.waitForSelector('#stats-dialog',{state:'visible'});
       assert.equal(await page.locator('.stats-mode-switch button').count(),5,'不增加无答题功能的统计项');
-      if (width === 390) {
+      {
         // Read the real catalog and play the user's files, in addition to fixtures.
         actualCatalog = true; await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
         await page.click('#home-harmony-practice'); await settle(page); await choose(page,0);
-        assert.deepEqual(await page.locator('.harmony-entry-name').allTextContents(),['旋律+和声','伴奏']);
-        await page.screenshot({path:path.join(screenshots,`${width}-actual-tracks.png`)});
+        assert(await page.locator('#harmony-directory').isHidden());
+        assert(await page.locator('#harmony-guitar').isVisible());
         const actualTracks = await page.evaluate(() => TonaloomHarmonySongs[0].tracks);
+        const sources=await page.evaluate(()=>Object.values(TonaloomHarmonySongs[0].stems));
+        const expectedDuration=Math.max(...sources.map(src=>wavDuration(fs.readFileSync(path.join(site,new URL(src,'http://127.0.0.1:8773/').pathname)))));
         for (let i=0;i<actualTracks.length;i++) if (actualTracks[i].src || actualTracks[i].mix) {
           const selector='#harmony-audio';
-          await choose(page,i);
           await page.waitForFunction(selector=>{const a=document.querySelector(selector);return !a.paused && a.duration>1 && a.currentTime>.03;},selector);
           const result = await page.locator(selector).evaluate(a => ({duration:a.duration,error:a.error?.code,source:a.currentSrc}));
           assert(result.duration > 0 && Number.isFinite(result.duration)); assert(!result.error);
+          assert(Math.abs(result.duration-expectedDuration)<.001,'播放时长应与新的原始音频一致');
           if (actualTracks[i].mix) assert(result.source.startsWith('blob:'));
           else assert.equal(new URL(result.source).pathname,'/'+actualTracks[i].src);
+          await fits(page); await page.screenshot({path:path.join(screenshots,`${width}-actual-player.png`)});
           await page.click('#harmony-play');
           await page.locator('#harmony-seek').evaluate(input => { input.value='50'; input.dispatchEvent(new Event('input',{bubbles:true})); });
           await page.waitForFunction(selector => { const a=document.querySelector(selector); return Math.abs(a.currentTime-a.duration/2)<.1; },selector);
           console.log(`PASS supplied audio ${actualTracks[i].title}: ${result.duration.toFixed(3)}s, playback and seeking`);
           await back(page);
         }
+        assert.deepEqual([...actualSources].sort(),['guitar','harmony','melody'].map(name=>`/assets/harmony-practice/zai-ta-xiang/${name}.wav`));
       }
       assert.deepEqual(errors,[]); console.log(`PASS harmony ${width}px: directories, placeholders, real native playback/seek/sequence/loop, return cleanup and existing module`);
       await context.close();

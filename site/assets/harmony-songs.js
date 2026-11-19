@@ -3,11 +3,11 @@
   'use strict';
   root.TonaloomHarmonySongs = Object.freeze([
     Object.freeze({id:'zai-ta-xiang', title:'在他乡', stems:Object.freeze({
-      melody:'assets/harmony-practice/zai-ta-xiang/melody.wav',
-      harmony:'assets/harmony-practice/zai-ta-xiang/harmony.wav'
+      melody:'assets/harmony-practice/zai-ta-xiang/melody.wav?v=c0f9b8edcd8d',
+      harmony:'assets/harmony-practice/zai-ta-xiang/harmony.wav?v=5e875bc7f4b5',
+      guitar:'assets/harmony-practice/zai-ta-xiang/guitar.wav?v=aedd4595fdff'
     }), tracks:Object.freeze([
-      Object.freeze({id:'melody-harmony', title:'旋律+和声', mix:Object.freeze(['melody','harmony'])}),
-      Object.freeze({id:'accompaniment', title:'伴奏', src:null})
+      Object.freeze({id:'ensemble', title:'在他乡', mix:Object.freeze(['melody','harmony','guitar'])})
     ])})
   ]);
 })(window);
