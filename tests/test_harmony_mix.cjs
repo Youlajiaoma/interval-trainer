@@ -61,18 +61,53 @@ test('双轨共用媒体时钟且路由到相同左右输出，音量改变不�
   assert.equal(log.reads.length,2);
   const links = log.connections.filter(([source,target])=>source.type==='splitter' && target.type==='merger');
   assert.deepEqual(links.map(row=>row.slice(2)),[[0,0],[0,1],[1,0],[1,1]]);
-  assert(log.connections.filter(([source,target])=>source.type==='gain' && target===destination).length===2);
+  assert(log.connections.filter(([source,target])=>source.type==='gain' && target===destination).length===3);
   const source=media.src, loads=media.loads;
   for (const [value,expected] of [[-100,[0,1]],[-50,[.5,1]],[0,[1,1]],[50,[1,.5]],[100,[1,0]]]) {
-    mixer.setBalance(value); assert.deepEqual(log.gains.map(g=>g.gain.value),expected);
+    mixer.setBalance(value); assert.deepEqual(log.gains.map(g=>g.gain.value),[...expected,0]);
   }
-  mixer.setMuted(true); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0]);
-  mixer.setBalance(50); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0]);
-  mixer.setMuted(false); assert.deepEqual(log.gains.map(g=>g.gain.value),[1,.5]);
+  mixer.setMuted(true); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0,0]);
+  mixer.setBalance(50); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0,0]);
+  mixer.setMuted(false); assert.deepEqual(log.gains.map(g=>g.gain.value),[1,.5,0]);
   assert.equal(media.src,source); assert.equal(media.loads,loads);
   mixer.single();
   assert(log.connections.at(-1)[0].type==='source' && log.connections.at(-1)[1]===destination,'单轨直接保持原音量，不经过混合音量节点');
   mixer.release(); assert(log.revoked.includes(source));
+});
+
+test('三轨按原样保存独立声道、补零及统一时长，同时支持三份立体声', () => {
+  const {api}=setup();
+  const mono=api.pack([buffer([.25,.5]),buffer([-.25]),buffer([.125,-.125])]);
+  assert.equal(mono.stemCount,3); assert.equal(mono.duration,2/44100);
+  const m=new DataView(mono.bytes); assert.equal(m.getUint16(22,true),3);
+  [.25,-.25,.125,.5,0,-.125].forEach((value,i)=>assert.equal(m.getFloat32(44+i*4,true),value));
+  const stereo=api.pack([buffer([.25],[.5]),buffer([-.25]),buffer([.125],[-.125])]);
+  const s=new DataView(stereo.bytes); assert(stereo.stereo); assert.equal(s.getUint16(22,true),6);
+  [.25,.5,-.25,-.25,.125,-.125].forEach((value,i)=>assert.equal(s.getFloat32(44+i*4,true),value));
+});
+
+test('三轨共用时钟，吉他线性音量及独立静音不影响双轨平衡，临时静音涵盖全部音轨', async () => {
+  const {api,buffers,log}=setup();
+  for (const id of ['m','h','g']) buffers.set(id,buffer([.25,.5]));
+  const media={src:'',loads:0,load(){this.loads++;},play:async()=>{},pause(){}};
+  const mixer=api.create(media), transport=await mixer.prepare(['m','h','g']);
+  await mixer.prime(); mixer.assign(transport);
+  const levels=()=>log.gains.map(g=>g.gain.value), source=media.src, loads=media.loads;
+  assert.deepEqual(levels(),[1,1,1]);
+  const links=log.connections.filter(([from,to])=>from.type==='splitter' && to.type==='merger');
+  assert.deepEqual(links.map(row=>row.slice(2)),[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]);
+  for (let volume=0;volume<=100;volume++) {
+    mixer.setGuitarVolume(volume); assert.deepEqual(levels(),[1,1,volume/100]);
+  }
+  mixer.setGuitarVolume(37); mixer.setBalance(50); assert.deepEqual(levels(),[1,.5,.37]);
+  mixer.setMuted(true); assert.deepEqual(levels(),[0,0,.37]);
+  mixer.setGuitarMuted(true); assert.deepEqual(levels(),[0,0,0]);
+  mixer.setGuitarVolume(80); assert.deepEqual(levels(),[0,0,0]);
+  mixer.setMuted(false); assert.deepEqual(levels(),[1,.5,0]);
+  mixer.setGuitarMuted(false); assert.deepEqual(levels(),[1,.5,.8]);
+  mixer.setSilent(true); mixer.setGuitarVolume(100); mixer.setBalance(0); assert.deepEqual(levels(),[0,0,0]);
+  mixer.setSilent(false); assert.deepEqual(levels(),[1,1,1]);
+  assert.equal(media.src,source); assert.equal(media.loads,loads);
 });
 
 test('下载失败可重试，离开后迟到下载不会保留或恢复临时音源', async () => {

@@ -12,17 +12,17 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.20.1">
-  <link rel="stylesheet" href="sight.css?v=2.20.1">
-  <link rel="stylesheet" href="singing.css?v=2.20.1">
-  <link rel="stylesheet" href="harmony-practice.css?v=2.20.1">
+  <link rel="stylesheet" href="styles.css?v=2.20.2">
+  <link rel="stylesheet" href="sight.css?v=2.20.2">
+  <link rel="stylesheet" href="singing.css?v=2.20.2">
+  <link rel="stylesheet" href="harmony-practice.css?v=2.20.2">
 </head>
 <body>
   <div class="app-viewport"><div class="app-shell">
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.20.1</span>
+        <span id="app-version">2.20.2</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -144,6 +144,10 @@
         <div id="harmony-balance" class="harmony-balance hidden">
           <div class="harmony-balance-labels"><span>旋律 <output id="harmony-melody-level">100%</output></span><span>和声 <output id="harmony-harmony-level">100%</output></span></div>
           <div class="harmony-balance-controls"><button id="harmony-mute" class="harmony-mute" type="button" aria-label="静音旋律和声" aria-pressed="false" title="静音旋律和声">M</button><div class="harmony-balance-slider"><input id="harmony-balance-input" type="range" min="-100" max="100" step="1" value="0" aria-label="旋律与和声音量平衡" aria-valuetext="旋律 100%，和声 100%"></div></div>
+        </div>
+        <div id="harmony-guitar" class="harmony-guitar hidden">
+          <div class="harmony-balance-labels"><span>吉他</span><output id="harmony-guitar-level">100%</output></div>
+          <div class="harmony-balance-controls"><button id="harmony-guitar-mute" class="harmony-mute" type="button" aria-label="静音吉他" aria-pressed="false" title="静音吉他">M</button><div class="harmony-guitar-slider"><input id="harmony-guitar-input" type="range" min="0" max="100" step="1" value="100" aria-label="吉他音量" aria-valuetext="100%"></div></div>
         </div>
         <button id="harmony-mode" class="harmony-mode" type="button" aria-label="播放模式：顺序播放，点击切换为循环播放"><svg id="harmony-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h14m-3-3 3 3-3 3M4 12h10M4 18h14m-3-3 3 3-3 3"/></svg><span id="harmony-mode-label">顺序播放</span></button>
         <p id="harmony-message" class="harmony-message hidden" role="status" aria-live="polite"></p>
@@ -307,26 +311,26 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="motion.js?v=2.20.1"></script>
+  <script src="motion.js?v=2.20.2"></script>
   <script src="logic.js"></script>
-  <script src="modules.js?v=2.20.1"></script>
+  <script src="modules.js?v=2.20.2"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.20.1"></script>
-  <script src="statistics.js?v=2.20.1"></script>
-  <script src="audio.js?v=2.20.1"></script>
+  <script src="review.js?v=2.20.2"></script>
+  <script src="statistics.js?v=2.20.2"></script>
+  <script src="audio.js?v=2.20.2"></script>
   <script src="storage.js"></script>
-  <script src="daily-tasks.js?v=2.20.1"></script>
-  <script src="pitch.js?v=2.20.1"></script>
-  <script src="singing.js?v=2.20.1"></script>
-  <script src="assets/harmony-songs.js?v=2.20.1"></script>
-  <script src="harmony-mix.js?v=2.20.1"></script>
-  <script src="harmony-practice.js?v=2.20.1"></script>
-  <script src="app.js?v=2.20.1"></script>
+  <script src="daily-tasks.js?v=2.20.2"></script>
+  <script src="pitch.js?v=2.20.2"></script>
+  <script src="singing.js?v=2.20.2"></script>
+  <script src="assets/harmony-songs.js?v=2.20.2"></script>
+  <script src="harmony-mix.js?v=2.20.2"></script>
+  <script src="harmony-practice.js?v=2.20.2"></script>
+  <script src="app.js?v=2.20.2"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.20.1"></script>
-  <script src="staff-interval.js?v=2.20.1"></script>
-  <script src="build-info.js?v=2.20.1"></script>
+  <script src="sight.js?v=2.20.2"></script>
+  <script src="staff-interval.js?v=2.20.2"></script>
+  <script src="build-info.js?v=2.20.2"></script>
   <script src="pwa-register.js"></script>
 </body>
 </html>
