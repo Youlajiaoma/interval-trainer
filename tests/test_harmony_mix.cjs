@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {readSource} = require('./helpers/app-harness.cjs');
-function setup() {
+function setup(storage) {
   const log = {reads:[],revoked:[],gains:[],connections:[],urls:new Map()}, destination = {};
   function node(type) {
     const value = {type,connect(...args) { log.connections.push([this,...args]); },disconnect() {}};
@@ -16,23 +16,22 @@ function setup() {
       log.gains.push(value); return value;
     }
   };
-  const buffers = new Map(), root = {TonaloomAudio:{createChannel:() => ({ready:async()=>context,
+  const buffers = new Map(), root = {caches:storage,document:{baseURI:'https://local.test/app/'},TonaloomAudio:{createChannel:() => ({ready:async()=>context,
     recording:async url => { log.reads.push(url); if (!buffers.has(url)) throw Error('missing'); return buffers.get(url); }})}};
-  vm.runInNewContext(readSource('harmony-mix.js'),{window:root,Blob,URL:{createObjectURL(blob) { const url=`blob:mix-${log.urls.size}`; log.urls.set(url,blob); return url; },revokeObjectURL:url=>log.revoked.push(url)}});
+  class LocalURL extends URL {
+    static createObjectURL(blob) { const url=`blob:mix-${log.urls.size}`; log.urls.set(url,blob); return url; }
+    static revokeObjectURL(url) { log.revoked.push(url); }
+  }
+  vm.runInNewContext(readSource('harmony-mix.js'),{window:root,Blob,Response,URL:LocalURL});
   return {api:root.TonaloomHarmonyMix,log,buffers,context,destination};
 }
 const buffer = (...channels) => ({numberOfChannels:channels.length,length:channels[0].length,sampleRate:44100,getChannelData:i=>Float32Array.from(channels[i])});
 
-test('平衡中点为1:1，向旋律端只衰减旋律，向和声端只衰减和声', () => {
-  const {api} = setup();
-  for (let x=-100;x<=100;x++) {
-    const {melody,harmony} = api.gains(x);
-    assert.equal(melody,x >= 0 ? 1 : (100+x)/100);
-    assert.equal(harmony,x <= 0 ? 1 : (100-x)/100);
-    assert(melody >= 0 && melody <= 1 && harmony >= 0 && harmony <= 1);
+test('拒绝无效轨数、声道数和采样率不一致的输入', () => {
+  const {api}=setup(), a=buffer([.5]);
+  for (const stems of [[a],[a,a,a,a],[a,{...a,sampleRate:22050}],[a,buffer([.1],[.2],[.3])]]) {
+    assert.throws(()=>api.pack(stems),/采样率相同/);
   }
-  assert.equal(api.gains(0).melody,1); assert.equal(api.gains(0).harmony,1);
-  assert.equal(api.gains(-100).melody,0); assert.equal(api.gains(100).harmony,0);
 });
 
 test('临时音频保留两轨独立样本和幅度，不预先混合；较短音轨在末尾补零', () => {
@@ -63,12 +62,10 @@ test('双轨共用媒体时钟且路由到相同左右输出，音量改变不�
   assert.deepEqual(links.map(row=>row.slice(2)),[[0,0],[0,1],[1,0],[1,1]]);
   assert(log.connections.filter(([source,target])=>source.type==='gain' && target===destination).length===3);
   const source=media.src, loads=media.loads;
-  for (const [value,expected] of [[-100,[0,1]],[-50,[.5,1]],[0,[1,1]],[50,[1,.5]],[100,[1,0]]]) {
-    mixer.setBalance(value); assert.deepEqual(log.gains.map(g=>g.gain.value),[...expected,0]);
-  }
-  mixer.setMuted(true); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0,0]);
-  mixer.setBalance(50); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,0,0]);
-  mixer.setMuted(false); assert.deepEqual(log.gains.map(g=>g.gain.value),[1,.5,0]);
+  mixer.setVolume('melody',25); mixer.setVolume('harmony',50);
+  assert.deepEqual(log.gains.map(g=>g.gain.value),[.25,.5,0]);
+  mixer.setMuted('melody',true); assert.deepEqual(log.gains.map(g=>g.gain.value),[0,.5,0]);
+  mixer.setMuted('melody',false); assert.deepEqual(log.gains.map(g=>g.gain.value),[.25,.5,0]);
   assert.equal(media.src,source); assert.equal(media.loads,loads);
   mixer.single();
   assert(log.connections.at(-1)[0].type==='source' && log.connections.at(-1)[1]===destination,'单轨直接保持原音量，不经过混合音量节点');
@@ -86,7 +83,7 @@ test('三轨按原样保存独立声道、补零及统一时长，同时支持�
   [.25,.5,-.25,-.25,.125,-.125].forEach((value,i)=>assert.equal(s.getFloat32(44+i*4,true),value));
 });
 
-test('三轨共用时钟，吉他线性音量及独立静音不影响双轨平衡，临时静音涵盖全部音轨', async () => {
+test('三轨全部0至100整数音量独立线性生效，M保留音量且临时静音涵盖三轨', async () => {
   const {api,buffers,log}=setup();
   for (const id of ['m','h','g']) buffers.set(id,buffer([.25,.5]));
   const media={src:'',loads:0,load(){this.loads++;},play:async()=>{},pause(){}};
@@ -96,17 +93,22 @@ test('三轨共用时钟，吉他线性音量及独立静音不影响双轨平�
   assert.deepEqual(levels(),[1,1,1]);
   const links=log.connections.filter(([from,to])=>from.type==='splitter' && to.type==='merger');
   assert.deepEqual(links.map(row=>row.slice(2)),[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]);
-  for (let volume=0;volume<=100;volume++) {
-    mixer.setGuitarVolume(volume); assert.deepEqual(levels(),[1,1,volume/100]);
+  for (const [index,id] of ['melody','harmony','guitar'].entries()) {
+    for (let volume=0;volume<=100;volume++) {
+      const expected=[1,1,1]; expected[index]=volume/100;
+      mixer.setVolume(id,volume); assert.deepEqual(levels(),expected);
+    }
+    mixer.setMuted(id,true); mixer.setVolume(id,37);
+    const expected=[1,1,1]; expected[index]=0; assert.deepEqual(levels(),expected);
+    mixer.setMuted(id,false); expected[index]=.37; assert.deepEqual(levels(),expected);
+    mixer.setVolume(id,100);
   }
-  mixer.setGuitarVolume(37); mixer.setBalance(50); assert.deepEqual(levels(),[1,.5,.37]);
-  mixer.setMuted(true); assert.deepEqual(levels(),[0,0,.37]);
-  mixer.setGuitarMuted(true); assert.deepEqual(levels(),[0,0,0]);
-  mixer.setGuitarVolume(80); assert.deepEqual(levels(),[0,0,0]);
-  mixer.setMuted(false); assert.deepEqual(levels(),[1,.5,0]);
-  mixer.setGuitarMuted(false); assert.deepEqual(levels(),[1,.5,.8]);
-  mixer.setSilent(true); mixer.setGuitarVolume(100); mixer.setBalance(0); assert.deepEqual(levels(),[0,0,0]);
-  mixer.setSilent(false); assert.deepEqual(levels(),[1,1,1]);
+  mixer.setVolume('melody',25); mixer.setVolume('harmony',50); mixer.setMuted('guitar',true);
+  mixer.setSilent(true); mixer.setVolume('guitar',80); assert.deepEqual(levels(),[0,0,0]);
+  mixer.setSilent(false); assert.deepEqual(levels(),[.25,.5,0]);
+  mixer.setMuted('guitar',false); assert.deepEqual(levels(),[.25,.5,.8]);
+  mixer.setVolume('melody',-20); mixer.setVolume('harmony',150); assert.deepEqual(levels(),[0,1,.8]);
+  assert.throws(()=>mixer.setVolume('unknown',50),/未知音轨/);
   assert.equal(media.src,source); assert.equal(media.loads,loads);
 });
 
@@ -118,4 +120,28 @@ test('下载失败可重试，离开后迟到下载不会保留或恢复临时�
   const operation=mixer.prepare(['m','h']); mixer.release();
   await assert.rejects(operation,/取消/); assert.equal(log.urls.size,0);
   const retry=await mixer.prepare(['m','h']); assert(retry.url);
+});
+
+test('提前准备不播放，重新打开后直接使用本地成品，不再下载、解码和封装音轨', async () => {
+  const entries=new Map(), storage={open:async()=>({match:async key=>entries.get(key)?.clone(),put:async(key,value)=>entries.set(key,value.clone())})};
+  const first=setup(storage);
+  first.buffers.set('m?v=1',buffer([.25,.5]));first.buffers.set('h?v=1',buffer([-.25]));
+  const transport=await first.api.create({}).prepare(['m?v=1','h?v=1']);
+  assert.equal(entries.size,1);assert.equal(first.log.gains.length,0,'准备时不解锁音频输出');
+  const expected=await first.log.urls.get(transport.url).arrayBuffer();
+  const second=setup(storage), mixer=second.api.create({});
+  const local=await mixer.prepare(['m?v=1','h?v=1']);
+  assert.equal(second.log.reads.length,0,'重开后不再下载或解码');
+  assert.equal(local.stemCount,2);assert.equal(local.duration,transport.duration);
+  assert.deepEqual(await second.log.urls.get(local.url).arrayBuffer(),expected,'本地成品逐样本保持不变');
+  mixer.release();assert(second.log.revoked.includes(local.url),'退出仍释放内存音源');assert.equal(entries.size,1,'退出保留设备上的成品');
+  await assert.rejects(mixer.prepare(['m?v=2','h?v=1']),/missing/,'替换音频必须重新准备，不能误用旧成品');
+});
+
+test('本地存储被禁用或写满时，正常播放仍可使用原音轨', async () => {
+  for(const storage of [{open:async()=>{throw Error('denied');}},
+    {open:async()=>({match:async()=>undefined,put:async()=>{throw Error('full');}})}]){
+    const {api,buffers}=setup(storage);buffers.set('m',buffer([.5]));buffers.set('h',buffer([.25]));
+    assert((await api.create({}).prepare(['m','h'])).url);
+  }
 });

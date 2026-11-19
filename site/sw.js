@@ -1,15 +1,19 @@
 /* The shared version file supplies the app version and deployment build ID. */
 importScripts('./build-info.js');
-const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${self.TonaloomBuildInfo.build}`;
+importScripts('./assets/harmony-songs.js?v=2.20.3-local-audio1');
+const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${self.TonaloomBuildInfo.build}-local-audio1`;
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
+const HARMONY_CACHE = 'interval-trainer-harmony-recordings-v1';
+const HARMONY_FILES = [...new Set(self.TonaloomHarmonySongs.flatMap(song =>
+  [...Object.values(song.stems || {}),...song.tracks.map(track => track.src)].filter(src => typeof src === 'string' && src.startsWith('assets/harmony-practice/'))))];
 const CORE_FILES = [
-  './motion.js?v=2.20.2',
-  './','./index.html','./styles.css?v=2.20.2','./sight.css?v=2.20.2','./logic.js','./modules.js?v=2.20.2',
-  './review.js?v=2.20.2','./statistics.js?v=2.20.2','./audio.js?v=2.20.2','./storage.js','./app.js?v=2.20.2','./vendor/vexflow-loader.js','./sight.js?v=2.20.2','./staff-interval.js?v=2.20.2','./build-info.js','./build-info.js?v=2.20.2',
+  './motion.js?v=2.20.3',
+  './','./index.html','./styles.css?v=2.20.3','./sight.css?v=2.20.3','./logic.js','./modules.js?v=2.20.3',
+  './review.js?v=2.20.3','./statistics.js?v=2.20.3','./audio.js?v=2.20.3','./storage.js','./app.js?v=2.20.3-local-audio1','./vendor/vexflow-loader.js','./sight.js?v=2.20.3','./staff-interval.js?v=2.20.3','./build-info.js','./build-info.js?v=2.20.3',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
-  './daily-tasks.js?v=2.20.2','./pitch.js?v=2.20.2','./singing.js?v=2.20.2','./singing.css?v=2.20.2',
-  './assets/harmony-songs.js?v=2.20.2','./harmony-mix.js?v=2.20.2','./harmony-practice.js?v=2.20.2','./harmony-practice.css?v=2.20.2',
+  './daily-tasks.js?v=2.20.3','./pitch.js?v=2.20.3','./singing.js?v=2.20.3','./singing.css?v=2.20.3',
+  './assets/harmony-songs.js?v=2.20.3-local-audio1','./harmony-mix.js?v=2.20.3-local-audio1','./harmony-practice.js?v=2.20.3-local-audio1','./harmony-practice.css?v=2.20.3-local-audio1',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',
   './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt','./LICENSE_VEXFLOW_MIT.txt'
@@ -115,10 +119,18 @@ const AUDIO_FILES = [
 const ROOT_PATH = new URL(ROOT).pathname;
 const NETWORK_FIRST = new Set(['pwa-register.js', 'update.html', 'assets/harmony-songs.js']);
 
-// Install only essential app files. A single large recording download must not block updates.
+// Song recordings are part of the local app, ready before this update installs.
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache =>
-    cache.addAll(CORE_FILES.map(file => new URL(file, ROOT)))));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(CORE_FILES.map(file => new URL(file, ROOT)));
+    const audio = await caches.open(HARMONY_CACHE), missing = [];
+    for (const file of HARMONY_FILES) {
+      const url = new URL(file,ROOT);
+      if (!await audio.match(url)) missing.push(url);
+    }
+    if (missing.length) await audio.addAll(missing);
+  })());
   // The update prompt still asks for confirmation before taking over.
 });
 async function preservePreviousRecordings(audioCache) {
@@ -166,15 +178,37 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
 });
+async function localSong(request,url) {
+  const cache = await caches.open(HARMONY_CACHE);
+  let response = await cache.match(url.href);
+  if (!response) {
+    // Save a complete file, even when a native player first asks for a range.
+    response = await fetch(url.href,{cache:'no-store'});
+    if (!response.ok) return response;
+    try { await cache.put(url.href,response.clone()); } catch (_) {}
+  }
+  const range = request.headers?.get('Range');
+  if (!range) return response;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!match || (!match[1] && !match[2])) return response;
+  const bytes = await response.arrayBuffer(), size = bytes.byteLength;
+  const start = match[1] ? Number(match[1]) : Math.max(0,size-Number(match[2]));
+  const end = match[1] && match[2] ? Math.min(size-1,Number(match[2])) : size-1;
+  if (start >= size || start > end) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${size}`}});
+  const headers = new Headers(response.headers);
+  headers.set('Content-Range',`bytes ${start}-${end}/${size}`);
+  headers.set('Content-Length',String(end-start+1)); headers.set('Accept-Ranges','bytes');
+  return new Response(bytes.slice(start,end+1),{status:206,headers});
+}
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET')return;
   const url=new URL(request.url);
   if(url.origin!==new URL(ROOT).origin||!url.pathname.startsWith(ROOT_PATH))return;
   const relative=url.pathname.slice(ROOT_PATH.length);
-  // Let the native player stream and seek song recordings using HTTP Range.
-  // These user-supplied files are not part of the essential offline app cache.
-  if(relative.startsWith('assets/harmony-practice/'))return;
+  if(relative.startsWith('assets/harmony-practice/')) {
+    event.respondWith(localSong(request,url)); return;
+  }
   event.respondWith((async()=>{
     const recording=relative.startsWith('assets/melodic-recordings/');
     const cache=await caches.open(recording?AUDIO_CACHE:CACHE_NAME);

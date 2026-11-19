@@ -569,9 +569,11 @@
     if(created && settings.autoPlayNext)
       void play('main');
   }
+  let reserveBackEntry = () => {};
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
     for (const module of modules.activities) $(module.homeId).addEventListener('click',()=>{
+      reserveBackEntry();
       motion.navigate(() => { modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render(); });
     });
     $('back-home').addEventListener('click',navigateBack);
@@ -590,12 +592,20 @@
   function setupBackProtection() {
     // Installed PWA: reserve one same-URL history entry for Android system Back.
     // No local storage deletion; hardware Back from practice navigates HOME.
-    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: minimal-ui), (display-mode: fullscreen)').matches)
       || navigator.standalone === true;
-    if (!standalone || !window.history?.pushState) return;
+    const history = window.history;
+    if (!history?.pushState) return;
     const marker = {intervalTrainerGuard:true};
     let lastBack = 0;
-    history.pushState(marker, '', location.href);
+    reserveBackEntry = () => {
+      lastBack = 0;
+      if (!history.state?.intervalTrainerGuard) history.pushState(marker, '', window.location.href);
+    };
+    if (standalone) history.pushState(marker, '', window.location.href);
+    window.addEventListener('pageshow',() => {
+      if (standalone || modules.activities.some(module => modules.get(module.id).isActive?.())) reserveBackEntry();
+    });
     window.addEventListener('popstate', () => {
       if ($('stats-dialog').open) {
         motion.close($('stats-dialog'));
@@ -607,10 +617,13 @@
         motion.close($('singing-settings'));
       } else if (modules.activities.some(module => modules.get(module.id).isActive?.())) {
         navigateBack();
+        if (!standalone && !$('home-screen').classList.contains('hidden')) return;
         if (!$('home-screen').classList.contains('hidden')) {
           lastBack = Date.now();
           toast('再按一次返回退出');
         }
+      } else if (!standalone) {
+        return;
       } else if (Date.now() - lastBack < 2200) {
         // Do not insert another guard. The next Back leaves the installed app.
         history.back();
@@ -619,7 +632,7 @@
         lastBack = Date.now();
         toast('再按一次返回退出');
       }
-      history.pushState(marker, '', location.href);
+      history.pushState(marker, '', window.location.href);
     });
   }
   setupSettings(); setupInteractions(); setupPracticeScrolling(); showHome(); setupBackProtection();
