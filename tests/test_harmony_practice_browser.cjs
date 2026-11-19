@@ -8,13 +8,13 @@ const site = path.resolve(__dirname,'../site');
 const screenshots = fs.mkdtempSync(path.join(os.tmpdir(),'tonaloom-harmony-'));
 const titles = ['旋律+和声','旋律','和声','伴奏'];
 const tracks = titles.map((title,i) => ({id:String(i),title,src:`assets/harmony-practice/test/${i}.wav`}));
-function wav(frequency) {
-  const rate = 22050, count = Math.round(rate*1.2), bytes = Buffer.alloc(44+count*2);
+function wav(frequency,channels = 1) {
+  const rate = 22050, count = Math.round(rate*1.2), bytes = Buffer.alloc(44+count*channels*2);
   bytes.write('RIFF'); bytes.writeUInt32LE(bytes.length-8,4); bytes.write('WAVEfmt ',8);
-  bytes.writeUInt32LE(16,16); bytes.writeUInt16LE(1,20); bytes.writeUInt16LE(1,22);
-  bytes.writeUInt32LE(rate,24); bytes.writeUInt32LE(rate*2,28); bytes.writeUInt16LE(2,32); bytes.writeUInt16LE(16,34);
-  bytes.write('data',36); bytes.writeUInt32LE(count*2,40);
-  for (let i=0;i<count;i++) bytes.writeInt16LE(Math.round(2000*Math.sin(2*Math.PI*frequency*i/rate)*Math.min(1,i/200,(count-i)/200)),44+i*2);
+  bytes.writeUInt32LE(16,16); bytes.writeUInt16LE(1,20); bytes.writeUInt16LE(channels,22);
+  bytes.writeUInt32LE(rate,24); bytes.writeUInt32LE(rate*channels*2,28); bytes.writeUInt16LE(channels*2,32); bytes.writeUInt16LE(16,34);
+  bytes.write('data',36); bytes.writeUInt32LE(count*channels*2,40);
+  for (let i=0;i<count;i++) for (let ch=0;ch<channels;ch++) bytes.writeInt16LE(Math.round(2000*Math.sin(2*Math.PI*frequency*i/rate)*Math.min(1,i/200,(count-i)/200)),44+(i*channels+ch)*2);
   return bytes;
 }
 async function settle(page) {
@@ -36,18 +36,19 @@ async function fits(page) {
   try {
     for (const width of [320,390,900]) {
       const context = await browser.newContext({viewport:{width,height:844},serviceWorkers:'block'});
-      let fixtures = false, actualCatalog = false, audioRequests = 0;
+      let fixtures = false, mixedFixtures = false, actualCatalog = false, audioRequests = 0;
       await context.route('http://127.0.0.1:8773/**',async route => {
         const url = new URL(route.request().url());
         if (url.pathname === '/assets/harmony-songs.js' && !actualCatalog) {
-          const testTracks = fixtures ? tracks : tracks.map(item => ({...item,src:null}));
+          const testTracks = fixtures ? tracks.map((item,i) => mixedFixtures && i===0 ? {id:item.id,title:item.title,mix:['1','2']} : item)
+            : tracks.map(item => ({...item,src:null}));
           return route.fulfill({contentType:'application/javascript',body:`window.TonaloomHarmonySongs = ${JSON.stringify([{id:'test',title:'在他乡',tracks:testTracks}])};`});
         }
         if (url.pathname.startsWith('/assets/harmony-practice/')) {
           audioRequests++;
           assert(fixtures || actualCatalog,'空清单不应请求不存在的音频');
           const number = Number(path.basename(url.pathname,'.wav'));
-          const bytes = actualCatalog ? fs.readFileSync(path.join(site,url.pathname)) : wav(260+number*80);
+          const bytes = actualCatalog ? fs.readFileSync(path.join(site,url.pathname)) : wav(260+number*80,mixedFixtures && width===900 ? 2 : 1);
           const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range || '');
           if (range) {
             const start = Number(range[1]), end = range[2] ? Math.min(Number(range[2]),bytes.length-1) : bytes.length-1;
@@ -61,6 +62,34 @@ async function fits(page) {
       const page = await context.newPage(), errors = [];
       page.on('pageerror',error => errors.push(error.message));
       await page.addInitScript(() => {
+        // Model browsers that grant playback permission per media element.
+        const play=HTMLMediaElement.prototype.play, activated=new WeakSet(); let gesture=false;
+        document.addEventListener('click',()=>{gesture=true;setTimeout(()=>{gesture=false;},0);},true);
+        HTMLMediaElement.prototype.play=function() {
+          if (!gesture && !activated.has(this)) return Promise.reject(new DOMException('gesture required','NotAllowedError'));
+          activated.add(this); return play.call(this);
+        };
+        const createGain=AudioContext.prototype.createGain, createSource=AudioContext.prototype.createMediaElementSource;
+        AudioContext.prototype.createMediaElementSource=function(media) {
+          const source=createSource.call(this,media);
+          if (media.id==='harmony-audio') window.mixCapture={context:this};
+          return source;
+        };
+        AudioContext.prototype.createGain=function() {
+          const gain=createGain.call(this), connect=gain.connect.bind(gain), context=this;
+          gain.connect=function(target,...rest) {
+            const result=connect(target,...rest), probe=window.mixCapture;
+            if (probe?.context===context && target===context.destination) {
+              if (!probe.analyser) {
+                probe.analyser=context.createAnalyser(); probe.analyser.fftSize=8192; probe.analyser.smoothingTimeConstant=0;
+                const sink=createGain.call(context); sink.gain.value=0; probe.analyser.connect(sink); sink.connect(context.destination);
+              }
+              connect(probe.analyser);
+            }
+            return result;
+          };
+          return gain;
+        };
         Object.defineProperty(navigator,'standalone',{value:true});
         window.harmonyPlayed = []; window.harmonyWraps = 0; window.harmonyEnded = 0;
         document.addEventListener('DOMContentLoaded',() => {
@@ -127,6 +156,89 @@ async function fits(page) {
       } else await back(page);
       await page.waitForFunction(() => { const a = document.getElementById('harmony-audio'); return a.paused && !a.hasAttribute('src') && a.readyState === 0; });
       await back(page); await back(page);
+      mixedFixtures=true; await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
+      await page.click('#home-harmony-practice'); await settle(page); await choose(page,0); await choose(page,0);
+      await page.waitForFunction(() => { const a=document.getElementById('harmony-audio'); return a.src.startsWith('blob:') && !a.paused && a.duration>1 && a.currentTime>.03; });
+      assert.equal(await page.locator('#harmony-practice audio').count(),1,'混合及单轨共用已获播放许可的媒体元素');
+      await page.click('#harmony-mode');
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.loop));
+      const mixSource=await page.locator('#harmony-audio').evaluate(a=>a.currentSrc);
+      async function spectrum() {
+        // Allow one FFT window and the 8ms gain ramp to settle before measuring.
+        await page.waitForTimeout(250);
+        // Avoid measuring the fixture's edge fades or the native loop boundary.
+        await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return a.currentTime>.4 && a.currentTime<.65;});
+        return page.evaluate(() => {
+          const {analyser,context}=mixCapture, bins=new Float32Array(analyser.frequencyBinCount);
+          analyser.getFloatFrequencyData(bins);
+          return [340,420].map(hz=>{
+            const center=Math.round(hz/context.sampleRate*analyser.fftSize);
+            return Math.max(...bins.slice(center-1,center+2));
+          });
+        });
+      }
+      const baseline=await spectrum(); assert(baseline.every(value=>Number.isFinite(value) && value>-60));
+      for (const [value,expected] of [[-100,[0,1]],[-50,[.5,1]],[50,[1,.5]],[100,[1,0]],[0,[1,1]]]) {
+        await page.locator('#harmony-balance-input').evaluate((input,value)=>{input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}));},value);
+        const levels=await spectrum();
+        for (let i=0;i<2;i++) {
+          const delta=levels[i]-baseline[i];
+          if (expected[i]===0) assert(delta<-30,`${value}: muted stem ${i} leaked ${delta}dB`);
+          else assert(Math.abs(delta-20*Math.log10(expected[i]))<1.6,`${value}: stem ${i} unexpected level ${delta}dB`);
+        }
+        assert.equal(await page.locator('#harmony-audio').evaluate(a=>a.currentSrc),mixSource,'拖动平衡不能更换音频或重新从头播放');
+      }
+      assert.equal(await page.locator('#harmony-melody-level').innerText(),'100%');
+      assert.equal(await page.locator('#harmony-harmony-level').innerText(),'100%');
+      async function silentOutput() {
+        await page.waitForTimeout(250);
+        const peak=await page.evaluate(()=>{
+          const samples=new Float32Array(mixCapture.analyser.fftSize);
+          mixCapture.analyser.getFloatTimeDomainData(samples);
+          return samples.reduce((max,value)=>Math.max(max,Math.abs(value)),0);
+        });
+        assert(peak<.000001,`静音期间仍有输出 ${peak}`);
+      }
+      await page.click('#harmony-mute');
+      assert.equal(await page.locator('#harmony-mute').getAttribute('aria-pressed'),'true');
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.muted && !a.paused));
+      await silentOutput();
+      await page.locator('#harmony-balance-input').evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await silentOutput();
+      assert.equal(await page.locator('#harmony-melody-level').innerText(),'0%');
+      assert.equal(await page.locator('#harmony-harmony-level').innerText(),'0%');
+      await page.screenshot({path:path.join(screenshots,`${width}-muted.png`)});
+      await page.click('#harmony-mute');
+      const restored=await spectrum();
+      assert(Math.abs(restored[0]-baseline[0])<1.6);
+      assert(Math.abs(restored[1]-baseline[1]+6.0206)<1.6);
+      await page.locator('#harmony-balance-input').evaluate(input=>{input.value='0';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      const seekBox=await page.locator('#harmony-seek').boundingBox();
+      await page.mouse.move(seekBox.x+seekBox.width*.5,seekBox.y+seekBox.height/2); await page.mouse.down();
+      for (const fraction of [.2,.8,.5]) await page.mouse.move(seekBox.x+seekBox.width*fraction,seekBox.y+seekBox.height/2,{steps:3});
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && a.muted));
+      assert.equal(await page.locator('#harmony-mute').getAttribute('aria-pressed'),'false','临时拖动静音不改变M状态');
+      await silentOutput();
+      await page.mouse.up();
+      await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return !a.paused && !a.muted;});
+      await page.locator('#harmony-seek').focus(); await page.keyboard.down('ArrowRight');
+      assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && a.muted)); await silentOutput();
+      await page.keyboard.up('ArrowRight');
+      await page.waitForFunction(()=>{const a=document.getElementById('harmony-audio');return !a.paused && !a.muted;});
+      assert.equal(await page.locator('#harmony-audio').evaluate(a=>a.currentSrc),mixSource);
+      const muteBox=await page.locator('#harmony-mute').boundingBox(), balanceBox=await page.locator('#harmony-balance-input').boundingBox();
+      assert(muteBox.x+muteBox.width<=balanceBox.x && balanceBox.x+balanceBox.width<=width,'M应位于平衡条前且手机无溢出');
+      await page.screenshot({path:path.join(screenshots,`${width}-balance.png`)});
+      await page.click('#harmony-play'); assert(await page.locator('#harmony-audio').evaluate(a=>a.paused));
+      await page.locator('#harmony-seek').evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      assert(Math.abs(await page.locator('#harmony-audio').evaluate(a=>a.currentTime)-.6)<.03);
+      await page.click('#harmony-play');
+      await page.waitForFunction(()=>!document.getElementById('harmony-audio').paused);
+      await page.click('#harmony-mode');
+      await page.waitForFunction(()=>document.getElementById('harmony-track-title').textContent==='旋律' && !document.getElementById('harmony-audio').paused);
+      assert(await page.locator('#harmony-message').isHidden(),'混合播放自动切到单轨不重新要求播放许可');
+      await back(page); assert(await page.locator('#harmony-audio').evaluate(a=>a.paused && !a.hasAttribute('src')));
+      await back(page); await back(page);
       await page.click('#home-harmonic'); await settle(page); assert.equal(await page.locator('#answer-grid button').count(),13);
       await back(page); await page.click('#home-stats'); await page.waitForSelector('#stats-dialog',{state:'visible'});
       assert.equal(await page.locator('.stats-mode-switch button').count(),5,'不增加无答题功能的统计项');
@@ -134,15 +246,20 @@ async function fits(page) {
         // Read the real catalog and play the user's files, in addition to fixtures.
         actualCatalog = true; await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
         await page.click('#home-harmony-practice'); await settle(page); await choose(page,0);
+        assert.deepEqual(await page.locator('.harmony-entry-name').allTextContents(),['旋律+和声','伴奏']);
+        await page.screenshot({path:path.join(screenshots,`${width}-actual-tracks.png`)});
         const actualTracks = await page.evaluate(() => TonaloomHarmonySongs[0].tracks);
-        for (let i=0;i<actualTracks.length;i++) if (actualTracks[i].src) {
-          await choose(page,i); await playing(page);
-          const result = await page.locator('#harmony-audio').evaluate(a => ({duration:a.duration,error:a.error?.code,source:a.currentSrc}));
+        for (let i=0;i<actualTracks.length;i++) if (actualTracks[i].src || actualTracks[i].mix) {
+          const selector='#harmony-audio';
+          await choose(page,i);
+          await page.waitForFunction(selector=>{const a=document.querySelector(selector);return !a.paused && a.duration>1 && a.currentTime>.03;},selector);
+          const result = await page.locator(selector).evaluate(a => ({duration:a.duration,error:a.error?.code,source:a.currentSrc}));
           assert(result.duration > 0 && Number.isFinite(result.duration)); assert(!result.error);
-          assert.equal(new URL(result.source).pathname,'/'+actualTracks[i].src);
+          if (actualTracks[i].mix) assert(result.source.startsWith('blob:'));
+          else assert.equal(new URL(result.source).pathname,'/'+actualTracks[i].src);
           await page.click('#harmony-play');
           await page.locator('#harmony-seek').evaluate(input => { input.value='50'; input.dispatchEvent(new Event('input',{bubbles:true})); });
-          await page.waitForFunction(() => { const a=document.getElementById('harmony-audio'); return Math.abs(a.currentTime-a.duration/2)<.1; });
+          await page.waitForFunction(selector => { const a=document.querySelector(selector); return Math.abs(a.currentTime-a.duration/2)<.1; },selector);
           console.log(`PASS supplied audio ${actualTracks[i].title}: ${result.duration.toFixed(3)}s, playback and seeking`);
           await back(page);
         }
