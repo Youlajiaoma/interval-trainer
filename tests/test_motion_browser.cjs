@@ -129,5 +129,6 @@ async function motion(page,selector) {
       await context.close();
     }
     console.log('动画中间帧截图：'+screenshots);
+    await require('./helpers/navigation-browser.cjs')(browser);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

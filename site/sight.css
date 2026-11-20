@@ -39,7 +39,6 @@
  .sight-key.sight-white{min-height:84px;font-size:16px}
  .sight-keyboard{margin-top:10px;gap:2px}
  .sight-meta{font-size:11px;margin-bottom:8px}
- .stats-mode-switch button{font-size:11px}
 }
 @media(max-width:360px){.sight-key.sight-white{min-height:76px}}
 @media(max-height:680px){.sight-system,.sight-system>svg{height:133px}.sight-score{max-height:calc(100dvh - 235px);overflow-y:auto}.sight-key.sight-white{min-height:70px}}
@@ -73,6 +72,5 @@
 .home-category{margin-top:20px}
 .home-category-title{font-size:14px;letter-spacing:.08em;color:#aaa4c2;margin:0 0 11px;font-weight:730}
 .home-category .home-modules{grid-template-columns:repeat(2,minmax(0,1fr))}
-.stats-mode-switch{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media(max-width:620px){.home-category .home-modules{grid-template-columns:1fr}.stats-mode-switch button{font-size:10px;padding:10px 2px}}
+@media(max-width:620px){.home-category .home-modules{grid-template-columns:1fr}.stats-mode-switch button{font-size:20px}}
 

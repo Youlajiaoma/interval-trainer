@@ -5,6 +5,8 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:tex
 body{margin:0;min-height:100dvh;background:#0e1018}
 /* v2.2: no root elastic overscroll; fit-to-screen practice scroll locking is managed by app.js. */
 html,body{overscroll-behavior-y:none}
+html.home-view{scrollbar-width:none}
+html.home-view::-webkit-scrollbar{display:none;width:0}
 html.practice-scroll-locked,html.practice-scroll-locked body{height:100%;overflow:hidden}
 html.practice-scroll-locked body{min-height:100%;}
 html.practice-scroll-locked .app-shell{touch-action:pan-x pinch-zoom}
@@ -167,9 +169,13 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .submode-button{border:1px solid #48465d;border-radius:8px;background:transparent;color:#a5a4bf;font-size:12px;padding:9px 11px;flex:1}
 .submode-button.active{color:#ddcffd;border-color:#7669ae;background:#2b283f}
 .submode-button:focus-visible{outline:2px solid #d0bfff;outline-offset:2px}
-.stats-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 0 21px}
-.stats-mode-switch button{min-height:42px;border:1px solid #44445b;background:#1f2031;color:#a8a9c3;border-radius:9px;font-size:13px}
-.stats-mode-switch button.active{color:#e5d9ff;border-color:#7970ac;background:#353148}
+.stats-module-picker{display:flex;align-items:center;gap:12px;margin:0 0 26px}
+.stats-mode-switch{display:flex;flex:1;min-width:0;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;touch-action:pan-y pinch-zoom}
+.stats-mode-switch::-webkit-scrollbar{display:none}
+.stats-mode-switch button{flex:0 0 100%;min-width:0;min-height:48px;scroll-snap-align:center;border:0;background:transparent;color:#e5d9ff;font-size:22px;font-weight:700;padding:8px;text-align:center}
+.stats-module-arrow{width:40px;height:40px;flex:none;border:0;border-radius:50%;background:transparent;color:#b8adce;font-size:28px;line-height:1}
+.stats-module-arrow:hover{background:#242135;color:#eee5ff}
+.stats-module-arrow:disabled{color:#4d4a5d}
 @media(max-width:620px){.submode-button{font-size:11px;padding:9px 4px}}
 .pwa-update-notice{position:fixed;z-index:1000;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(calc(100vw - 24px),460px);background:#2b2840;border:1px solid #70649b;box-shadow:0 10px 35px #0008;border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;color:#f5eaff}
 .pwa-update-notice button{border:1px solid #71689b;border-radius:8px;padding:9px 10px;background:#a999f5;color:#171229;white-space:nowrap;font-size:12px}
