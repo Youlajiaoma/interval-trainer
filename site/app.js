@@ -289,12 +289,18 @@
   function setupStatsControls() {
     const selected = () => modules.get(modules.statisticsMode);
     const statsDialog = $('stats-dialog');
+    const selector = $('stats-mode-switch');
+    const selectedIndex = () => modules.list.findIndex(module => module.id === modules.statisticsMode);
+    const alignSelector = () => selector.scrollTo?.({left:selectedIndex()*selector.clientWidth,behavior:'instant'});
     function renderStatistics() {
       for (const module of modules.list) {
         const active = module.id === modules.statisticsMode;
         $(module.statsId).classList.toggle('active', active);
         $(module.statsId).setAttribute('aria-pressed', String(active));
+        $(module.statsId).setAttribute('tabindex',active ? '0' : '-1');
       }
+      $('stats-previous').disabled = selectedIndex() === 0;
+      $('stats-next').disabled = selectedIndex() === modules.list.length-1;
       statsUi.render();
     }
     statsUi = window.IntervalStats.init((period,now) => {
@@ -307,18 +313,55 @@
       if (open) {
         storage.refresh?.().catch(() => {});
         motion.open(statsDialog);
+        alignSelector();
       }
     });
     window.addEventListener('interval-trainer-storage-updated', () => {
       if (statsDialog.open) renderStatistics();
     });
-    for (const [index,module] of modules.list.entries()) {
-      $(module.statsId).addEventListener('click', () => {
-        const previous = modules.list.findIndex(item => item.id === modules.statisticsMode);
-        if (previous === index) return;
-        motion.content($('stats-panels'),() => modules.showStatistics(module.id),index > previous ? 'forward' : 'back');
-      });
+    function selectStatistics(index,align = true) {
+      const previous = selectedIndex(), module = modules.list[index];
+      if (!module) return;
+      if (previous !== index) motion.content($('stats-panels'),() => modules.showStatistics(module.id,false),index > previous ? 'forward' : 'back');
+      if (align) alignSelector();
     }
+    for (const [index,module] of modules.list.entries()) $(module.statsId).addEventListener('click',() => selectStatistics(index));
+    $('stats-previous').addEventListener('click',() => selectStatistics(selectedIndex()-1));
+    $('stats-next').addEventListener('click',() => selectStatistics(selectedIndex()+1));
+    selector.addEventListener('keydown',event => {
+      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      event.preventDefault(); selectStatistics(selectedIndex()+(event.key === 'ArrowRight' ? 1 : -1));
+      $(modules.list[selectedIndex()].statsId).focus();
+    });
+    let scrollTimer, touch;
+    selector.addEventListener('scroll',() => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        if (statsDialog.open && selector.clientWidth) selectStatistics(Math.round(selector.scrollLeft/selector.clientWidth),false);
+      },120);
+    },{passive:true});
+    const content = $('stats-content');
+    content.addEventListener('touchstart',event => {
+      const point = event.touches[0]; touch = null;
+      const title = event.target.closest('.stats-mode-switch');
+      if (event.touches.length !== 1 || point.clientX < 24 || point.clientX > window.innerWidth-24 || (!title && event.target.closest('button,select,input,summary,a'))) return;
+      touch = {x:point.clientX,y:point.clientY};
+    },{passive:true});
+    content.addEventListener('touchmove',event => {
+      if (!touch || event.touches.length !== 1) { touch = null; return; }
+      const dx = event.touches[0].clientX-touch.x, dy = event.touches[0].clientY-touch.y;
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) touch = null;
+      else if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)*1.5) event.preventDefault();
+    },{passive:false});
+    content.addEventListener('touchend',event => {
+      if (!touch) return;
+      const point = event.changedTouches[0], dx = point.clientX-touch.x, dy = point.clientY-touch.y;
+      touch = null;
+      if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy)*1.5) {
+        event.preventDefault(); selectStatistics(selectedIndex()+(dx < 0 ? 1 : -1));
+      }
+    },{passive:false});
+    content.addEventListener('touchcancel',() => { touch = null; },{passive:true});
     $('open-stats').addEventListener('click', () => {
       motion.close($('settings-dialog'));
       modules.showStatistics(settings.mode);
@@ -569,11 +612,9 @@
     if(created && settings.autoPlayNext)
       void play('main');
   }
-  let reserveBackEntry = () => {};
   function setupInteractions() {
     $('play-harmonic').addEventListener('click', () => play('main'));
     for (const module of modules.activities) $(module.homeId).addEventListener('click',()=>{
-      reserveBackEntry();
       motion.navigate(() => { modules.get(module.id).enter?.(); window.TonaloomDailyTasks.render(); });
     });
     $('back-home').addEventListener('click',navigateBack);
@@ -590,50 +631,118 @@
     if (!active?.back?.()) motion.navigate(showHome,'back');
   }
   function setupBackProtection() {
-    // Installed PWA: reserve one same-URL history entry for Android system Back.
-    // No local storage deletion; hardware Back from practice navigates HOME.
+    // Each screen owns an actual history entry. Returning never pushes another
+    // entry: Chromium can skip entries inserted after an unactivated Back.
     const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: minimal-ui), (display-mode: fullscreen)').matches)
       || navigator.standalone === true;
     const history = window.history;
-    if (!history?.pushState) return;
-    const marker = {intervalTrainerGuard:true};
-    let lastBack = 0;
-    reserveBackEntry = () => {
-      lastBack = 0;
-      if (!history.state?.intervalTrainerGuard) history.pushState(marker, '', window.location.href);
-    };
-    if (standalone) history.pushState(marker, '', window.location.href);
-    window.addEventListener('pageshow',() => {
-      if (standalone || modules.activities.some(module => modules.get(module.id).isActive?.())) reserveBackEntry();
-    });
-    window.addEventListener('popstate', () => {
-      if ($('stats-dialog').open) {
-        motion.close($('stats-dialog'));
-      } else if ($('settings-dialog').open) {
-        motion.close($('settings-dialog'));
-      } else if ($('daily-tasks-dialog').open) {
-        motion.close($('daily-tasks-dialog'));
-      } else if ($('singing-settings').open) {
-        motion.close($('singing-settings'));
-      } else if (modules.activities.some(module => modules.get(module.id).isActive?.())) {
-        navigateBack();
-        if (!standalone && !$('home-screen').classList.contains('hidden')) return;
-        if (!$('home-screen').classList.contains('hidden')) {
-          lastBack = Date.now();
-          toast('再按一次返回退出');
-        }
-      } else if (!standalone) {
-        return;
-      } else if (Date.now() - lastBack < 2200) {
-        // Do not insert another guard. The next Back leaves the installed app.
-        history.back();
-        return;
-      } else {
-        lastBack = Date.now();
-        toast('再按一次返回退出');
+    const homeScroll = () => document.documentElement.classList.toggle('home-view',!$('home-screen').classList.contains('hidden'));
+    homeScroll();
+    if (!history?.pushState) { motion.observeNavigation(homeScroll); return; }
+    const field = 'tonaloomNavigation', session = Date.now()+':'+Math.random();
+    const openDialogs = () => [...document.querySelectorAll('dialog[open]')].filter(dialog => !dialog.classList.contains('motion-dialog-closing'));
+    function readPath() {
+      const path = [{key:'home',open:showHome}];
+      const active = modules.activities.map(module => modules.get(module.id)).find(module => module.isActive?.());
+      if (active) {
+        path.push({key:active.id,open:() => active.enter()});
+        path.push(...(active.navigationPath?.() || []));
       }
-      history.pushState(marker, '', window.location.href);
+      for (const dialog of openDialogs()) path.push({key:dialog.id,open:() => motion.open(dialog)});
+      return path;
+    }
+    const same = (a,b) => a?.length === b?.length && a.every((entry,i) => entry.key === b[i].key);
+    const entries = new Map([[0,readPath()]]);
+    let cursor = 0, moving = false, restoring = false, queued = false, rewind = false, exitTimer = null;
+    function put(index,replace = false) {
+      history[replace ? 'replaceState' : 'pushState']({...history.state,[field]:{session,index}},'',window.location.href);
+    }
+    function clearExit() {
+      clearTimeout(exitTimer); exitTimer = null;
+      if ($('toast').textContent === '再按一次返回退出') $('toast').classList.remove('visible');
+    }
+    function backOne() {
+      const dialog = openDialogs().at(-1);
+      if (dialog) motion.close(dialog); else navigateBack();
+    }
+    function restore(path) {
+      restoring = true;
+      try {
+        let current = readPath(), common = 0;
+        while (common < Math.min(current.length,path.length) && current[common].key === path[common].key) common++;
+        while (current.length > common) {
+          backOne(); const next = readPath();
+          if (same(current,next)) break;
+          current = next;
+        }
+        for (const entry of path.slice(common)) entry.open();
+      } finally { restoring = false; homeScroll(); }
+    }
+    function sync() {
+      queued = false; homeScroll();
+      if (moving || restoring) return;
+      const path = readPath();
+      if (cursor === -1) {
+        if (path.length === 1) return;
+        clearExit(); put(0); cursor = 0;
+      }
+      const previous = entries.get(cursor);
+      if (same(previous,path)) { entries.set(cursor,path); return; }
+      clearExit();
+      const target = path.length-1;
+      if (target < cursor && same(entries.get(target),path)) {
+        moving = true; history.go(target-cursor); return;
+      }
+      let common = 0;
+      while (common < Math.min(previous.length,path.length) && previous[common].key === path[common].key) common++;
+      // Settings → statistics replaces the modal at the same level.
+      if (target === cursor && common === cursor) { entries.set(cursor,path); put(cursor,true); return; }
+      if (common < previous.length) { moving = true; history.go(common-1-cursor); return; }
+      for (const index of entries.keys()) if (index > cursor) entries.delete(index);
+      for (let index = cursor+1; index < path.length; index++) {
+        entries.set(index,path.slice(0,index+1)); put(index); cursor = index;
+      }
+    }
+    function schedule() {
+      homeScroll();
+      if (!queued) { queued = true; Promise.resolve().then(sync); }
+    }
+    motion.observeNavigation(schedule);
+    window.addEventListener('popstate',event => {
+      const position = event.state?.[field]?.index;
+      if (rewind) {
+        rewind = false; moving = false; cursor = 0; put(0,true); sync(); return;
+      }
+      if (!Number.isInteger(position)) return;
+      if (moving) { moving = false; cursor = position; sync(); return; }
+      if (position === -1 && standalone) {
+        const wasHome = readPath().length === 1 && cursor === 0;
+        cursor = -1;
+        if (!wasHome) {
+          restore(entries.get(0)); moving = true; history.forward(); return;
+        }
+        toast('再按一次返回退出');
+        // Reuse the existing HOME entry after the double-press window expires.
+        // Pushing a replacement here would make Chrome skip app screens.
+        exitTimer = setTimeout(() => {
+          exitTimer = null;
+          if (cursor === -1 && readPath().length === 1) { moving = true; history.forward(); }
+        },2200);
+        return;
+      }
+      clearExit();
+      const path = entries.get(position);
+      if (path) { cursor = position; restore(path); }
+      else if (position > 0) { rewind = true; moving = true; history.go(-position); }
     });
+    const previous = history.state?.[field];
+    if (previous && previous.index !== 0) {
+      rewind = true; moving = true;
+      history.go(previous.index === -1 ? 1 : -previous.index);
+    } else if (standalone && !previous) {
+      put(-1,true); put(0);
+    } else put(0,true);
+    window.addEventListener('pageshow',schedule);
   }
   setupSettings(); setupInteractions(); setupPracticeScrolling(); showHome(); setupBackProtection();
   // One-time, idempotent upgrade from the flat v2.0 settings format.

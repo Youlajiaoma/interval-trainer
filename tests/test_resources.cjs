@@ -12,7 +12,7 @@ const site = path.resolve(__dirname, '../site');
 function serviceWorkerEnvironment() {
   const worker = {registration:{scope:'https://isolated.test/'}, addEventListener(){}};
   return {URL, self:worker, importScripts(file) {
-    assert(['./build-info.js','./assets/harmony-songs.js?v=2.20.3-local-audio1'].includes(file));
+    assert(['./build-info.js','./assets/harmony-songs.js?v=2.20.4-local-audio1'].includes(file));
     vm.runInNewContext(readSource(file.replace(/^\.\//,'').split('?')[0]), {self:worker});
   }};
 }
@@ -56,7 +56,7 @@ test('12 类旋律音程的上下行、四乐器共 96 个录音路径可读取'
 test('页面显示版本和构建编号，版本值来自统一版本文件', () => {
   const worker = {};
   vm.runInNewContext(readSource('build-info.js'), {self:worker});
-  assert.equal(worker.TonaloomBuildInfo.version, '2.20.3');
+  assert.equal(worker.TonaloomBuildInfo.version, '2.20.4');
   assert.equal(worker.TonaloomBuildInfo.build, 'local');
   const html = readSource('index.html');
   assert.match(html, /id="app-version"/);
@@ -98,7 +98,7 @@ test('主页版本标记能显示本地开发状态和发布构建编号', () =>
   const document = {getElementById:id => elements[id]};
   const source = readSource('build-info.js');
   vm.runInNewContext(source, {self:{}, document});
-  assert.equal(elements['app-version'].textContent, '2.20.3');
+  assert.equal(elements['app-version'].textContent, '2.20.4');
   assert.equal(elements['app-build'].textContent, '本地开发版');
   vm.runInNewContext(source.replace("build:'local'", "build:'abc1234'"), {self:{}, document});
   assert.equal(elements['app-build'].textContent, '构建 abc1234');
@@ -116,7 +116,7 @@ test('网页引用的脚本与样式均列入离线清单，新增公共脚本�
     assert(urls.has(url.href), '网页依赖及其版本必须进入核心缓存：'+file);
     assert(fs.existsSync(path.join(site, url.pathname.slice(1))), '网页依赖文件必须存在：'+file);
   }
-  assert(urls.has('https://isolated.test/audio.js?v=2.20.3') && urls.has('https://isolated.test/modules.js?v=2.20.3'));
+  assert(urls.has('https://isolated.test/audio.js?v=2.20.4') && urls.has('https://isolated.test/modules.js?v=2.20.4'));
 });
 
 test('离线录音清单与实际出题录音完全对应，没有遗漏或重复', () => {

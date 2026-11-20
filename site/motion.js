@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const running = new Map(), closing = new WeakMap(), opening = new WeakMap(), bound = new WeakSet();
+  let navigationChanged = () => {};
   const preference = root.matchMedia?.('(prefers-reduced-motion: reduce)');
   const easing = 'cubic-bezier(.22,1,.36,1)';
   function enabled(element) { return Boolean(element?.animate) && !preference?.matches; }
@@ -29,6 +30,7 @@
     const shell = document.querySelector('.app-shell');
     cancel(shell);
     const result = update();
+    navigationChanged();
     const offset = direction === 'back' ? -24 : 24;
     const transform = root.CSS?.supports('overflow-x','clip') ? `translateX(${offset}px)` : 'none';
     play(shell,[{opacity:.25,transform},{opacity:1,transform:'none'}],220);
@@ -53,6 +55,7 @@
     dialog.addEventListener('close',() => {
       if (dialog.open) return;
       clearClose(dialog); cancel(dialog); opening.delete(dialog); dialog.classList.remove('motion-dialog-opening');
+      navigationChanged();
     });
   }
   function position(dialog) {
@@ -70,6 +73,7 @@
     const state = clearClose(dialog); cancel(dialog);
     if (!dialog.open) dialog.showModal();
     else if (state?.focus?.isConnected && dialog.contains(state.focus)) state.focus.focus({preventScroll:true});
+    navigationChanged();
     if (!enabled(dialog)) return;
     const token = {}; opening.set(dialog,token);
     dialog.classList.add('motion-dialog-opening');
@@ -83,11 +87,12 @@
   function close(dialog, value) {
     if (!dialog.open) return Promise.resolve();
     if (closing.has(dialog)) return closing.get(dialog).done;
-    if (!enabled(dialog)) { cancel(dialog); dialog.close(value); return Promise.resolve(); }
+    if (!enabled(dialog)) { cancel(dialog); dialog.close(value); navigationChanged(); return Promise.resolve(); }
     const start = frame(dialog), state = {inert:dialog.inert,focus:document.activeElement};
     closing.set(dialog,state);
     dialog.inert = true;
     opening.delete(dialog); dialog.classList.remove('motion-dialog-opening'); dialog.classList.add('motion-dialog-closing');
+    navigationChanged();
     const animation = play(dialog,[start,{opacity:0,transform:position(dialog)}],170);
     const finish = () => {
       if (closing.get(dialog) !== state) return;
@@ -100,5 +105,5 @@
   preference?.addEventListener?.('change',() => {
     if (preference.matches) for (const animation of running.values()) animation.finish();
   });
-  root.TonaloomMotion = Object.freeze({navigate,content,reveal,open,close});
+  root.TonaloomMotion = Object.freeze({navigate,content,reveal,open,close,observeNavigation(handler) { navigationChanged = handler; }});
 })(window);

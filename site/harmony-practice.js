@@ -258,6 +258,13 @@
     root.TonaloomMotion.navigate(() => directory(view === 'player' && song.tracks.length > 1 ? 'tracks' : 'songs'),'back');
     return true;
   }
+  function navigationPath() {
+    if (view === 'songs') return [];
+    const selectedSong = song, selectedIndex = index, path = [];
+    if (song.tracks.length > 1) path.push({key:'tracks:'+song.id,open() { song = selectedSong; directory('tracks'); }});
+    if (view === 'player') path.push({key:'player:'+song.id+':'+index,open() { song = selectedSong; selectTrack(selectedIndex); }});
+    return path;
+  }
   function init() {
     audio = $('harmony-audio');
     audio.loop = true;
@@ -305,7 +312,7 @@
     }
     // Hiding/locking keeps playback alive. Only a real document exit releases it.
     root.addEventListener('pagehide',() => { if (active) stop(); });
-    modules.register(definition.id,{enter,leave,back,isActive:() => active});
+    modules.register(definition.id,{enter,leave,back,navigationPath,isActive:() => active});
   }
   if (root.IntervalAppReady) init(); else root.addEventListener('interval-trainer-ready',init,{once:true});
 })(window);
