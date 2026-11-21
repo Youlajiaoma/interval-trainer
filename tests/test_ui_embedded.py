@@ -53,6 +53,7 @@ with sync_playwright() as pw:
     assert page.locator('#answered-number').inner_text()=='1'
     assert int(page.evaluate('JSON.parse(tdata.get("interval-trainer-review-v1")).totalAnswers'))==1
     page.locator('#open-settings').click()
+    page.wait_for_function("!document.querySelector('#settings-dialog').classList.contains('motion-dialog-opening')")
     drawer=page.locator('#settings-dialog');drawer_box=drawer.bounding_box()
     assert not drawer.locator('.settings-header').is_visible()
     usable_width=page.evaluate('document.documentElement.clientWidth')
