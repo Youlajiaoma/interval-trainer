@@ -2,7 +2,7 @@
 <html lang="zh-CN" class="home-view">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <title>Tonaloom</title>
   <meta name="theme-color" content="#0d0f1b">
@@ -12,18 +12,18 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.20.6">
-  <link rel="stylesheet" href="sight.css?v=2.20.6">
-  <link rel="stylesheet" href="singing.css?v=2.20.6">
-  <link rel="stylesheet" href="harmony-practice.css?v=2.20.6-local-audio1">
-  <link rel="stylesheet" href="theme.css?v=2.20.6-ui4">
+  <link rel="stylesheet" href="styles.css?v=2.21.0">
+  <link rel="stylesheet" href="sight.css?v=2.21.0">
+  <link rel="stylesheet" href="singing.css?v=2.21.0">
+  <link rel="stylesheet" href="harmony-practice.css?v=2.21.0-local-audio1">
+  <link rel="stylesheet" href="theme.css?v=2.21.0-ui5">
 </head>
 <body>
   <div class="app-viewport"><div class="app-shell">
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.20.6</span>
+        <span id="app-version">2.21.0</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -46,7 +46,7 @@
           <span class="home-module-text"><strong>模唱</strong></span>
           <span class="home-module-arrow" id="home-singing-marker" aria-hidden="true">→</span>
         </button>
-<button class="home-module" id="home-harmony-practice" type="button">
+<button class="home-module" id="home-harmony-practice" type="button" aria-label="和声练唱">
           <span class="home-module-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 32V13l15-4v19M29 18l10-3v20"/><ellipse cx="5" cy="34" rx="5" ry="3" fill="currentColor"/><ellipse cx="20" cy="30" rx="5" ry="3" fill="currentColor"/><ellipse cx="35" cy="37" rx="5" ry="3" fill="currentColor"/></svg></span>
           <span class="home-module-text"><strong>和声练唱</strong></span>
           <span class="home-module-arrow" aria-hidden="true">→</span>
@@ -64,10 +64,10 @@
     <span class="home-module-arrow" id="home-staff-interval-marker" aria-hidden="true">→</span>
   </button>
       </div></section>
-      <div class="home-tools">
+      <nav class="home-tools" aria-label="主页工具">
         <button class="home-stats-link" id="home-stats" type="button">练习统计 <span aria-hidden="true">↗</span></button>
         <button class="home-stats-link" id="home-daily-tasks" type="button" aria-haspopup="dialog" aria-controls="daily-tasks-dialog">每日任务 <span aria-hidden="true">↗</span></button>
-      </div>
+      </nav>
     </main>
 
     <nav class="practice-navigation hidden" id="practice-navigation" aria-label="练习页面导航">
@@ -319,26 +319,26 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="motion.js?v=2.20.6"></script>
+  <script src="motion.js?v=2.21.0"></script>
   <script src="logic.js"></script>
-  <script src="modules.js?v=2.20.6"></script>
+  <script src="modules.js?v=2.21.0"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.20.6"></script>
-  <script src="statistics.js?v=2.20.6-popover2"></script>
-  <script src="audio.js?v=2.20.6"></script>
+  <script src="review.js?v=2.21.0"></script>
+  <script src="statistics.js?v=2.21.0-popover2"></script>
+  <script src="audio.js?v=2.21.0"></script>
   <script src="storage.js"></script>
-  <script src="daily-tasks.js?v=2.20.6"></script>
-  <script src="pitch.js?v=2.20.6"></script>
-  <script src="singing.js?v=2.20.6"></script>
-  <script src="assets/harmony-songs.js?v=2.20.6-local-audio1"></script>
-  <script src="harmony-mix.js?v=2.20.6-local-audio1"></script>
-  <script src="harmony-practice.js?v=2.20.6-local-audio1"></script>
-  <script src="app.js?v=2.20.6-local-audio1"></script>
+  <script src="daily-tasks.js?v=2.21.0"></script>
+  <script src="pitch.js?v=2.21.0"></script>
+  <script src="singing.js?v=2.21.0"></script>
+  <script src="assets/harmony-songs.js?v=2.21.0-local-audio1"></script>
+  <script src="harmony-mix.js?v=2.21.0-local-audio1"></script>
+  <script src="harmony-practice.js?v=2.21.0-local-audio1"></script>
+  <script src="app.js?v=2.21.0-local-audio1"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.20.6"></script>
-  <script src="staff-interval.js?v=2.20.6"></script>
-  <script src="build-info.js?v=2.20.6"></script>
+  <script src="sight.js?v=2.21.0"></script>
+  <script src="staff-interval.js?v=2.21.0"></script>
+  <script src="build-info.js?v=2.21.0"></script>
   <script src="pwa-register.js"></script>
 </body>
 </html>

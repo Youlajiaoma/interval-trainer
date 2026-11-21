@@ -1,0 +1,37 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回歌曲目录" [ref=e415] [cursor=pointer]: ← 返回
+      - generic [ref=e77]: 和声练唱
+    - main "和声练唱" [ref=e409]:
+      - region "在他乡" [ref=e416]:
+        - heading "在他乡" [level=2] [ref=e418]
+        - generic [ref=e419]:
+          - slider "播放进度" [ref=e420] [cursor=pointer]: "2.3"
+          - generic [ref=e421]:
+            - generic [ref=e422]: 0:00
+            - generic [ref=e423]: 0:25
+        - button "暂停" [ref=e425] [cursor=pointer]
+        - generic [ref=e429]:
+          - generic [ref=e430]:
+            - generic [ref=e431]: 旋律
+            - status [ref=e432]: 100%
+          - generic [ref=e433]:
+            - button "静音旋律" [ref=e434] [cursor=pointer]: M
+            - slider "旋律音量" [ref=e436] [cursor=pointer]: "100"
+        - generic [ref=e437]:
+          - generic [ref=e438]:
+            - generic [ref=e439]: 和声
+            - status [ref=e440]: 100%
+          - generic [ref=e441]:
+            - button "静音和声" [ref=e442] [cursor=pointer]: M
+            - slider "和声音量" [ref=e444] [cursor=pointer]: "100"
+        - generic [ref=e445]:
+          - generic [ref=e446]:
+            - generic [ref=e447]: 吉他
+            - status [ref=e448]: 100%
+          - generic [ref=e449]:
+            - button "静音吉他" [ref=e450] [cursor=pointer]: M
+            - slider "吉他音量" [ref=e452] [cursor=pointer]: "100"
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status

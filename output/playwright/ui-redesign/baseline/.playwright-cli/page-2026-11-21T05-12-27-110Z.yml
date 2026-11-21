@@ -1,0 +1,47 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回主页" [ref=e76] [cursor=pointer]: ← HOME
+      - generic [ref=e77]: 和声音程
+      - button "练习设置" [active] [ref=e79] [cursor=pointer]
+    - main [ref=e83]:
+      - generic "本次练习统计" [ref=e84]:
+        - generic [ref=e85]:
+          - text: 第
+          - strong [ref=e86]: "01"
+          - text: 题
+        - generic [ref=e87]:
+          - text: 答对
+          - strong [ref=e88]: "0"
+          - text: /
+          - strong [ref=e89]: "0"
+          - text: ·
+          - strong [ref=e90]: —
+      - generic "音程播放操作" [ref=e91]:
+        - button "播放或重新播放当前音程" [ref=e92] [cursor=pointer]:
+          - generic [ref=e99]: 重听
+        - button "分开听" [disabled] [ref=e100]
+        - status [ref=e101]
+      - region "选择音程名称" [ref=e102]:
+        - generic [ref=e103]:
+          - button "纯一度" [ref=e105] [cursor=pointer]
+          - generic [ref=e106]:
+            - button "小二度" [ref=e107] [cursor=pointer]
+            - button "大二度" [ref=e108] [cursor=pointer]
+          - generic [ref=e109]:
+            - button "小三度" [ref=e110] [cursor=pointer]
+            - button "大三度" [ref=e111] [cursor=pointer]
+          - generic [ref=e112]:
+            - button "纯四度" [ref=e113] [cursor=pointer]
+            - button "三全音" [ref=e114] [cursor=pointer]
+            - button "纯五度" [ref=e115] [cursor=pointer]
+          - generic [ref=e116]:
+            - button "小六度" [ref=e117] [cursor=pointer]
+            - button "大六度" [ref=e118] [cursor=pointer]
+          - generic [ref=e119]:
+            - button "小七度" [ref=e120] [cursor=pointer]
+            - button "大七度" [ref=e121] [cursor=pointer]
+          - button "纯八度" [ref=e123] [cursor=pointer]
+        - button "显示答案" [ref=e125] [cursor=pointer]
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status
