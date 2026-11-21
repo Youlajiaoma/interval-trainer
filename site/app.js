@@ -294,6 +294,7 @@
     const alignSelector = () => selector.scrollTo?.({left:selectedIndex()*selector.clientWidth,behavior:'instant'});
     function renderStatistics() {
       statsDialog.dataset.statsModule = modules.statisticsMode;
+      $('stats-current-module-title').textContent = selected().name;
       for (const module of modules.list) {
         const active = module.id === modules.statisticsMode;
         $(module.statsId).classList.toggle('active', active);
@@ -370,7 +371,6 @@
     statsDialog.addEventListener('close', () => {
       if (modules.statisticsMode === 'sight') modules.showStatistics(settings.mode, false);
     });
-    $('close-stats').addEventListener('click', () => motion.close(statsDialog));
     statsDialog.addEventListener('click', e => { if(e.target === statsDialog) motion.close(statsDialog); });
     $('export-backup').addEventListener('click', async () => {
       // Include answers saved by other windows. If storage has failed, retain
@@ -566,7 +566,6 @@
   function syncModeControls(){
     $('practice-mode-title').textContent = modules.get(settings.mode).name;
     $('hint').classList.toggle('hidden',settings.mode==='melodic');
-    $('stats-title').textContent='练习统计';
     syncSettingsForm();
     syncHintButton();
   }

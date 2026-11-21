@@ -68,7 +68,7 @@ test('从音符练习设置进入统计，取消清空不改数据，确认后�
   assertSightCleared(after);
   assertOtherModulesUnchanged(before, after);
   assert.equal(database.records.get(keys.sightSession), new Map(storedBefore).get(keys.sightSession), '当前练习题组不应被清空历史替换');
-  await app.click('close-stats');
+  app.get('stats-dialog').close();
   await app.click('home-stats');
   assert.equal(app.get('stats-performance-title').textContent, '各音程表现', '重新打开默认统计时不能沿用音符统计内容');
   app.assertNoErrors();
