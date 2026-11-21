@@ -21,7 +21,18 @@ module.exports=async function navigationChecks(browser){
     const back=async()=>{await page.goBack();};
     await page.goto(origin+'/previous.html');await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);await position(0);
     assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollbarWidth),'none');
-    if(width===320){await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));assert(await page.evaluate(()=>scrollY>0),'隐藏滚动条后首页仍可滚动');await page.evaluate(()=>scrollTo(0,0));}
+    if(width===320){
+      // The compact home screen can legitimately fit inside an 800px-tall
+      // viewport. Use a short phone viewport so this assertion continues to
+      // verify the real invariant: hiding the scrollbar must not disable
+      // scrolling when the content is taller than the screen.
+      await page.setViewportSize({width,height:520});
+      assert(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight),'短屏幕主页应产生可滚动内容');
+      await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+      assert(await page.evaluate(()=>scrollY>0),'隐藏滚动条后主页仍可滚动');
+      await page.evaluate(()=>scrollTo(0,0));
+      await page.setViewportSize({width,height:800});
+    }
     const entries=await page.evaluate(()=>TonaloomModules.list.map(m=>({id:m.id,home:m.homeId})));
     const settings={harmonic:['settings-dialog','open-stats'],melodic:['settings-dialog','open-stats'],sight:['sight-settings-dialog','sight-open-stats'],staff:['staff-interval-settings','staff-open-stats'],singing:['singing-settings','singing-open-stats']};
     for(const entry of entries){
