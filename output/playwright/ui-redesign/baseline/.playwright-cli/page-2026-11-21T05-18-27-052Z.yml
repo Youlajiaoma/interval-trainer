@@ -1,0 +1,141 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - heading "Tonaloom" [level=1] [ref=e5]
+      - generic "程序版本和构建编号" [ref=e6]: 2.20.6
+    - main "选择训练" [ref=e9]:
+      - heading "选择训练" [level=2] [ref=e11]
+      - region "练耳" [ref=e12]:
+        - heading "练耳" [level=3] [ref=e13]
+        - generic [ref=e14]:
+          - button "和声音程" [ref=e15] [cursor=pointer]:
+            - strong [ref=e23]: 和声音程
+            - generic [aria-hidden] [ref=e24]: →
+          - button "旋律音程" [ref=e25] [cursor=pointer]:
+            - strong [ref=e32]: 旋律音程
+            - generic [aria-hidden] [ref=e33]: →
+          - button "模唱" [ref=e34] [cursor=pointer]:
+            - strong [ref=e40]: 模唱
+            - generic [aria-hidden] [ref=e41]: →
+          - button [ref=e42] [cursor=pointer]:
+            - strong [ref=e50]: 和声练唱
+            - generic [aria-hidden] [ref=e51]: →
+      - region "识谱" [ref=e52]:
+        - heading "识谱" [level=3] [ref=e53]
+        - generic [ref=e54]:
+          - button "音符辨认" [ref=e55] [cursor=pointer]:
+            - strong [ref=e61]: 音符辨认
+            - generic [aria-hidden] [ref=e62]: →
+          - button "音程辨认" [ref=e63] [cursor=pointer]:
+            - strong [ref=e70]: 音程辨认
+            - generic [aria-hidden] [ref=e71]: →
+      - generic [ref=e72]:
+        - button "练习统计" [ref=e73] [cursor=pointer]: 练习统计 ↗
+        - button "每日任务" [ref=e74] [cursor=pointer]: 每日任务 ↗
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - dialog "练习统计" [ref=e187]:
+    - generic [ref=e188]:
+      - banner [ref=e189]:
+        - button "返回上一页面" [active] [ref=e190] [cursor=pointer]:
+          - text: ←
+          - generic [ref=e191]: 返回
+        - heading "练习统计" [level=2] [ref=e192]
+      - generic [ref=e193]:
+        - generic [ref=e194]:
+          - button "上一个训练项目" [disabled] [ref=e195]: ‹
+          - group "当前训练项目，可左右滑动切换" [ref=e196]:
+            - button "和声音程" [pressed] [ref=e197] [cursor=pointer]
+            - button "旋律音程" [ref=e198] [cursor=pointer]
+            - button "音符辨认" [ref=e199] [cursor=pointer]
+            - button "音程辨认" [ref=e200] [cursor=pointer]
+            - button "模唱" [ref=e201] [cursor=pointer]
+          - button "下一个训练项目" [ref=e202] [cursor=pointer]: ›
+        - generic [ref=e203]:
+          - heading "练习概览" [level=3] [ref=e205]
+          - combobox "统计时间范围" [ref=e206]:
+            - option "近 7 天"
+            - option "近 30 天" [selected]
+            - option "近 90 天"
+            - option "全部时间"
+        - generic [ref=e207]:
+          - generic [ref=e209]:
+            - generic [ref=e210]:
+              - generic [ref=e211]: 答题总数
+              - strong [ref=e212]: "0"
+            - generic [ref=e213]:
+              - generic [ref=e214]: 正确率
+              - strong [ref=e215]: —
+            - generic [ref=e216]:
+              - generic [ref=e217]: 练习天数
+              - strong [ref=e218]: 0 天
+            - generic [ref=e219]:
+              - generic [ref=e220]: 连续练习
+              - strong [ref=e221]: 0 天
+          - generic [ref=e222]:
+            - heading "正确率与练习量" [level=3] [ref=e224]
+            - paragraph [ref=e226]: 当前时间段还没有答题记录。
+          - generic [ref=e227]:
+            - heading "练习日历" [level=3] [ref=e229]
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - button "2026-10-04：0 题，正确率 —，点击查看详情" [ref=e233] [cursor=pointer]
+                - button "2026-10-05：0 题，正确率 —，点击查看详情" [ref=e234] [cursor=pointer]
+                - button "2026-10-06：0 题，正确率 —，点击查看详情" [ref=e235] [cursor=pointer]
+                - button "2026-10-07：0 题，正确率 —，点击查看详情" [ref=e236] [cursor=pointer]
+                - button "2026-10-08：0 题，正确率 —，点击查看详情" [ref=e237] [cursor=pointer]
+                - button "2026-10-09：0 题，正确率 —，点击查看详情" [ref=e238] [cursor=pointer]
+                - button "2026-10-10：0 题，正确率 —，点击查看详情" [ref=e239] [cursor=pointer]
+                - button "2026-10-11：0 题，正确率 —，点击查看详情" [ref=e240] [cursor=pointer]
+                - button "2026-10-12：0 题，正确率 —，点击查看详情" [ref=e241] [cursor=pointer]
+                - button "2026-10-13：0 题，正确率 —，点击查看详情" [ref=e242] [cursor=pointer]
+                - button "2026-10-14：0 题，正确率 —，点击查看详情" [ref=e243] [cursor=pointer]
+                - button "2026-10-15：0 题，正确率 —，点击查看详情" [ref=e244] [cursor=pointer]
+                - button "2026-10-16：0 题，正确率 —，点击查看详情" [ref=e245] [cursor=pointer]
+                - button "2026-10-17：0 题，正确率 —，点击查看详情" [ref=e246] [cursor=pointer]
+                - button "2026-10-18：0 题，正确率 —，点击查看详情" [ref=e247] [cursor=pointer]
+                - button "2026-10-19：0 题，正确率 —，点击查看详情" [ref=e248] [cursor=pointer]
+                - button "2026-10-20：0 题，正确率 —，点击查看详情" [ref=e249] [cursor=pointer]
+                - button "2026-10-21：0 题，正确率 —，点击查看详情" [ref=e250] [cursor=pointer]
+                - button "2026-10-22：0 题，正确率 —，点击查看详情" [ref=e251] [cursor=pointer]
+                - button "2026-10-23：0 题，正确率 —，点击查看详情" [ref=e252] [cursor=pointer]
+                - button "2026-10-24：0 题，正确率 —，点击查看详情" [ref=e253] [cursor=pointer]
+                - button "2026-10-25：0 题，正确率 —，点击查看详情" [ref=e254] [cursor=pointer]
+                - button "2026-10-26：0 题，正确率 —，点击查看详情" [ref=e255] [cursor=pointer]
+                - button "2026-10-27：0 题，正确率 —，点击查看详情" [ref=e256] [cursor=pointer]
+                - button "2026-10-28：0 题，正确率 —，点击查看详情" [ref=e257] [cursor=pointer]
+                - button "2026-10-29：0 题，正确率 —，点击查看详情" [ref=e258] [cursor=pointer]
+                - button "2026-10-30：0 题，正确率 —，点击查看详情" [ref=e259] [cursor=pointer]
+                - button "2026-10-31：0 题，正确率 —，点击查看详情" [ref=e260] [cursor=pointer]
+                - button "2026-11-01：0 题，正确率 —，点击查看详情" [ref=e261] [cursor=pointer]
+                - button "2026-11-02：0 题，正确率 —，点击查看详情" [ref=e262] [cursor=pointer]
+                - button "2026-11-03：0 题，正确率 —，点击查看详情" [ref=e263] [cursor=pointer]
+                - button "2026-11-04：0 题，正确率 —，点击查看详情" [ref=e264] [cursor=pointer]
+                - button "2026-11-05：0 题，正确率 —，点击查看详情" [ref=e265] [cursor=pointer]
+                - button "2026-11-06：0 题，正确率 —，点击查看详情" [ref=e266] [cursor=pointer]
+                - button "2026-11-07：0 题，正确率 —，点击查看详情" [ref=e267] [cursor=pointer]
+                - button "2026-11-08：0 题，正确率 —，点击查看详情" [ref=e268] [cursor=pointer]
+                - button "2026-11-09：0 题，正确率 —，点击查看详情" [ref=e269] [cursor=pointer]
+                - button "2026-11-10：0 题，正确率 —，点击查看详情" [ref=e270] [cursor=pointer]
+                - button "2026-11-11：0 题，正确率 —，点击查看详情" [ref=e271] [cursor=pointer]
+                - button "2026-11-12：0 题，正确率 —，点击查看详情" [ref=e272] [cursor=pointer]
+                - button "2026-11-13：0 题，正确率 —，点击查看详情" [ref=e273] [cursor=pointer]
+                - button "2026-11-14：0 题，正确率 —，点击查看详情" [ref=e274] [cursor=pointer]
+                - button "2026-11-15：0 题，正确率 —，点击查看详情" [ref=e275] [cursor=pointer]
+                - button "2026-11-16：0 题，正确率 —，点击查看详情" [ref=e276] [cursor=pointer]
+                - button "2026-11-17：0 题，正确率 —，点击查看详情" [ref=e277] [cursor=pointer]
+                - button "2026-11-18：0 题，正确率 —，点击查看详情" [ref=e278] [cursor=pointer]
+                - button "2026-11-19：0 题，正确率 —，点击查看详情" [ref=e279] [cursor=pointer]
+                - button "2026-11-20：0 题，正确率 —，点击查看详情" [ref=e280] [cursor=pointer]
+                - button "2026-11-21：0 题，正确率 —，点击查看详情" [ref=e281] [cursor=pointer]
+              - generic [ref=e282]:
+                - generic [ref=e283]: 49 天前
+                - generic [ref=e284]: 今天
+          - generic [ref=e285]:
+            - heading "各音程表现" [level=3] [ref=e287]
+            - paragraph [ref=e289]: 练习后这里会显示各音程的正确率。
+          - generic [ref=e290]:
+            - heading "易混淆音程" [level=3] [ref=e292]
+            - paragraph [ref=e294]: 目前没有误判记录。
+          - group [ref=e295]:
+            - generic "数据备份与管理" [ref=e296] [cursor=pointer]
+  - status

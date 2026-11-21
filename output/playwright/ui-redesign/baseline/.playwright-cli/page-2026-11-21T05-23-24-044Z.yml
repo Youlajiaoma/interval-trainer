@@ -1,0 +1,36 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - heading "Tonaloom" [level=1] [ref=e5]
+      - generic "程序版本和构建编号" [ref=e6]: 2.20.6
+    - main "选择训练" [ref=e9]:
+      - heading "选择训练" [level=2] [ref=e11]
+      - region "练耳" [ref=e12]:
+        - heading "练耳" [level=3] [ref=e13]
+        - generic [ref=e14]:
+          - button "和声音程" [ref=e15] [cursor=pointer]:
+            - strong [ref=e23]: 和声音程
+            - generic [aria-hidden] [ref=e24]: →
+          - button "旋律音程" [ref=e25] [cursor=pointer]:
+            - strong [ref=e32]: 旋律音程
+            - generic [aria-hidden] [ref=e33]: →
+          - button "模唱" [ref=e34] [cursor=pointer]:
+            - strong [ref=e40]: 模唱
+            - generic [aria-hidden] [ref=e41]: →
+          - button [ref=e42] [cursor=pointer]:
+            - strong [ref=e50]: 和声练唱
+            - generic [aria-hidden] [ref=e51]: →
+      - region "识谱" [ref=e52]:
+        - heading "识谱" [level=3] [ref=e53]
+        - generic [ref=e54]:
+          - button "音符辨认" [ref=e55] [cursor=pointer]:
+            - strong [ref=e61]: 音符辨认
+            - generic [aria-hidden] [ref=e62]: →
+          - button "音程辨认" [ref=e63] [cursor=pointer]:
+            - strong [ref=e70]: 音程辨认
+            - generic [aria-hidden] [ref=e71]: →
+      - generic [ref=e72]:
+        - button "练习统计" [ref=e73] [cursor=pointer]: 练习统计 ↗
+        - button "每日任务" [ref=e74] [cursor=pointer]: 每日任务 ↗
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status

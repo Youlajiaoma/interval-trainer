@@ -1,0 +1,115 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回主页" [ref=e76] [cursor=pointer]: ← HOME
+      - generic [ref=e77]: 和声音程
+      - button "练习设置" [ref=e79] [cursor=pointer]
+    - main [ref=e83]:
+      - generic "本次练习统计" [ref=e84]:
+        - generic [ref=e85]:
+          - text: 第
+          - strong [ref=e86]: "01"
+          - text: 题
+        - generic [ref=e87]:
+          - text: 答对
+          - strong [ref=e88]: "0"
+          - text: /
+          - strong [ref=e89]: "0"
+          - text: ·
+          - strong [ref=e90]: —
+      - generic "音程播放操作" [ref=e91]:
+        - button "播放或重新播放当前音程" [ref=e92] [cursor=pointer]:
+          - generic [ref=e99]: 重听
+        - button "分开听" [disabled] [ref=e100]
+        - status [ref=e101]
+      - region "选择音程名称" [ref=e102]:
+        - generic [ref=e103]:
+          - button "纯一度" [ref=e105] [cursor=pointer]
+          - generic [ref=e106]:
+            - button "小二度" [ref=e107] [cursor=pointer]
+            - button "大二度" [ref=e108] [cursor=pointer]
+          - generic [ref=e109]:
+            - button "小三度" [ref=e110] [cursor=pointer]
+            - button "大三度" [ref=e111] [cursor=pointer]
+          - generic [ref=e112]:
+            - button "纯四度" [ref=e113] [cursor=pointer]
+            - button "三全音" [ref=e114] [cursor=pointer]
+            - button "纯五度" [ref=e115] [cursor=pointer]
+          - generic [ref=e116]:
+            - button "小六度" [ref=e117] [cursor=pointer]
+            - button "大六度" [ref=e118] [cursor=pointer]
+          - generic [ref=e119]:
+            - button "小七度" [ref=e120] [cursor=pointer]
+            - button "大七度" [ref=e121] [cursor=pointer]
+          - button "纯八度" [ref=e123] [cursor=pointer]
+        - button "显示答案" [ref=e125] [cursor=pointer]
+  - dialog "和声音程设置" [ref=e128]:
+    - generic [ref=e129]:
+      - heading "和声音程设置" [level=2] [ref=e131]
+      - button "关闭设置" [active] [ref=e132] [cursor=pointer]: ×
+    - generic [ref=e133]:
+      - generic [ref=e134]:
+        - generic [ref=e135]:
+          - heading "练习哪些音程" [level=3] [ref=e136]
+          - generic [ref=e137]: 已选 13 种
+        - generic "选择参与训练的音程" [ref=e138]:
+          - button "✓纯一度" [pressed] [ref=e139] [cursor=pointer]
+          - button "✓小二度" [pressed] [ref=e140] [cursor=pointer]
+          - button "✓大二度" [pressed] [ref=e141] [cursor=pointer]
+          - button "✓小三度" [pressed] [ref=e142] [cursor=pointer]
+          - button "✓大三度" [pressed] [ref=e143] [cursor=pointer]
+          - button "✓纯四度" [pressed] [ref=e144] [cursor=pointer]
+          - button "✓三全音" [pressed] [ref=e145] [cursor=pointer]
+          - button "✓纯五度" [pressed] [ref=e146] [cursor=pointer]
+          - button "✓小六度" [pressed] [ref=e147] [cursor=pointer]
+          - button "✓大六度" [pressed] [ref=e148] [cursor=pointer]
+          - button "✓小七度" [pressed] [ref=e149] [cursor=pointer]
+          - button "✓大七度" [pressed] [ref=e150] [cursor=pointer]
+          - button "✓纯八度" [pressed] [ref=e151] [cursor=pointer]
+      - generic [ref=e152]:
+        - heading "音区范围（仅和声音程）" [level=3] [ref=e153]
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - text: 最低音
+            - combobox "最低音" [ref=e156]:
+              - option "C2"
+              - option "C3" [selected]
+              - option "C4"
+              - option "C5"
+              - option "C6"
+          - generic [ref=e157]: 至
+          - generic [ref=e158]:
+            - text: 最高音
+            - combobox "最高音" [ref=e159]:
+              - option "C3"
+              - option "C4"
+              - option "C5"
+              - option "C6" [selected]
+              - option "C7"
+      - generic [ref=e160]:
+        - generic [ref=e161]:
+          - text: 播放音量
+          - strong [ref=e162]: 65%
+        - slider "播放音量 65%" [ref=e163] [cursor=pointer]: "65"
+        - generic [ref=e164]:
+          - text: 音程时长
+          - strong [ref=e165]: 2.0 秒
+        - slider "音程时长 2.0 秒" [ref=e166] [cursor=pointer]: "2"
+      - generic [ref=e167]:
+        - heading "答题偏好" [level=3] [ref=e168]
+        - generic [ref=e169] [cursor=pointer]:
+          - generic [ref=e170]: 答题后显示正确答案
+          - checkbox "答题后显示正确答案" [checked] [ref=e171]
+        - generic [ref=e172] [cursor=pointer]:
+          - generic [ref=e173]: 下一题自动播放
+          - checkbox "下一题自动播放" [checked] [ref=e174]
+        - generic [ref=e175] [cursor=pointer]:
+          - generic [ref=e176]: 选择后需要再确认
+          - checkbox "选择后需要再确认" [ref=e177]
+      - button [ref=e179] [cursor=pointer]:
+        - strong [ref=e181]: 练习统计
+        - generic [aria-hidden] [ref=e182]: ›
+      - group [ref=e183]:
+        - generic "其他" [ref=e184] [cursor=pointer]
+    - button "完成" [ref=e186] [cursor=pointer]
+  - status

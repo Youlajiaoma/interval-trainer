@@ -1,0 +1,67 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回主页" [ref=e76] [cursor=pointer]: ← HOME
+      - generic [ref=e77]: 音符辨认
+      - button "练习设置" [ref=e79] [cursor=pointer]
+    - main "五线谱识谱练习" [ref=e325]:
+      - generic [ref=e326]:
+        - generic [ref=e327]:
+          - text: 第
+          - strong [ref=e328]: "01"
+          - text: /20 音
+        - generic [ref=e329]:
+          - text: 答对
+          - strong [ref=e330]: "0"
+          - text: ·
+          - strong [ref=e331]: —
+      - generic "20个五线谱音符" [ref=e332]:
+        - generic [ref=e333]:
+          - img:
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+        - generic [ref=e340]:
+          - img:
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic: 
+        - generic [ref=e348]:
+          - img:
+            - generic: 
+            - generic: 
+            - generic: 
+            - generic:
+              - generic: 
+              - generic: 
+            - generic: 
+            - generic:
+              - generic: 
+              - generic: 
+            - generic: 
+            - generic: 
+      - group "选择当前音名" [ref=e356]:
+        - button "C" [ref=e357] [cursor=pointer]
+        - button "D" [ref=e358] [cursor=pointer]
+        - button "E" [ref=e359] [cursor=pointer]
+        - button "F" [ref=e360] [cursor=pointer]
+        - button "G" [ref=e361] [cursor=pointer]
+        - button "A" [ref=e362] [cursor=pointer]
+        - button "B" [ref=e363] [cursor=pointer]
+        - button "C♯/D♭" [ref=e364] [cursor=pointer]
+        - button "D♯/E♭" [ref=e365] [cursor=pointer]
+        - button "F♯/G♭" [ref=e366] [cursor=pointer]
+        - button "G♯/A♭" [ref=e367] [cursor=pointer]
+        - button "A♯/B♭" [ref=e368] [cursor=pointer]
+      - button "显示答案" [ref=e369] [cursor=pointer]
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status

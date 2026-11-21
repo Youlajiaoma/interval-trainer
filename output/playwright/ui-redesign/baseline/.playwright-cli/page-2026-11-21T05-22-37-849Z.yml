@@ -1,0 +1,42 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回主页" [ref=e76] [cursor=pointer]: ← HOME
+      - generic [ref=e77]: 模唱
+      - button "练习设置" [ref=e79] [cursor=pointer]
+    - main "模唱" [ref=e370]:
+      - generic [ref=e371]:
+        - button "播放钢琴" [ref=e372] [cursor=pointer]
+        - status [ref=e373]:
+          - generic [ref=e377]: 点击播放开始
+      - status "当前人声音高" [ref=e379]: — Hz
+      - img "人声音高随时间变化的曲线，绿色为人声，紫色虚线为目标音及其八度" [ref=e380]:
+        - generic [ref=e381]:
+          - generic [ref=e382]: A♯2
+          - generic [ref=e383]: B2
+          - generic [ref=e384]: C3
+          - generic [ref=e385]: D3
+          - generic [ref=e386]: E3
+          - generic [ref=e387]: F3
+          - generic [ref=e388]: G3
+          - generic [ref=e389]: A3
+          - generic [ref=e390]: A♯3
+          - generic [ref=e391]: B3
+          - generic [ref=e392]: C4
+          - generic [ref=e393]: D4
+          - generic [ref=e394]: E4
+          - generic [ref=e395]: F4
+          - generic [ref=e396]: G4
+          - generic [ref=e397]: A4
+          - generic [ref=e398]: A♯4
+          - generic [ref=e399]: 0s
+          - generic [ref=e400]: 2s
+          - generic [ref=e401]: 4s
+          - generic [ref=e402]: 6s
+          - generic [ref=e403]: 8s
+          - generic [ref=e404]: 10s
+      - generic [ref=e405]:
+        - generic [ref=e406]: 💗加油宝
+        - button "下一题 →" [ref=e407] [cursor=pointer]
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status

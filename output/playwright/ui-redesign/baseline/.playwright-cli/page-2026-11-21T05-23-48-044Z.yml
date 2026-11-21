@@ -1,0 +1,12 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "练习页面导航" [ref=e75]:
+      - button "返回主页" [ref=e76] [cursor=pointer]: ← HOME
+      - generic [ref=e77]: 和声练唱
+    - main "和声练唱" [ref=e409]:
+      - generic "歌曲目录" [ref=e410]:
+        - button "在他乡" [ref=e411] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e412]: "01"
+          - generic [aria-hidden] [ref=e414]: →
+  - text: ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+  - status
