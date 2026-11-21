@@ -31,6 +31,14 @@
   --shadow-focus: 0 0 0 4px rgba(173, 156, 255, .18);
   --content-width: 860px;
   --control-height: 44px;
+  --font-size-caption: 12px;
+  --font-size-secondary: 13px;
+  --font-size-body: 14px;
+  --font-size-section: 16px;
+  --font-size-subtitle: 18px;
+  --font-size-title: 20px;
+  --font-size-display: 26px;
+  --font-size-metric: 26px;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
     "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
     sans-serif;
@@ -1669,6 +1677,168 @@ input[type="range"]::-moz-range-thumb {
   .stats-kpi {
     padding: 12px;
   }
+}
+
+/* Typography scale.
+   This final layer keeps legacy module styles from shrinking equivalent text
+   to different sizes, especially on phones. Icons retain their own sizing. */
+body {
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+}
+
+.app-header h1,
+.settings-header h2,
+.return-header h2,
+.stats-mode-switch button {
+  font-size: var(--font-size-title);
+  line-height: 1.25;
+}
+
+.home-intro h2,
+.harmony-track-heading h2 {
+  font-size: var(--font-size-display);
+  line-height: 1.2;
+}
+
+.stats-intro h3 {
+  font-size: var(--font-size-subtitle);
+  line-height: 1.3;
+}
+
+.home-category-title,
+.home-module-text strong,
+.settings-section h3,
+.stats-panel-heading h3,
+.harmony-entry-name {
+  font-size: var(--font-size-section);
+  line-height: 1.35;
+}
+
+.home-tools .home-stats-link,
+.home-stats-link,
+.home-back,
+.page-back,
+.play-primary,
+.hint-button,
+.answer-button,
+.answer-row.is-triple .answer-button,
+.staff-interval-options .answer-button,
+.confirm-button,
+.next-button,
+.next-button.is-skip,
+.reveal-button,
+.notes-link,
+.staff-interval-reveal,
+.sight-reveal,
+.singing-next,
+.settings-done,
+.submode-button,
+.interval-toggle,
+.subtle-button,
+.review-action,
+.backup-actions button,
+.stats-data-buttons button,
+.open-stats-button strong,
+.sight-clef-options button,
+.range-row select,
+.stats-intro select,
+.pwa-update-notice button,
+.reset-link {
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+}
+
+.practice-mode-title,
+.feedback,
+.notes-result,
+.notes-result strong,
+.range-row label,
+.slider-label,
+.option-row,
+.daily-task-quantity,
+.review-summary,
+.stats-interval-row,
+.stats-confusion-row,
+.stats-history-row,
+.stats-plan,
+.stats-data-details,
+.sight-switch-row,
+.singing-listener,
+.harmony-stem-labels,
+.toast,
+.pwa-update-notice {
+  font-size: var(--font-size-body);
+}
+
+.app-version,
+.app-version span:first-child,
+.practice-meta,
+.sight-meta,
+.staff-interval-meta,
+.home-module-text small,
+.settings-header p,
+.settings-section-title span,
+.range-separator,
+.more-details,
+.review-help,
+.review-details > summary,
+.review-details h4,
+.review-item,
+.review-confusions,
+.review-empty,
+.open-stats-button small,
+.stats-entry-section .review-help,
+.stats-intro p,
+.stats-kpi-label,
+.stats-kpi-help,
+.stats-kpi-foot,
+.stats-panel-heading span,
+.stats-empty,
+.stats-legend,
+.stats-interval-name,
+.stats-interval-value,
+.stats-focus-tags span,
+.stats-heat-detail,
+.stats-history-at,
+.storage-warning,
+.daily-tasks-error,
+.sight-review-plan,
+.sight-warning,
+.singing-error,
+.singing-setting-note,
+.singing-legend,
+.harmony-entry-number,
+.harmony-track-number,
+.harmony-times,
+.harmony-message {
+  font-size: var(--font-size-secondary);
+  line-height: 1.55;
+}
+
+.stats-heat-caption,
+.stats-chart text,
+.singing-chart text {
+  font-size: var(--font-size-caption);
+}
+
+.stats-kpi-value {
+  font-size: var(--font-size-metric);
+  line-height: 1.15;
+}
+
+.singing-readout output {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.sight-complete strong {
+  font-size: var(--font-size-title);
+  line-height: 1.3;
+}
+
+.harmony-mute {
+  font-size: var(--font-size-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {
