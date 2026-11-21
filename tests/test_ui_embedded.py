@@ -11,6 +11,7 @@ src=src.replace('<link rel="stylesheet" href="styles.css">','<style>'+(root/'sty
 src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sight.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="singing.css">','<style>'+(root/'singing.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="harmony-practice.css">','<style>'+(root/'harmony-practice.css').read_text(encoding='utf-8')+'</style>')
+src=src.replace('<link rel="stylesheet" href="theme.css">','<style>'+(root/'theme.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="manifest" href="manifest.webmanifest">','')
 src=re.sub(r'<link rel="(?:icon|apple-touch-icon)"[^>]*>', '',src)
 # This in-page test uses a memory adapter. IndexedDB persistence is separately

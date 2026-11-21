@@ -53,6 +53,16 @@ test('音符两个谱号按答题数合计正确率，同一天只算一个练�
   assert.equal(s.last49.at(-1).correct, 3);
   assert.equal(app.get('stats-trend').querySelectorAll('svg').length, 1);
   assert.equal(app.get('stats-intervals').children[0].children.length, 2);
+  const calendar=app.get('stats-calendar').children[0],squares=calendar.children[0].children;
+  const today=squares.at(-1),detail=calendar.children[2];
+  assert.equal(today.tagName,'button');
+  assert.equal(today.getAttribute('title'),null,'热力图不再依赖悬停提示');
+  assert.equal(today.getAttribute('aria-pressed'),'false');
+  assert(detail.classList.contains('hidden'));
+  today.click();
+  assert.equal(today.getAttribute('aria-pressed'),'true');
+  assert(!detail.classList.contains('hidden'));
+  assert.match(detail.textContent,/答题 4 题 · 正确 3 题 · 正确率 75%/);
 });
 
 test('音符高低音交替练习合并连续天数，断一天后重新计数，今天未练仍保留昨天的连续记录', async t => {

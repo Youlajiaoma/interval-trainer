@@ -69,6 +69,29 @@ module.exports=async function navigationChecks(browser){
     await page.waitForFunction(()=>TonaloomModules.statisticsMode==='melodic');
     await page.locator('#stats-melodic').focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>TonaloomModules.statisticsMode==='sight');
     await page.selectOption('#stats-period','7');assert.equal(await page.locator('#stats-performance-title').innerText(),'各音符表现');
+    const heatSquares=page.locator('#stats-calendar .stats-heat');assert.equal(await heatSquares.count(),49);
+    if(width<=620){
+      const heatmapBox=await page.locator('#stats-calendar .stats-heatmap').boundingBox();
+      const calendarBox=await page.locator('#stats-calendar').boundingBox();
+      assert(Math.abs(heatmapBox.width-calendarBox.width)<2,'手机热力图应铺满统计卡片可用宽度');
+    }
+    assert.equal(await heatSquares.last().getAttribute('title'),null,'热力图不应再依赖悬停提示');
+    await heatSquares.last().click();
+    assert.equal(await heatSquares.last().getAttribute('aria-pressed'),'true');
+    assert(await page.locator('#stats-calendar-detail').isVisible());
+    assert.match(await page.locator('#stats-calendar-detail').innerText(),/没有练习记录|答题 \d+ 题/);
+    const lastHeatBox=await heatSquares.last().boundingBox(),lastBubbleBox=await page.locator('#stats-calendar-detail').boundingBox();
+    assert(lastBubbleBox.x+lastBubbleBox.width<=lastHeatBox.x+1 || lastBubbleBox.x>=lastHeatBox.x+lastHeatBox.width-1,
+      '日期气泡应贴在方格左侧或右侧：'+JSON.stringify({lastHeatBox,lastBubbleBox}));
+    await page.locator('#stats-performance-title').click();
+    assert(await page.locator('#stats-calendar-detail').isHidden());
+    assert.equal(await heatSquares.last().getAttribute('aria-pressed'),'false');
+    await heatSquares.first().click();
+    assert.equal(await heatSquares.last().getAttribute('aria-pressed'),'false');
+    assert.equal(await heatSquares.first().getAttribute('aria-pressed'),'true');
+    const firstHeatBox=await heatSquares.first().boundingBox(),firstBubbleBox=await page.locator('#stats-calendar-detail').boundingBox();
+    assert(firstBubbleBox.x+firstBubbleBox.width<=firstHeatBox.x+1 || firstBubbleBox.x>=firstHeatBox.x+firstHeatBox.width-1,
+      '日期气泡应贴在方格左侧或右侧');
     assert(await page.evaluate(()=>document.querySelector('.stats-content').scrollWidth<=document.querySelector('.stats-content').clientWidth+1));
     await page.screenshot({path:path.join(screenshots,`${width}-statistics.png`)});
     await page.click('#close-stats');await position(0);
