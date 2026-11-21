@@ -11,6 +11,20 @@
   }
   function replace(id,el){$(id).replaceChildren(el);}
   const empty=(message)=>create('p','stats-empty',message);
+  let activeCalendarDetail=null;
+  function closeCalendarDetail(){
+    if(!activeCalendarDetail)return;
+    activeCalendarDetail.square.classList.remove('is-selected');
+    activeCalendarDetail.square.setAttribute('aria-pressed','false');
+    activeCalendarDetail.detail.classList.add('hidden');
+    activeCalendarDetail=null;
+  }
+  document.addEventListener('pointerdown',event=>{
+    if(!activeCalendarDetail)return;
+    if(activeCalendarDetail.square.contains(event.target)||activeCalendarDetail.detail.contains(event.target))return;
+    closeCalendarDetail();
+  });
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')closeCalendarDetail();});
   function renderSummary(s) {
     const t=s.totals, grid=create('div','stats-kpi-list');
     const cards=[['答题总数',t.answered+''],['正确率',fmtPct(t.correct,t.answered)],['练习天数',s.practiceDays+' 天'],['连续练习',s.streak+' 天']];
@@ -65,20 +79,57 @@
   }
   function renderCalendar(s,now){
     // 和日期范围筛选无关的固定最近 49 天会交由 render 获取 fullLast49 数据。
+    closeCalendarDetail();
     const days=s.last49;
     const wrap=create('div','stats-calendar-wrap');
     const daysEl=create('div','stats-heatmap');
+    const detail=create('div','stats-heat-detail hidden');
+    detail.id='stats-calendar-detail';detail.setAttribute('role','status');detail.setAttribute('aria-live','polite');
+    function positionDetail(square){
+      const squareRect=square.getBoundingClientRect(),detailWidth=detail.offsetWidth||280,detailHeight=detail.offsetHeight||52;
+      if(!Number.isFinite(squareRect.left))return;
+      const viewWidth=root.innerWidth||390,viewHeight=root.innerHeight||800,gap=10,edge=12;
+      const centerX=squareRect.left+squareRect.width/2,centerY=squareRect.top+squareRect.height/2;
+      const rightLeft=squareRect.right+gap,leftLeft=squareRect.left-detailWidth-gap;
+      let left,top,side;
+      if(rightLeft+detailWidth<=viewWidth-edge){
+        side='right';left=rightLeft;top=Math.max(edge,Math.min(centerY-detailHeight/2,viewHeight-detailHeight-edge));
+      }else if(leftLeft>=edge){
+        side='left';left=leftLeft;top=Math.max(edge,Math.min(centerY-detailHeight/2,viewHeight-detailHeight-edge));
+      }else{
+        left=Math.max(edge,Math.min(centerX-detailWidth/2,viewWidth-detailWidth-edge));
+        if(squareRect.top-detailHeight-gap>=edge){side='top';top=squareRect.top-detailHeight-gap;}
+        else{side='bottom';top=squareRect.bottom+gap;}
+      }
+      detail.style.left=`${Math.round(left)}px`;detail.style.top=`${Math.round(top)}px`;
+      detail.style.setProperty('--stats-heat-arrow-x',`${Math.round(Math.max(16,Math.min(detailWidth-16,centerX-left)))}px`);
+      detail.style.setProperty('--stats-heat-arrow-y',`${Math.round(Math.max(16,Math.min(detailHeight-16,centerY-top)))}px`);
+      detail.dataset.side=side;
+    }
+    function showDetail(d,square){
+      if(activeCalendarDetail?.square===square){closeCalendarDetail();return;}
+      closeCalendarDetail();
+      for(const item of daysEl.children){item.classList.remove('is-selected');item.setAttribute('aria-pressed','false');}
+      square.classList.add('is-selected');square.setAttribute('aria-pressed','true');
+      const [year,month,day]=d.day.split('-').map(Number),date=`${year} 年 ${month} 月 ${day} 日`;
+      detail.textContent=d.answered
+        ? `${date} · 答题 ${d.answered} 题 · 正确 ${d.correct} 题 · 正确率 ${fmtPct(d.correct,d.answered)}`
+        : `${date} · 没有练习记录`;
+      detail.classList.remove('hidden');
+      activeCalendarDetail={square,detail};positionDetail(square);
+    }
     for(const d of days){
-      const square=create('span','stats-heat');
+      const square=create('button','stats-heat');square.type='button';
       const n=d.answered;
       square.dataset.level=String(n===0?0:n<5?1:n<12?2:n<25?3:4);
-      square.title=`${d.day}：${n} 题，正确率 ${fmtPct(d.correct,n)}`;
-      square.setAttribute('aria-label',square.title);
+      square.setAttribute('aria-label',`${d.day}：${n} 题，正确率 ${fmtPct(d.correct,n)}，点击查看详情`);
+      square.setAttribute('aria-controls','stats-calendar-detail');square.setAttribute('aria-pressed','false');
+      square.addEventListener('click',()=>showDetail(d,square));
       daysEl.appendChild(square);
     }
     wrap.append(daysEl);
     const caption=create('div','stats-heat-caption');caption.append(create('span','','49 天前'),create('span','','今天'));
-    wrap.append(caption);replace('stats-calendar',wrap);
+    wrap.append(caption,detail);replace('stats-calendar',wrap);
   }
   function renderIntervals(s){
     const wrap=create('div','stats-interval-list');
