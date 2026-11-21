@@ -38,6 +38,9 @@ module.exports=async function navigationChecks(browser){
     for(const entry of entries){
       await page.click('#'+entry.home);await position(1);
       await page.click('#open-settings');await position(2);
+      const drawer=page.locator('#'+settings[entry.id][0]),drawerBox=await drawer.boundingBox();
+      assert(drawerBox.width<width && Math.abs(drawerBox.x+drawerBox.width-width)<2,'模块设置应贴右侧显示为侧栏');
+      assert(!await drawer.locator('.settings-header').isVisible(),'模块设置不再显示独立标题栏');
       await back();await position(1);assert(!await page.locator('#'+settings[entry.id][0]).evaluate(d=>d.open));await noExit();
       await page.click('#open-settings');await position(2);await page.click('#'+settings[entry.id][1]);await position(2);
       await back();await position(1);assert(await page.evaluate(id=>TonaloomModules.get(id).isActive(),entry.id));await noExit();
@@ -105,7 +108,7 @@ module.exports=async function navigationChecks(browser){
       '日期气泡应贴在方格左侧或右侧');
     assert(await page.evaluate(()=>document.querySelector('.stats-content').scrollWidth<=document.querySelector('.stats-content').clientWidth+1));
     await page.screenshot({path:path.join(screenshots,`${width}-statistics.png`)});
-    await page.click('#close-stats');await position(0);
+    await back();await position(0);
     // Reloading from a child must reuse HOME rather than accumulate exit guards.
     await page.click('#home-harmonic');await position(1);await page.click('#open-settings');await position(2);
     await page.reload();await page.waitForFunction(()=>window.IntervalAppReady);await position(0);assert(await page.locator('#home-screen').isVisible());

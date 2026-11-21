@@ -49,6 +49,7 @@ test('统计全部十六种切换路径中，清空与日期选择始终作用�
     const app = await appFor(t), before = await app.backup();
     await app.click('home-stats'); await app.click('stats-'+from); await app.click('stats-'+to);
     assert.equal(app.window.TonaloomModules.statisticsMode, to);
+    assert.equal(app.get('stats-current-module-title').textContent, app.window.TonaloomModules.get(to).name);
     for (const mode of modes) assert.equal(app.get('stats-'+mode).getAttribute('aria-pressed'), String(mode === to));
     app.get('stats-period').value = '7';
     app.get('stats-period').dispatchEvent({type:'change'}); await app.settle();

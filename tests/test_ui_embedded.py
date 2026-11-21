@@ -52,8 +52,14 @@ with sync_playwright() as pw:
     page.locator('.answer-button').nth(0).click()
     assert page.locator('#answered-number').inner_text()=='1'
     assert int(page.evaluate('JSON.parse(tdata.get("interval-trainer-review-v1")).totalAnswers'))==1
-    page.locator('#open-settings').click();page.locator('#open-stats').click()
+    page.locator('#open-settings').click()
+    drawer=page.locator('#settings-dialog');drawer_box=drawer.bounding_box()
+    assert not drawer.locator('.settings-header').is_visible()
+    assert drawer_box['width']<viewport['width'] and abs(drawer_box['x']+drawer_box['width']-viewport['width'])<2
+    page.locator('#open-stats').click()
     assert page.locator('#stats-dialog').is_visible()
+    assert page.locator('#stats-dialog .stats-header').count()==0
+    assert page.locator('#stats-current-module-title').inner_text()=='和声音程'
     assert page.locator('#stats-summary .stats-kpi').count()==4
     assert page.locator('#stats-dialog').get_attribute('data-stats-module')=='harmonic'
     kpi_boxes=page.locator('#stats-summary .stats-kpi').evaluate_all('(items) => items.map(item => item.getBoundingClientRect().toJSON())')
@@ -61,14 +67,21 @@ with sync_playwright() as pw:
     heat_box=page.locator('#stats-calendar .stats-heat').first.bounding_box()
     assert heat_box['width']>=heat_box['height']*1.9
     row=page.locator('#stats-intervals .stats-interval-row').first
-    row_box=row.bounding_box();track_box=row.locator('.stats-interval-track').bounding_box()
-    assert abs((track_box['x']+track_box['width']/2)-(row_box['x']+row_box['width']/2))<2
+    row_box=row.bounding_box();name_box=row.locator('.stats-interval-name').bounding_box()
+    track_box=row.locator('.stats-interval-track').bounding_box();value_box=row.locator('.stats-interval-value').bounding_box()
+    assert abs(name_box['x']-row_box['x'])<2
+    assert abs(value_box['x']+value_box['width']-row_box['x']-row_box['width'])<2
+    left_gap=track_box['x']-name_box['x']-name_box['width'];right_gap=value_box['x']-track_box['x']-track_box['width']
+    assert abs(left_gap-right_gap)<2 and track_box['width']>=40
+    assert page.locator('.stats-interval-name').first.evaluate("el=>getComputedStyle(el).whiteSpace")=='nowrap'
+    details=page.locator('.stats-data-details');summary=details.locator('summary')
+    assert abs(details.bounding_box()['height']-summary.bounding_box()['height'])<=2
     assert page.locator('#stats-history, #stats-review-plan').count()==0
     assert 'IndexedDB' in page.locator('#stats-storage-warning').text_content()
     page.screenshot(path=str(screenshots/f'{kind}-stats.png'))
     page.locator('#stats-period').select_option('7')
     assert page.locator('#stats-trend svg').count()==1
-    page.locator('#close-stats').click()
+    page.keyboard.press('Escape')
     page.locator('#stats-dialog').wait_for(state='hidden')
     page.locator('#next-question').click()
     page.locator('.answer-button').nth(1).click()

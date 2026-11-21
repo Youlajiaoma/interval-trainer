@@ -227,7 +227,7 @@ async function installMicrophone(page) {
       await page.click('#open-settings'); await page.click('#singing-open-stats');
       assert.equal(await page.locator('#stats-performance-title').innerText(), '各音高表现');
       assert.match(await page.locator('#stats-intervals').innerText(), /C/);
-      await page.click('#close-stats'); await page.waitForSelector('#stats-dialog', {state:'hidden'});
+      await page.keyboard.press('Escape'); await page.waitForSelector('#stats-dialog', {state:'hidden'});
       await page.click('#back-home'); await page.click('#home-daily-tasks');
       await page.check('#daily-singing-enabled'); await page.click('#daily-singing-minus'); await page.click('#daily-tasks-save');
       await page.waitForSelector('#daily-tasks-dialog', {state:'hidden'});

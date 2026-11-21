@@ -1994,6 +1994,89 @@ body {
   line-height: 1.55;
 }
 
+/* Module settings stay as a right-side drawer, including on phones. */
+.module-settings-dialog .settings-header {
+  display: none;
+}
+
+.module-settings-dialog .settings-content {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+/* Statistics is a standalone view; native browser/app navigation returns. */
+.stats-content {
+  flex: 1 1 auto;
+  padding-top: calc(28px + env(safe-area-inset-top));
+}
+
+.stats-interval-row {
+  width: 100%;
+  grid-template-columns: max-content minmax(40px, 1fr) max-content;
+  column-gap: clamp(10px, 2.4vw, 22px);
+}
+
+.stats-interval-name,
+.stats-interval-value {
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.stats-interval-name {
+  text-align: left;
+}
+
+.stats-interval-value {
+  text-align: right;
+}
+
+.stats-data-details {
+  padding: 0;
+  overflow: hidden;
+}
+
+.stats-data-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding: 12px 15px;
+  line-height: 1.45;
+}
+
+.stats-data-details[open] > summary {
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.stats-data-details > p {
+  margin: 0 15px 14px;
+}
+
+.stats-data-details > .stats-data-buttons {
+  margin: 0 15px 14px;
+}
+
+.stats-data-details > .storage-warning:empty {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .module-settings-dialog {
+    width: min(420px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
+    border-left: 1px solid var(--color-border);
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  }
+
+  .stats-content {
+    padding-top: calc(20px + env(safe-area-inset-top));
+  }
+
+  .stats-interval-row {
+    column-gap: 10px;
+  }
+}
+
 .stats-heat-caption,
 .stats-chart text,
 .singing-chart text {
