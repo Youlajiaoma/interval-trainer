@@ -55,6 +55,14 @@ with sync_playwright() as pw:
     page.locator('#open-settings').click();page.locator('#open-stats').click()
     assert page.locator('#stats-dialog').is_visible()
     assert page.locator('#stats-summary .stats-kpi').count()==4
+    assert page.locator('#stats-dialog').get_attribute('data-stats-module')=='harmonic'
+    kpi_boxes=page.locator('#stats-summary .stats-kpi').evaluate_all('(items) => items.map(item => item.getBoundingClientRect().toJSON())')
+    assert max(box['height'] for box in kpi_boxes)<=90
+    heat_box=page.locator('#stats-calendar .stats-heat').first.bounding_box()
+    assert heat_box['width']>=heat_box['height']*1.9
+    row=page.locator('#stats-intervals .stats-interval-row').first
+    row_box=row.bounding_box();track_box=row.locator('.stats-interval-track').bounding_box()
+    assert abs((track_box['x']+track_box['width']/2)-(row_box['x']+row_box['width']/2))<2
     assert page.locator('#stats-history, #stats-review-plan').count()==0
     assert 'IndexedDB' in page.locator('#stats-storage-warning').text_content()
     page.screenshot(path=str(screenshots/f'{kind}-stats.png'))

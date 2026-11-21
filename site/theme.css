@@ -956,9 +956,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .stats-kpi {
-  min-height: 116px;
-  padding: 18px;
-  gap: 8px;
+  min-height: 88px;
+  padding: 14px;
+  gap: 4px;
   background: transparent;
   border: 0;
   border-right: 1px solid var(--color-border);
@@ -994,7 +994,7 @@ input[type="range"]::-moz-range-thumb {
 
 .stats-heatmap {
   grid-template-columns: repeat(7, 28px);
-  grid-template-rows: repeat(7, 28px);
+  grid-template-rows: repeat(7, 14px);
   grid-auto-flow: column;
   gap: 7px;
 }
@@ -1002,14 +1002,14 @@ input[type="range"]::-moz-range-thumb {
 .stats-heat {
   display: block;
   width: 28px;
-  height: 28px;
+  height: 14px;
   min-width: 28px;
-  min-height: 28px;
+  min-height: 14px;
   padding: 0;
   appearance: none;
   background: var(--color-surface-3);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
 }
@@ -1091,6 +1091,42 @@ input[type="range"]::-moz-range-thumb {
 
 .stats-interval-track {
   background: var(--color-border);
+}
+
+.stats-dialog {
+  --stats-progress-side: 106px;
+}
+
+.stats-dialog[data-stats-module="harmonic"],
+.stats-dialog[data-stats-module="staff"] {
+  --stats-progress-side: 106px;
+}
+
+.stats-dialog[data-stats-module="melodic"] {
+  --stats-progress-side: 116px;
+}
+
+.stats-dialog[data-stats-module="sight"] {
+  --stats-progress-side: 148px;
+}
+
+.stats-dialog[data-stats-module="singing"] {
+  --stats-progress-side: 96px;
+}
+
+.stats-interval-row {
+  display: grid;
+  grid-template-columns: var(--stats-progress-side) minmax(32px, 1fr) var(--stats-progress-side);
+}
+
+.stats-interval-name {
+  width: auto;
+  text-align: right;
+}
+
+.stats-interval-value {
+  min-width: 0;
+  text-align: left;
 }
 
 .stats-interval-fill {
@@ -1487,7 +1523,7 @@ input[type="range"]::-moz-range-thumb {
 
   .home-screen {
     padding-top: 15px;
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 
   .home-intro {
@@ -1540,36 +1576,36 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .home-tools {
-    position: fixed;
-    z-index: 24;
-    left: 50%;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    width: min(calc(100% - 24px), 430px);
-    margin: 0;
-    padding: 5px;
-    flex-wrap: nowrap;
-    gap: 4px;
-    background: rgba(25, 28, 49, .90);
-    border: 1px solid var(--color-border-strong);
-    border-radius: 16px;
-    box-shadow: 0 16px 44px rgba(0, 0, 0, .38);
-    backdrop-filter: blur(16px);
-    transform: translateX(-50%);
+    position: static;
+    z-index: auto;
+    width: auto;
+    margin-top: 23px;
+    padding: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    transform: none;
   }
 
   .home-tools .home-stats-link {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     justify-content: center;
     min-width: 0;
-    min-height: 48px;
-    padding: 8px 10px;
-    color: var(--color-text-soft);
-    border-radius: 11px;
+    min-height: 44px;
+    padding: 10px 14px;
+    color: var(--color-muted);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
   }
 
   .home-tools .home-stats-link + .home-stats-link {
-    border-left: 1px solid var(--color-border);
-    border-radius: 0 11px 11px 0;
+    border-left: 0;
+    border-radius: var(--radius-sm);
   }
 
   .practice-navigation {
@@ -1692,8 +1728,8 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .stats-kpi {
-    min-height: 104px;
-    padding: 14px;
+    min-height: 78px;
+    padding: 10px 12px;
     border-right: 0;
     border-bottom: 0;
   }
@@ -1726,7 +1762,21 @@ input[type="range"]::-moz-range-thumb {
     height: auto;
     min-width: 0;
     min-height: 0;
-    aspect-ratio: 1;
+    aspect-ratio: 2 / 1;
+  }
+
+  .stats-dialog[data-stats-module="harmonic"],
+  .stats-dialog[data-stats-module="staff"],
+  .stats-dialog[data-stats-module="singing"] {
+    --stats-progress-side: 78px;
+  }
+
+  .stats-dialog[data-stats-module="melodic"] {
+    --stats-progress-side: 86px;
+  }
+
+  .stats-dialog[data-stats-module="sight"] {
+    --stats-progress-side: 104px;
   }
 
   .stats-heat-caption {
@@ -1783,7 +1833,7 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .home-tools {
-    width: calc(100% - 18px);
+    width: auto;
   }
 
   .home-tools .home-stats-link {
@@ -1803,7 +1853,7 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .stats-kpi {
-    padding: 12px;
+    padding: 9px 10px;
   }
 }
 

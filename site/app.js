@@ -293,6 +293,7 @@
     const selectedIndex = () => modules.list.findIndex(module => module.id === modules.statisticsMode);
     const alignSelector = () => selector.scrollTo?.({left:selectedIndex()*selector.clientWidth,behavior:'instant'});
     function renderStatistics() {
+      statsDialog.dataset.statsModule = modules.statisticsMode;
       for (const module of modules.list) {
         const active = module.id === modules.statisticsMode;
         $(module.statsId).classList.toggle('active', active);
