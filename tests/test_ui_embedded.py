@@ -55,7 +55,9 @@ with sync_playwright() as pw:
     page.locator('#open-settings').click()
     drawer=page.locator('#settings-dialog');drawer_box=drawer.bounding_box()
     assert not drawer.locator('.settings-header').is_visible()
-    assert drawer_box['width']<viewport['width'] and abs(drawer_box['x']+drawer_box['width']-viewport['width'])<2
+    usable_width=page.evaluate('document.documentElement.clientWidth')
+    assert drawer_box['width']<usable_width and abs(drawer_box['x']+drawer_box['width']-usable_width)<2, \
+        f'{kind} 设置侧栏应贴合页面可见右缘：可用宽度 {usable_width}px，侧栏 {drawer_box}'
     page.locator('#open-stats').click()
     assert page.locator('#stats-dialog').is_visible()
     assert page.locator('#stats-dialog .stats-header').count()==0
