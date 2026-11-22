@@ -80,7 +80,7 @@ async function fits(page){
     // including ordinary browser tabs without a standalone display-mode flag.
     await back(page);await page.waitForSelector('#home-screen',{state:'visible'});await settle(page);
     assert.equal(new URL(page.url()).pathname,'/');
-    await page.click('#home-harmony-practice');await settle(page);await page.locator('#harmony-directory button').click();await settle(page);await playing(page);
+    await page.click('#home-harmony-practice');await settle(page);await page.locator('#harmony-directory button').first().click();await settle(page);await playing(page);
     assert.equal(await page.locator('#harmony-mode, #harmony-balance-input').count(),0);
     assert.equal(await page.locator('#harmony-practice audio').count(),1);
     assert(await page.locator('#harmony-audio').evaluate(a=>a.loop));
@@ -125,7 +125,7 @@ async function fits(page){
     if(width===320){await back(page);await page.waitForSelector('#previous');}
 
     actual=true;await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);
-    await page.click('#home-harmony-practice');await settle(page);await page.locator('#harmony-directory button').click();await settle(page);await playing(page);
+    await page.click('#home-harmony-practice');await settle(page);await page.locator('#harmony-directory button').first().click();await settle(page);await playing(page);
     const urls=await page.evaluate(()=>Object.values(TonaloomHarmonySongs[0].stems));
     const expected=Math.max(...urls.map(url=>duration(fs.readFileSync(path.join(site,new URL(url,origin).pathname)))));
     assert(Math.abs(await page.locator('#harmony-audio').evaluate(a=>a.duration)-expected)<.001);
