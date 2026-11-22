@@ -1,19 +1,19 @@
 /* The shared version file supplies the app version and deployment build ID. */
 importScripts('./build-info.js');
-importScripts('./assets/harmony-songs.js?v=2.21.2-local-audio1');
-const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${self.TonaloomBuildInfo.build}-local-audio1-ui6-popover2`;
+importScripts('./assets/harmony-songs.js?v=2.21.3-local-audio2');
+const CACHE_NAME = `interval-trainer-pwa-v${self.TonaloomBuildInfo.version}-${self.TonaloomBuildInfo.build}-local-audio2-ui6-popover2`;
 const ROOT = self.registration.scope;
 const AUDIO_CACHE = 'interval-trainer-recordings-v1';
 const HARMONY_CACHE = 'interval-trainer-harmony-recordings-v1';
 const HARMONY_FILES = [...new Set(self.TonaloomHarmonySongs.flatMap(song =>
   [...Object.values(song.stems || {}),...song.tracks.map(track => track.src)].filter(src => typeof src === 'string' && src.startsWith('assets/harmony-practice/'))))];
 const CORE_FILES = [
-  './motion.js?v=2.21.2',
-  './','./index.html','./styles.css?v=2.21.2','./sight.css?v=2.21.2','./theme.css?v=2.21.2-ui6','./logic.js','./modules.js?v=2.21.2',
-  './review.js?v=2.21.2','./statistics.js?v=2.21.2-popover2','./audio.js?v=2.21.2','./storage.js','./app.js?v=2.21.2-local-audio1','./vendor/vexflow-loader.js','./sight.js?v=2.21.2','./staff-interval.js?v=2.21.2','./build-info.js','./build-info.js?v=2.21.2',
+  './motion.js?v=2.21.3',
+  './','./index.html','./styles.css?v=2.21.3','./sight.css?v=2.21.3','./theme.css?v=2.21.3-ui6','./logic.js','./modules.js?v=2.21.3',
+  './review.js?v=2.21.3','./statistics.js?v=2.21.3-popover2','./audio.js?v=2.21.3','./storage.js','./app.js?v=2.21.3-local-audio2','./vendor/vexflow-loader.js','./sight.js?v=2.21.3','./staff-interval.js?v=2.21.3','./build-info.js','./build-info.js?v=2.21.3',
   './pwa-register.js','./update.html','./manifest.webmanifest','./vendor/vexflow.js',
-  './daily-tasks.js?v=2.21.2','./pitch.js?v=2.21.2','./singing.js?v=2.21.2','./singing.css?v=2.21.2',
-  './assets/harmony-songs.js?v=2.21.2-local-audio1','./harmony-mix.js?v=2.21.2-local-audio1','./harmony-practice.js?v=2.21.2-local-audio1','./harmony-practice.css?v=2.21.2-local-audio1',
+  './daily-tasks.js?v=2.21.3','./pitch.js?v=2.21.3','./singing.js?v=2.21.3','./singing.css?v=2.21.3',
+  './assets/harmony-songs.js?v=2.21.3-local-audio2','./harmony-mix.js?v=2.21.3-local-audio2','./harmony-practice.js?v=2.21.3-local-audio2','./harmony-practice.css?v=2.21.3-local-audio2',
   './assets/piano-samples.js','./assets/melodic-recordings.js',
   './icons/icon-192.png?v=2.11.0','./icons/icon-512.png?v=2.11.0',
   './LICENSE_AUDIO_GPL2.txt','./UPSTREAM_AUDIO_COPYRIGHT.txt','./LICENSE_SIGHT_CLEF.txt','./LICENSE_VEXFLOW_MIT.txt'

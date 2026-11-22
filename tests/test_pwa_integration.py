@@ -42,7 +42,9 @@ with sync_playwright() as p:
     # Installation saves all original stems before any song has been played.
     page.wait_for_function('''async()=>{
       const recordings=await caches.open('interval-trainer-harmony-recordings-v1');
-      return (await Promise.all(Object.values(TonaloomHarmonySongs[0].stems).map(src=>recordings.match(new URL(src,document.baseURI).href)))).every(Boolean);
+      const sources=TonaloomHarmonySongs.flatMap(song=>['melody','harmony','guitar'].map(id=>song.stems[id]));
+      return TonaloomHarmonySongs.length===2 && sources.every(Boolean) &&
+        (await Promise.all(sources.map(src=>recordings.match(new URL(src,document.baseURI).href)))).every(Boolean);
     }''',timeout=30000)
     page.wait_for_function("async()=>(await (await caches.open('interval-trainer-harmony-transports-v1')).keys()).length>0",timeout=30000)
     assert page.locator('#harmony-audio').evaluate('(a)=>a.paused')
@@ -67,9 +69,21 @@ with sync_playwright() as p:
     assert partial=={'status':206,'length':100},partial
     page.locator('#back-home').click()
     page.locator('#harmony-directory').wait_for(state='visible')
+    page.locator('#harmony-directory button').nth(1).click()
+    page.wait_for_function("document.getElementById('harmony-audio').duration>1 && !document.getElementById('harmony-audio').paused && document.getElementById('harmony-audio').currentTime>.03")
+    assert page.locator('#harmony-track-title').inner_text()=='梨花再开放'
+    assert page.evaluate('harmonyDecodeCount')==0,'Second song must play from its prepared local stems'
+    second_melody=page.evaluate('TonaloomHarmonySongs[1].stems.melody')
+    second_partial=page.evaluate('''async(src)=>{
+      const response=await fetch(src,{headers:{Range:'bytes=44-143'}});
+      return {status:response.status,length:(await response.arrayBuffer()).byteLength};
+    }''',second_melody)
+    assert second_partial=={'status':206,'length':100},second_partial
+    page.locator('#back-home').click()
+    page.locator('#harmony-directory').wait_for(state='visible')
     page.locator('#back-home').click()
     page.locator('#home-screen').wait_for(state='visible')
-    print(f'PASS: first song playback offline after reload, no decoding, local start {local_start} ms, offline range seeking')
+    print(f'PASS: both songs play offline after reload, no decoding, local start {local_start} ms, offline range seeking')
     page.locator('#home-harmonic').click()
     assert page.locator('.answer-button').count()==13
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==1
