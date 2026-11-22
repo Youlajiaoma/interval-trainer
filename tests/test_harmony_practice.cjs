@@ -46,9 +46,23 @@ test('歌曲直达三轨播放器并默认循环，返回目录和主页停止�
   assert(!readSource('index.html').includes('id="harmony-balance-input"'));
   for(const id of ['harmony-previous','harmony-next','harmony-track-number'])assert(app.get(id).classList.contains('hidden'));
   await app.click('back-home');assert(!app.get('harmony-directory').classList.contains('hidden'));
-  assert.equal(app.get('harmony-directory').children.length,1);assert(media.paused);assert.equal(media.src,'');
+  assert.equal(app.get('harmony-directory').children.length,2);assert(media.paused);assert.equal(media.src,'');
   await app.click('back-home');assert(!app.get('home-screen').classList.contains('hidden'));assert(state.released>0);
   assert.deepEqual(app.database.records,before);
+});
+
+test('梨花再开放目录项使用本地旋律、和声、吉他三轨播放',async t=>{
+  const {app,media,choose,state}=await setup(t);
+  await app.click('home-harmony-practice');
+  assert.equal(app.get('harmony-directory').children.length,2);
+  await choose(1);
+  const song=app.window.TonaloomHarmonySongs[1];
+  assert.equal(song.title,'梨花再开放');
+  assert.equal(app.get('harmony-track-title').textContent,'梨花再开放');
+  assert(!media.paused);assert(media.loop);
+  assert.deepEqual([...state.prepared.at(-1)],[...Object.values(song.stems)]);
+  await app.click('back-home');
+  assert(media.paused);assert.equal(media.src,'');
 });
 
 test('三条音量条和M独立控制，静音中调整音量不出声，取消静音恢复当前值且不重播',async t=>{
