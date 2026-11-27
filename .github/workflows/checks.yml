@@ -13,6 +13,11 @@ on:
         type: boolean
         required: false
         default: true
+      base_sha:
+        description: Base commit used to select browser checks in a called workflow
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -34,6 +39,7 @@ jobs:
         id: plan
         env:
           CI_FULL: ${{ inputs.full == true }}
+          CI_BASE_SHA: ${{ inputs.base_sha }}
         run: node tests/ci-plan.cjs
       - name: Bundle notation dependency for offline checks
         run: |
@@ -52,6 +58,12 @@ jobs:
             ~/.npm
             ~/.cache/pip
           key: ${{ runner.os }}-node24-python3.13-playwright1.56.0-python${{ steps.plan.outputs.needs_python }}-v1
+      - name: Cache Playwright browser binaries
+        if: steps.plan.outputs.needs_browser == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright1.56.0-chromium-v1
       - name: Set up Python
         if: steps.plan.outputs.needs_python == 'true'
         uses: actions/setup-python@v7

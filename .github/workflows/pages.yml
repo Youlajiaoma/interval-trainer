@@ -14,7 +14,8 @@ jobs:
   checks:
     uses: ./.github/workflows/checks.yml
     with:
-      full: true
+      full: ${{ github.event_name != 'push' }}
+      base_sha: ${{ github.event.before || '' }}
     permissions:
       contents: read
   build:

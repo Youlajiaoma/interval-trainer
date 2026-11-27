@@ -6,13 +6,13 @@ const {execFileSync} = require('node:child_process');
 
 // Shared with the local runner so CI cannot silently omit a newly listed suite.
 const browserChecks = [
-  {id: 'staff', name: '五线谱浏览器检查', file: 'tests/test_staff_interval.cjs', runtime: 'node'},
-  {id: 'daily', name: '每日任务浏览器检查', file: 'tests/test_daily_tasks_browser.cjs', runtime: 'node'},
-  {id: 'motion', name: '界面动画浏览器检查', file: 'tests/test_motion_browser.cjs', runtime: 'node'},
-  {id: 'singing', name: '模唱浏览器检查', file: 'tests/test_singing_browser.cjs', runtime: 'node'},
-  {id: 'harmony', name: '和声练唱浏览器检查', file: 'tests/test_harmony_practice_browser.cjs', runtime: 'node'},
-  {id: 'ui', name: '手机和平板界面', file: 'tests/test_ui_embedded.py', runtime: 'python'},
-  {id: 'pwa', name: 'PWA 浏览器离线与保存', file: 'tests/test_pwa_integration.py', runtime: 'python'}
+  {id: 'staff', name: '��������������', file: 'tests/test_staff_interval.cjs', runtime: 'node'},
+  {id: 'daily', name: 'ÿ��������������', file: 'tests/test_daily_tasks_browser.cjs', runtime: 'node'},
+  {id: 'motion', name: '���涯����������', file: 'tests/test_motion_browser.cjs', runtime: 'node'},
+  {id: 'singing', name: 'ģ����������', file: 'tests/test_singing_browser.cjs', runtime: 'node'},
+  {id: 'harmony', name: '����������������', file: 'tests/test_harmony_practice_browser.cjs', runtime: 'node'},
+  {id: 'ui', name: '�ֻ���ƽ�����', file: 'tests/test_ui_embedded.py', runtime: 'python'},
+  {id: 'pwa', name: 'PWA ����������뱣��', file: 'tests/test_pwa_integration.py', runtime: 'python'}
 ];
 const allChecks = browserChecks.map(check => check.id);
 
@@ -24,6 +24,7 @@ function selectChecks(files) {
     // No browser behavior changes for documentation or dependency-free tests.
     if (/\.md$/i.test(file) || /^docs\//.test(file) || /^tests\/.*\.(png|jpg)$/.test(file)) continue;
     if (/^tests\/test_.*\.cjs$/.test(file) && file !== 'tests/test_sw.cjs') continue;
+    if (file === 'tests/helpers/navigation-browser.cjs') { selected.add('motion'); continue; }
     if (/^site\/(singing\.(js|css)|pitch\.js)$/.test(file)) selected.add('singing');
     else if (/^site\/(harmony-(practice\.(js|css)|mix\.js)|assets\/(harmony-songs\.js|harmony-practice\/.*))$/.test(file)) selected.add('harmony');
     else if (/^site\/(sight\.(js|css)|staff-interval\.js)$/.test(file)) selected.add('staff');
@@ -41,24 +42,25 @@ function planChecks(environment, event, diff) {
   event = event || {};
   const full = reason => ({checks: [...allChecks], reason});
   if (environment.CI_FULL === 'true' || environment.GITHUB_EVENT_NAME === 'workflow_dispatch' ||
-      environment.GITHUB_EVENT_NAME === 'workflow_call' || environment.GITHUB_REF === 'refs/heads/main' ||
-      event.pull_request?.base?.ref === 'main') return full('发布、手动运行或调用方要求完整检查');
+      event.pull_request?.base?.ref === 'main') return full('�������ֶ����л���÷�Ҫ���������');
 
+  const valid = sha => typeof sha === 'string' && /^[a-f0-9]{40}$/i.test(sha) && !/^0+$/.test(sha);
   let base;
-  if (environment.GITHUB_EVENT_NAME === 'push' && environment.GITHUB_REF === 'refs/heads/dev') base = event.before;
+  if (valid(environment.CI_BASE_SHA)) base = environment.CI_BASE_SHA;
+  else if (environment.GITHUB_EVENT_NAME === 'push' &&
+      ['refs/heads/dev', 'refs/heads/main'].includes(environment.GITHUB_REF)) base = event.before;
   else if (environment.GITHUB_EVENT_NAME === 'pull_request' && event.pull_request?.base?.ref === 'dev') base = event.pull_request.base.sha;
-  else return full('无法确定本次改动范围，保留完整检查');
+  else return full('�޷�ȷ�����θĶ���Χ�������������');
 
   const head = environment.GITHUB_SHA;
-  const valid = sha => typeof sha === 'string' && /^[a-f0-9]{40}$/i.test(sha) && !/^0+$/.test(sha);
-  if (!valid(base) || !valid(head)) return full('首次推送或缺少提交信息，保留完整检查');
+  if (!valid(base) || !valid(head)) return full('�״����ͻ�ȱ���ύ��Ϣ�������������');
   try {
     // Push: compare the entire push, not just the last commit. PR: compare the
     // base with GitHub's checked-out merge result, including merge effects.
     const checks = selectChecks(diff(base, head));
-    return {checks, reason: checks.length === allChecks.length ? '公共代码或检查配置有改动，运行完整检查' : '按本次改动选择相关浏览器检查'};
+    return {checks, reason: checks.length === allChecks.length ? '����������������иĶ��������������' : '�����θĶ�ѡ�������������'};
   } catch {
-    return full('无法读取提交差异，保留完整检查');
+    return full('�޷���ȡ�ύ���죬�����������');
   }
 }
 
@@ -86,14 +88,14 @@ function main() {
     needs_browser: String(plan.checks.length > 0),
     needs_python: String(browserChecks.some(check => plan.checks.includes(check.id) && check.runtime === 'python'))
   };
-  console.log(plan.reason + '。');
-  console.log('基础与离线缓存模拟：始终运行。');
-  console.log('浏览器检查：' + (plan.checks.map(id => browserChecks.find(check => check.id === id).name).join('、') || '本次无需运行'));
+  console.log(plan.reason + '��');
+  console.log('���������߻���ģ�⣺ʼ�����С�');
+  console.log('�������飺' + (plan.checks.map(id => browserChecks.find(check => check.id === id).name).join('��') || '������������'));
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,
     Object.entries(outputs).map(([key, value]) => key + '=' + value + '\n').join(''));
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-    '### 检查范围\n\n' + plan.reason + '。基础与离线缓存模拟始终运行。\n\n' +
-    (plan.checks.length ? plan.checks.map(id => '- ' + browserChecks.find(check => check.id === id).name).join('\n') : '本次无需浏览器检查，不安装浏览器环境。') + '\n');
+    '### ��鷶Χ\n\n' + plan.reason + '�����������߻���ģ��ʼ�����С�\n\n' +
+    (plan.checks.length ? plan.checks.map(id => '- ' + browserChecks.find(check => check.id === id).name).join('\n') : '���������������飬����װ�����������') + '\n');
 }
 
 module.exports = {browserChecks, selectChecks, planChecks};
