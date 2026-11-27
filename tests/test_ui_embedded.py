@@ -12,6 +12,7 @@ src=src.replace('<link rel="stylesheet" href="sight.css">','<style>'+(root/'sigh
 src=src.replace('<link rel="stylesheet" href="singing.css">','<style>'+(root/'singing.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="harmony-practice.css">','<style>'+(root/'harmony-practice.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="stylesheet" href="theme.css">','<style>'+(root/'theme.css').read_text(encoding='utf-8')+'</style>')
+src=src.replace('<link rel="stylesheet" href="splash.css">','<style>'+(root/'splash.css').read_text(encoding='utf-8')+'</style>')
 src=src.replace('<link rel="manifest" href="manifest.webmanifest">','')
 src=re.sub(r'<link rel="(?:icon|apple-touch-icon)"[^>]*>', '',src)
 # This in-page test uses a memory adapter. IndexedDB persistence is separately
@@ -29,6 +30,7 @@ for script in ('motion.js','logic.js','modules.js','assets/piano-samples.js','as
 src=src.replace('<script src="storage.js"></script>', adapter)
 src=src.replace('<script src="app.js"></script>',f'<script>\n{(root/"app.js").read_text(encoding="utf-8")}\n</script>')
 src=src.replace('<script src="pwa-register.js"></script>','')
+src=src.replace('<script src="splash.js" defer></script>','<script>\n'+(root/'splash.js').read_text(encoding='utf-8')+'\n</script>')
 # This embedded-page test covers harmonic practice; notation has its own browser test.
 for script in ('vendor/vexflow-loader.js','sight.js','staff-interval.js'):
     src=src.replace(f'<script src="{script}"></script>','')
@@ -42,6 +44,7 @@ with sync_playwright() as pw:
     page.on('pageerror',lambda x:errors.append(str(x)))
     page.set_content(src,wait_until='domcontentloaded',timeout=40000)
     page.wait_for_function('window.IntervalAppReady === true',timeout=15000)
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     assert page.evaluate('getComputedStyle(document.body).userSelect')=='none'
     assert page.evaluate('getComputedStyle(document.querySelector("#home-title")).userSelect')=='none'
     page.locator('#home-harmonic').click()
@@ -68,7 +71,7 @@ with sync_playwright() as pw:
     kpi_boxes=page.locator('#stats-summary .stats-kpi').evaluate_all('(items) => items.map(item => item.getBoundingClientRect().toJSON())')
     assert max(box['height'] for box in kpi_boxes)<=90
     heat_box=page.locator('#stats-calendar .stats-heat').first.bounding_box()
-    assert heat_box['width']>=heat_box['height']*1.9
+    assert abs(heat_box['width']-heat_box['height'])<2
     row=page.locator('#stats-intervals .stats-interval-row').first
     row_box=row.bounding_box();name_box=row.locator('.stats-interval-name').bounding_box()
     track_box=row.locator('.stats-interval-track').bounding_box();value_box=row.locator('.stats-interval-value').bounding_box()

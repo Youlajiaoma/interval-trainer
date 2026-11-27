@@ -487,7 +487,7 @@ function clearHistory(){
  review.treble.reset();review.bass.reset();
 }
 function openStats(){ if($('sight-settings-dialog').open)root.TonaloomMotion.close($('sight-settings-dialog')); modules.showStatistics(definition.id); }
-function openSettings(){ if(!active)return; $('sight-accidentals').checked=Boolean(settings.accidentals); $('sight-range-below').value=String(settings.rangeBelow); $('sight-range-above').value=String(settings.rangeAbove); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } root.TonaloomMotion.open($('sight-settings-dialog')); }
+function openSettings(){ if(!active)return; root.TonaloomDailyTasks.open(definition.id); $('sight-accidentals').checked=Boolean(settings.accidentals); $('sight-range-below').value=String(settings.rangeBelow); $('sight-range-above').value=String(settings.rangeAbove); for(const btn of document.querySelectorAll('.sight-clef-options button')){ const on=btn.dataset.clef===settings.clef;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on)); } root.TonaloomMotion.open($('sight-settings-dialog')); }
 function enter(){
  if(!initialized)return;
  if(!session||!validatedSession(session))makeGroup();

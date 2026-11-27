@@ -115,6 +115,7 @@ async function installMicrophone(page) {
       await installMicrophone(page);
       await page.goto('http://127.0.0.1:8771/');
       await page.waitForFunction(() => window.IntervalAppReady && TonaloomModules.get('singing').enter);
+      await page.locator('#splash-screen').waitFor({state:'detached'});
       await page.click('#home-singing');
       assert.equal(await page.evaluate(() => singingCapture.calls), 0, '进入不自动索取麦克风');
       await page.click('#open-settings');
@@ -228,9 +229,9 @@ async function installMicrophone(page) {
       assert.equal(await page.locator('#stats-performance-title').innerText(), '各音高表现');
       assert.match(await page.locator('#stats-intervals').innerText(), /C/);
       await page.keyboard.press('Escape'); await page.waitForSelector('#stats-dialog', {state:'hidden'});
-      await page.click('#back-home'); await page.click('#home-daily-tasks');
-      await page.check('#daily-singing-enabled'); await page.click('#daily-singing-minus'); await page.click('#daily-tasks-save');
-      await page.waitForSelector('#daily-tasks-dialog', {state:'hidden'});
+      await page.click('#back-home'); await page.click('#home-singing'); await page.click('#open-settings');
+      await page.click('#daily-singing-plus'); await page.click('#daily-singing-save');
+      await page.click('#singing-settings-done'); await page.click('#back-home');
       assert.equal(await page.evaluate(() => TonaloomDailyTasks.progress('singing').count), 3);
       const saved = await page.evaluate(key => JSON.parse(IntervalPwaStorageAdapter.getItem(key)), settingsKey);
       assert.equal(saved.low, 60); assert.equal(saved.high, 67);
@@ -238,6 +239,7 @@ async function installMicrophone(page) {
       assert.equal(await page.evaluate(() => singingCapture.clipped), 0, '重播及延迟授权未截断参考音');
       assert(await page.evaluate(() => singingCapture.interruptions > 0 && singingCapture.resumes >= singingCapture.interruptions));
       await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
+      await page.locator('#splash-screen').waitFor({state:'detached'});
       assert.equal(await resultCount(page), 3); assert.equal(await page.evaluate(() => singingCapture.calls), 0);
       await page.click('#home-singing'); await page.click('#singing-play'); await listening(page);
       await page.evaluate(() => singingCapture.track.dispatchEvent(new Event('ended')));

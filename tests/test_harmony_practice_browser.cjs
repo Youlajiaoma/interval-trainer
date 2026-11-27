@@ -73,7 +73,7 @@ async function fits(page){
       window.wraps=0;document.addEventListener('DOMContentLoaded',()=>{let previous=0;const audio=document.getElementById('harmony-audio');
         if(audio)audio.addEventListener('timeupdate',()=>{if(previous-audio.currentTime>.4)wraps++;previous=audio.currentTime;});});
     },{standalone:width===390,minimal:width===900});
-    await page.goto(origin+'/previous.html');await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);
+    await page.goto(origin+'/previous.html');await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);await page.locator('#splash-screen').waitFor({state:'detached'});
     await page.click('#home-harmony-practice');await settle(page);
     assert.equal(await page.locator('#harmony-directory button').count(),1);
     // Regression: returning from the song directory must not leave the app,
@@ -124,7 +124,7 @@ async function fits(page){
     await back(page);await page.waitForSelector('#home-screen',{state:'visible'});await settle(page);
     if(width===320){await back(page);await page.waitForSelector('#previous');}
 
-    actual=true;await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);
+    actual=true;await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);await page.locator('#splash-screen').waitFor({state:'detached'});
     await page.click('#home-harmony-practice');await settle(page);await page.locator('#harmony-directory button').first().click();await settle(page);await playing(page);
     const urls=await page.evaluate(()=>Object.values(TonaloomHarmonySongs[0].stems));
     const expected=Math.max(...urls.map(url=>duration(fs.readFileSync(path.join(site,new URL(url,origin).pathname)))));

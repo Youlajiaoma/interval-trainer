@@ -247,7 +247,7 @@
   }
   function openSettings() {
     if (!active) return;
-    stopMic(); stopReference(); syncSettings();
+    stopMic(); stopReference(); syncSettings(); root.TonaloomDailyTasks.open(definition.id);
     root.TonaloomMotion.open($('singing-settings'));
   }
   function enter() {

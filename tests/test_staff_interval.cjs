@@ -12,6 +12,7 @@ const site=path.join(__dirname,'../site');
   await page.route('**/vendor/vexflow.js',r=>r.fulfill({path:path.join(site,'vendor/vexflow.js'),contentType:'text/javascript'}));
   await page.goto('http://127.0.0.1:8765');
   await page.waitForFunction(()=>window.IntervalAppReady&&window.StaffIntervalTrainer);
+  await page.locator('#splash-screen').waitFor({state:'detached'});
   await page.evaluate(async()=>{
    const VF=await SightVexFlowReady;window.drawn=[];
    const Original=VF.StaveNote;
@@ -67,6 +68,7 @@ const site=path.join(__dirname,'../site');
    },clef);
    await page.reload();
    await page.waitForFunction(()=>window.IntervalAppReady&&window.SightTrainer);
+   await page.locator('#splash-screen').waitFor({state:'detached'});
    await page.evaluate(async()=>{
     const VF=await SightVexFlowReady;window.drawn=[];
     const Original=VF.StaveNote;

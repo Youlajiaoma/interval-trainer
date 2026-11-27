@@ -21,6 +21,7 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto(url,wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     page.locator('#home-harmonic').click()
     assert page.locator('.answer-button').count()==13
     assert page.evaluate('window.IntervalPwaStorageAdapter.available')
@@ -29,6 +30,7 @@ with sync_playwright() as p:
     page.evaluate('async()=>await window.IntervalPwaStorageAdapter.flush()')
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     page.locator('#home-harmonic').click()
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==1
     page.locator('#open-settings').click()
@@ -52,6 +54,7 @@ with sync_playwright() as p:
     context.set_offline(True)
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     page.locator('#home-harmony-practice').click()
     page.evaluate('''()=>{
       document.getElementById('harmony-directory').addEventListener('click',()=>window.songClickAt=performance.now(),{once:true});
@@ -88,12 +91,13 @@ with sync_playwright() as p:
     assert page.locator('.answer-button').count()==13
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==1
     page.locator('#back-home').click()
-    page.locator('#home-daily-tasks').click()
-    page.locator('#daily-harmonic-enabled').check()
-    page.locator('#daily-harmonic-minus').click()
+    page.locator('#home-harmonic').click()
+    page.locator('#open-settings').click()
+    page.locator('#daily-harmonic-plus').click()
     assert page.locator('#daily-harmonic-target').inner_text()=='10'
-    page.locator('#daily-tasks-save').click()
-    page.wait_for_selector('#daily-tasks-dialog',state='hidden')
+    page.locator('#daily-harmonic-save').click()
+    page.locator('#settings-done').click()
+    page.locator('#back-home').click()
     page.locator('#home-harmonic').click()
     for index in range(9):
         page.locator('#reveal-answer').click()
@@ -105,6 +109,7 @@ with sync_playwright() as p:
     page.evaluate('async()=>await window.IntervalPwaStorageAdapter.flush()')
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     assert page.locator('#home-harmonic-marker').inner_text()=='✓'
     assert page.evaluate('JSON.parse(window.IntervalPwaStorageAdapter.getItem("interval-trainer-review-v1")).totalAnswers')==10
     page.locator('#home-singing').click()
@@ -119,6 +124,7 @@ with sync_playwright() as p:
     page.evaluate('async()=>await window.IntervalPwaStorageAdapter.flush()')
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     page.locator('#home-singing').click()
     page.locator('#open-settings').click()
     assert page.locator('#singing-low').input_value()=='61'
@@ -129,6 +135,7 @@ with sync_playwright() as p:
     page=context.new_page()
     page.goto(url,wait_until='domcontentloaded')
     page.wait_for_function('window.IntervalAppReady === true')
+    page.locator('#splash-screen').wait_for(state='detached',timeout=5000)
     page.locator('#home-harmony-practice').click()
     page.locator('#harmony-directory button').first.click()
     page.wait_for_function("document.getElementById('harmony-audio').duration>1 && !document.getElementById('harmony-audio').paused")

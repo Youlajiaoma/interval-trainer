@@ -37,39 +37,15 @@ async function motion(page,selector) {
       });
       await page.goto('http://127.0.0.1:8769/');
       await page.waitForFunction(() => window.IntervalAppReady && window.StaffIntervalTrainer);
-      await page.click('#home-daily-tasks');
-      const menuMotion = await motion(page,'#daily-tasks-dialog');
-      assert.equal(menuMotion.length,reduced ? 0 : 1);
-      if (!reduced) {
-        assert.equal(menuMotion[0].frames[0].transform,'translateY(18px)');
-        await page.locator('#daily-tasks-dialog').evaluate(element => {
-          const animation = element.getAnimations().find(item => item.effect.getKeyframes().some(frame => frame.transform));
-          animation.pause(); animation.currentTime = 65;
-        });
-        const opacity = await page.locator('#daily-tasks-dialog').evaluate(element => Number(getComputedStyle(element).opacity));
-        assert(opacity > 0 && opacity < 1);
-        await page.screenshot({path:path.join(screenshots,`${width}-opening.png`)});
-        await page.locator('#daily-tasks-dialog').evaluate(element => element.getAnimations().forEach(animation => animation.play()));
-      }
-      await settle(page,'#daily-tasks-dialog');
-      const closeState = await page.evaluate(() => {
-        document.getElementById('daily-tasks-close').click();
-        const dialog = document.getElementById('daily-tasks-dialog'); return {open:dialog.open,inert:dialog.inert};
-      });
-      assert.equal(closeState.open,!reduced); assert.equal(closeState.inert,!reduced);
-      if (!reduced) assert.equal((await motion(page,'#daily-tasks-dialog'))[0].frames.at(-1).transform,'translateY(18px)');
-      await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
-      assert.equal(await page.evaluate(() => document.activeElement.id),'home-daily-tasks');
-      await page.click('#home-daily-tasks'); await settle(page,'#daily-tasks-dialog');
-      await page.keyboard.press('Escape'); await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
-      if (width === 900) {
-        await page.click('#home-daily-tasks'); await settle(page,'#daily-tasks-dialog');
-        await page.mouse.click(20,200); await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
-      }
+      await page.locator('#splash-screen').waitFor({state:'detached'});
+      await page.click('#home-harmonic'); await page.click('#open-settings');
+      assert(await page.locator('#daily-harmonic-settings').isVisible());
+      await page.click('#settings-done'); await page.click('#back-home');
       const entries = await page.evaluate(() => TonaloomModules.list.map(module => ({id:module.id,home:module.homeId})));
       const settings = {harmonic:['settings-dialog','settings-done','open-stats'],melodic:['settings-dialog','settings-done','open-stats'],
         sight:['sight-settings-dialog','sight-settings-done','sight-open-stats'],staff:['staff-interval-settings','staff-interval-settings-done','staff-open-stats'],
         singing:['singing-settings','singing-settings-done','singing-open-stats']};
+      let statsMotion = null;
       for (const entry of entries) {
         await page.evaluate(id => document.getElementById(id).click(),entry.home);
         const forward = await motion(page,'.app-shell'); assert.equal(forward.length,reduced ? 0 : 1);
@@ -80,8 +56,12 @@ async function motion(page,selector) {
         await page.click('#open-settings'); await settle(page,'#'+dialogId);
         await page.click('#'+doneId); await page.waitForSelector('#'+dialogId,{state:'hidden'});
         await page.click('#open-settings'); await settle(page,'#'+dialogId);
+        assert(await page.locator(`#daily-${entry.id}-settings`).isVisible(),'每日任务设置应内嵌在模块设置中');
+        await page.click(`#daily-${entry.id}-plus`); await page.click(`#daily-${entry.id}-save`);
         await page.click('#'+statsId);
-        assert.deepEqual(await motion(page,'#stats-dialog'),menuMotion,'统计与每日任务使用相同的方向、时长和曲线');
+        const currentStatsMotion = await motion(page,'#stats-dialog');
+        assert.equal(currentStatsMotion.length,reduced ? 0 : 1);
+        if(statsMotion)assert.deepEqual(currentStatsMotion,statsMotion,'各模块统计界面的切换动画一致');else statsMotion=currentStatsMotion;
         await settle(page,'#stats-dialog');
         assert(!await page.locator('#'+dialogId).evaluate(dialog => dialog.open));
         assert.equal(await page.evaluate(() => document.activeElement.closest('dialog')?.id),'stats-dialog');
@@ -103,12 +83,8 @@ async function motion(page,selector) {
         for (let index = 0; index < 15; index++) {
           document.getElementById('home-harmonic').click(); document.getElementById('back-home').click();
         }
-        const dialog = document.getElementById('daily-tasks-dialog');
-        for (let index = 0; index < 15; index++) { TonaloomMotion.open(dialog); TonaloomMotion.close(dialog); TonaloomMotion.open(dialog); }
       });
-      await settle(page,'#daily-tasks-dialog'); await settle(page,'.app-shell');
-      assert(await page.locator('#daily-tasks-dialog').evaluate(dialog => dialog.open && !dialog.inert && !dialog.classList.contains('motion-dialog-closing')));
-      await page.keyboard.press('Escape'); await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
+      await settle(page,'.app-shell');
       await page.evaluate(async () => {
         await IntervalPwaStorageAdapter.flush();
         for (const item of TonaloomModules.reviewDefinitions) {
@@ -118,12 +94,6 @@ async function motion(page,selector) {
       });
       assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth));
       assert.equal(await page.locator('.app-shell').evaluate(element => getComputedStyle(element).transform),'none');
-      if (!reduced) {
-        await page.click('#home-daily-tasks'); await settle(page,'#daily-tasks-dialog');
-        await page.evaluate(() => TonaloomMotion.close(document.getElementById('daily-tasks-dialog')));
-        await page.emulateMedia({reducedMotion:'reduce'});
-        await page.waitForSelector('#daily-tasks-dialog',{state:'hidden'});
-      }
       assert.deepEqual(errors,[]);
       console.log(`PASS 界面动画：${width}px ${reduced ? '减少动态效果' : '正常动画'}，往返、弹窗、遮罩、焦点和连续操作`);
       await context.close();

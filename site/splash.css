@@ -1,0 +1,94 @@
+/* 开屏参数：约 2 秒律动、34% 竖向幅度、0.3 秒定格。 */
+:root {
+  --splash-motion-duration: 2s;
+  --splash-amplitude: .34;
+  --splash-stagger: 180ms;
+  --splash-hold-duration: .3s;
+  --splash-fade-duration: 240ms;
+}
+
+.splash-screen {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #6c5ba7;
+  animation: splash-exit var(--splash-fade-duration) ease-out
+    calc(var(--splash-motion-duration) + var(--splash-stagger) + var(--splash-hold-duration)) forwards;
+}
+
+.splash-mark {
+  display: block;
+  width: min(52vw, 238px, 58vh);
+  height: auto;
+  overflow: visible;
+}
+
+.splash-mark rect {
+  fill: #ebe1ff;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: splash-wave var(--splash-motion-duration) cubic-bezier(.2, .72, .25, 1) var(--bar-delay) both;
+}
+
+.splash-mark rect:nth-child(1) { --bar-delay: 0ms; }
+.splash-mark rect:nth-child(2) { --bar-delay: 45ms; }
+.splash-mark rect:nth-child(3) { --bar-delay: 90ms; }
+.splash-mark rect:nth-child(4) { --bar-delay: 135ms; }
+.splash-mark rect:nth-child(5) { --bar-delay: 180ms; }
+
+@keyframes splash-wave {
+  0% {
+    opacity: 0;
+    transform: scaleY(calc(1 - var(--splash-amplitude)));
+  }
+  8% {
+    opacity: 1;
+    transform: scaleY(calc(1 - var(--splash-amplitude)));
+    animation-timing-function: cubic-bezier(.16, .8, .3, 1);
+  }
+  25% {
+    transform: scaleY(calc(1 + var(--splash-amplitude)));
+    animation-timing-function: cubic-bezier(.5, 0, .72, .28);
+  }
+  42% {
+    transform: scaleY(calc(1 - var(--splash-amplitude)));
+    animation-timing-function: cubic-bezier(.2, .72, .25, 1);
+  }
+  58% {
+    transform: scaleY(calc(1 + var(--splash-amplitude)));
+    animation-timing-function: cubic-bezier(.5, 0, .72, .28);
+  }
+  72% {
+    transform: scaleY(.94);
+    animation-timing-function: cubic-bezier(.2, .72, .25, 1);
+  }
+  82% { transform: scaleY(1.035); }
+  91% { transform: scaleY(.985); }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes splash-exit {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen { display: none; animation: none; }
+  .splash-mark rect { animation: none; }
+
+  .splash-screen.splash-preview-force {
+    display: grid !important;
+    animation: splash-exit var(--splash-fade-duration) ease-out
+      calc(var(--splash-motion-duration) + var(--splash-stagger) + var(--splash-hold-duration)) forwards !important;
+  }
+
+  .splash-screen.splash-preview-force .splash-mark rect {
+    animation: splash-wave var(--splash-motion-duration) cubic-bezier(.2, .72, .25, 1) var(--bar-delay) both !important;
+  }
+}

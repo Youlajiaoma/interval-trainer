@@ -136,8 +136,8 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
 .stats-empty{font-size:12px;color:#9396ab;line-height:1.7;padding:8px 0 2px}
 .stats-chart-wrap{width:100%}.stats-chart{display:block;width:100%;max-width:100%;height:auto;overflow:visible}
 .stats-legend{display:flex;justify-content:center;gap:20px;font-size:11px;color:#a0a2b7;margin-top:6px}.stats-legend span{display:inline-flex;gap:6px;align-items:center}.stats-legend span:before{content:'';width:13px;height:7px;background:#6e648f;border-radius:3px}.stats-legend .legend-line:before{height:3px;background:#c5a7ff}
-.stats-heatmap{display:grid;grid-template-columns:repeat(49,minmax(0,1fr));gap:3px}
-.stats-heat{display:block;aspect-ratio:1;border-radius:3px;min-width:2px;background:#2d2c40}
+.stats-heatmap{display:grid;width:100%;grid-template-columns:repeat(14,minmax(0,1fr));grid-auto-flow:row;gap:5px}
+.stats-heat{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:3px;min-width:0;background:#2d2c40}
 .stats-heat[data-level="1"]{background:#514779}.stats-heat[data-level="2"]{background:#7562a4}.stats-heat[data-level="3"]{background:#a18ad8}.stats-heat[data-level="4"]{background:#c0a8fc}
 .stats-heat-caption{display:flex;justify-content:space-between;color:#8b8da4;font-size:10px;margin-top:9px}
 .stats-interval-list{display:flex;flex-direction:column;gap:14px}
@@ -155,13 +155,8 @@ body.playing .play-icon{display:none}body.playing .soundbars{display:flex}
   .stats-content{padding:22px 15px 55px}.stats-intro h3{font-size:19px}.stats-intro p{font-size:11px}.stats-intro select{min-width:96px;padding:9px 5px}
   .stats-kpi-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px}.stats-kpi{padding:13px 14px;gap:5px}.stats-kpi-value{font-size:25px}.stats-panel{padding:17px 13px 16px}.stats-panel-heading{margin-bottom:15px}
   .stats-interval-row{gap:7px}.stats-interval-name{width:95px;font-size:11px}.stats-interval-value{min-width:83px;font-size:10px}
-  .stats-heatmap{gap:2px}.stats-heat{border-radius:2px}.stats-history-at{width:73px;font-size:10px}.stats-history-row{gap:7px;font-size:11px}
+  .stats-heatmap{grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}.stats-heat{border-radius:2px}.stats-history-at{width:73px;font-size:10px}.stats-history-row{gap:7px;font-size:11px}
 }
-/* 日历按「列=周、行=星期」组织，避免移动端 49 个极小圆点。 */
-.stats-heatmap{grid-template-columns:repeat(7,19px);grid-template-rows:repeat(7,19px);grid-auto-flow:column;gap:7px}
-.stats-heat{width:19px;height:19px;aspect-ratio:auto;border-radius:4px}
-.stats-heat-caption{max-width:175px}
-@media(max-width:620px){.stats-heatmap{grid-template-columns:repeat(7,19px);grid-template-rows:repeat(7,19px);gap:6px}.stats-heat{width:19px;height:19px;border-radius:4px}}
 
 /* Melodic first-note controls. */
 .melodic-submode{display:flex;gap:9px;margin:0 0 12px;align-items:center}
@@ -239,10 +234,12 @@ body.module-active .app-shell{padding-top:14px}
 .home-tools{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;margin-top:25px}
 .home-tools .home-stats-link{margin:0;padding:12px 10px}
 .daily-task-section{padding:12px 0}
-.daily-task-quantity{display:flex;align-items:center;gap:18px;padding:4px 0 12px;font-size:14px;color:#d6d2e9}
-.daily-task-quantity>span{min-width:66px;text-align:center;font-variant-numeric:tabular-nums}
-.daily-task-quantity button{width:40px;height:40px;border:1px solid #45445e;border-radius:9px;background:#252639;color:#ded5fc;font-size:22px}
-.daily-task-quantity button:disabled{opacity:.35}
+.daily-task-controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.daily-task-quantity{display:flex;align-items:center;gap:12px;font-size:14px;color:#d6d2e9}
+.daily-task-quantity>span{min-width:80px;text-align:center;font-variant-numeric:tabular-nums}
+.daily-task-quantity button,.daily-task-save{min-width:44px;min-height:44px;border:1px solid #45465f;border-radius:9px;background:#252639;color:#ded5fc;font-size:22px}
+.daily-task-save{min-width:82px;padding:0 14px;color:#e3ddf8;font-size:13px}
+.daily-task-quantity button:disabled,.daily-task-save:disabled{opacity:.4;cursor:default}
 .daily-tasks-error{font-size:12px;color:#ffb7c8;line-height:1.6}
 @media(max-width:620px){body.module-active .app-shell{padding-top:10px}}
 
