@@ -51,7 +51,7 @@ module.exports=async function navigationChecks(browser){
       await page.locator('#'+dailyId+'-plus').click();
       assert.equal(await page.locator('#'+dailyId+'-target').innerText(),'10');
       await page.locator('#'+dailyId+'-save').click();
-      assert.equal(await page.evaluate(id=>TonaloomDailyTasks.progress(id).target,entry.id),10);
+      await page.waitForFunction(id=>TonaloomDailyTasks.progress(id).target===10,entry.id);
       await back();await position(1);assert(!await page.locator('#'+settings[entry.id][0]).evaluate(d=>d.open));await noExit();
       await page.click('#open-settings');await position(2);await page.click('#'+settings[entry.id][1]);await position(2);
       await back();await position(1);assert(await page.evaluate(id=>TonaloomModules.get(id).isActive(),entry.id));await noExit();
