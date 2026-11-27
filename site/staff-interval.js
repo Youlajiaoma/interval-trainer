@@ -216,6 +216,7 @@ function reveal(){
 }
 function openSettings(){
  if(!active)return;
+ root.TonaloomDailyTasks.open(definition.id);
  root.TonaloomMotion.open($('staff-interval-settings'));
 }
 function enter(){

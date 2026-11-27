@@ -133,9 +133,9 @@ for (const action of ['repeat', 'next', 'leave']) test(`钢琴尚未解码时 ${
 });
 test('模唱完成量单独计入每日任务，达标后点亮并允许继续练习', async t => {
   const app = await appFor(t);
-  await app.click('home-daily-tasks');
-  app.get('daily-singing-enabled').checked = true; app.get('daily-singing-enabled').dispatchEvent({type:'change'});
-  await app.click('daily-singing-minus'); await app.click('daily-tasks-save'); await app.click('home-singing');
+  await app.click('home-singing'); await app.click('open-settings');
+  await app.click('daily-singing-plus');
+  await app.click('daily-singing-save'); await app.click('singing-settings-done');
   const manager = app.window.TonaloomModules.get('singing').reviewManager();
   for (let i = 0; i < 10; i++) manager.record({actual:0,chosen:0,low:60,high:60});
   await app.settle();

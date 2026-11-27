@@ -79,7 +79,7 @@
     const mode = definition.id, manager = mode === 'harmonic' ? harmonicReview : melodicReview;
     modules.register(mode, {
       enter:() => enterPractice(mode), isActive:() => currentScreen === 'practice' && activeMode === mode,
-      openSettings:() => { syncSettingsForm(); motion.open($('settings-dialog')); },
+      openSettings:() => { syncSettingsForm(); window.TonaloomDailyTasks.open(mode); motion.open($('settings-dialog')); },
       reviewManager:() => manager, enabled:() => moduleSettings[mode].enabled,
       backup:() => manager.snapshot(), clearHistory:() => manager.reset(),
       backupEntries:obj => {
@@ -575,7 +575,6 @@
     }
     // Leaving a module is navigation, not a wrong answer or a skipped question.
     if ($('settings-dialog').open) motion.close($('settings-dialog'));
-    if ($('daily-tasks-dialog').open) motion.close($('daily-tasks-dialog'));
     stopVoices();
     currentScreen='home';
     document.body.classList.remove('module-active');

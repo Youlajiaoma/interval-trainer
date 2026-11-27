@@ -19,7 +19,7 @@ module.exports=async function navigationChecks(browser){
     const position=async index=>page.waitForFunction(index=>history.state?.tonaloomNavigation?.index===index,index);
     const noExit=async()=>assert(!await page.locator('#toast').evaluate(el=>el.classList.contains('visible') && el.textContent==='再按一次返回退出'),'子页面返回不应提示退出');
     const back=async()=>{await page.goBack();};
-    await page.goto(origin+'/previous.html');await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);await position(0);
+    await page.goto(origin+'/previous.html');await page.goto(origin+'/');await page.waitForFunction(()=>window.IntervalAppReady);await page.locator('#splash-screen').waitFor({state:'detached'});await position(0);
     assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollbarWidth),'none');
     if(width===320){
       // The compact home screen can legitimately fit inside an 800px-tall
@@ -35,12 +35,23 @@ module.exports=async function navigationChecks(browser){
     }
     const entries=await page.evaluate(()=>TonaloomModules.list.map(m=>({id:m.id,home:m.homeId})));
     const settings={harmonic:['settings-dialog','open-stats'],melodic:['settings-dialog','open-stats'],sight:['sight-settings-dialog','sight-open-stats'],staff:['staff-interval-settings','staff-open-stats'],singing:['singing-settings','singing-open-stats']};
+    let statsButtonStyle=null;
     for(const entry of entries){
       await page.click('#'+entry.home);await position(1);
       await page.click('#open-settings');await position(2);
       const drawer=page.locator('#'+settings[entry.id][0]),drawerBox=await drawer.boundingBox();
       assert(drawerBox.width<width && Math.abs(drawerBox.x+drawerBox.width-width)<2,'模块设置应贴右侧显示为侧栏');
       assert(!await drawer.locator('.settings-header').isVisible(),'模块设置不再显示独立标题栏');
+      const [,statsId]=settings[entry.id];
+      const style=await page.locator('#'+statsId).evaluate(button=>{const css=getComputedStyle(button);return [css.backgroundColor,css.borderColor,css.borderRadius,css.padding,css.fontSize,css.minHeight];});
+      if(statsButtonStyle)assert.deepEqual(style,statsButtonStyle,'各模块练习统计按钮样式一致');else statsButtonStyle=style;
+      const dailyId=`daily-${entry.id}-settings`;
+      assert(await page.locator('#'+dailyId).isVisible(),'每日任务设置应在对应模块设置内');
+      assert(await page.evaluate(([daily,stats])=>Boolean(document.getElementById(daily).compareDocumentPosition(document.getElementById(stats))&Node.DOCUMENT_POSITION_FOLLOWING),[dailyId,statsId]),'每日任务设置应在练习统计上方');
+      await page.locator('#'+dailyId+'-plus').click();
+      assert.equal(await page.locator('#'+dailyId+'-target').innerText(),'10');
+      await page.locator('#'+dailyId+'-save').click();
+      assert.equal(await page.evaluate(id=>TonaloomDailyTasks.progress(id).target,entry.id),10);
       await back();await position(1);assert(!await page.locator('#'+settings[entry.id][0]).evaluate(d=>d.open));await noExit();
       await page.click('#open-settings');await position(2);await page.click('#'+settings[entry.id][1]);await position(2);
       await back();await position(1);assert(await page.evaluate(id=>TonaloomModules.get(id).isActive(),entry.id));await noExit();
@@ -55,7 +66,7 @@ module.exports=async function navigationChecks(browser){
     await page.goForward();await position(1);assert(await page.locator('#harmony-directory').isVisible());
     await page.goForward();await position(2);assert(await page.locator('#harmony-player').isVisible());
     await page.click('#back-home');await position(1);await back();await position(0);await noExit();
-    for(const entry of ['home-daily-tasks','home-stats']){
+    for(const entry of ['home-stats']){
       await page.click('#'+entry);await position(1);await back();await position(0);await noExit();
       await page.click('#'+entry);await position(1);await page.keyboard.press('Escape');await position(0);await noExit();
     }
@@ -88,6 +99,8 @@ module.exports=async function navigationChecks(browser){
       const heatmapBox=await page.locator('#stats-calendar .stats-heatmap').boundingBox();
       const calendarBox=await page.locator('#stats-calendar').boundingBox();
       assert(Math.abs(heatmapBox.width-calendarBox.width)<2,'手机热力图应铺满统计卡片可用宽度');
+      const heatBox=await heatSquares.first().boundingBox();
+      assert(Math.abs(heatBox.width-heatBox.height)<2,'手机热力图格子应为正方形');
     }
     assert.equal(await heatSquares.last().getAttribute('title'),null,'热力图不应再依赖悬停提示');
     await heatSquares.last().click();
@@ -111,7 +124,7 @@ module.exports=async function navigationChecks(browser){
     await back();await position(0);
     // Reloading from a child must reuse HOME rather than accumulate exit guards.
     await page.click('#home-harmonic');await position(1);await page.click('#open-settings');await position(2);
-    await page.reload();await page.waitForFunction(()=>window.IntervalAppReady);await position(0);assert(await page.locator('#home-screen').isVisible());
+    await page.reload();await page.waitForFunction(()=>window.IntervalAppReady);await page.locator('#splash-screen').waitFor({state:'detached'});await position(0);assert(await page.locator('#home-screen').isVisible());
     if(installed){
       await page.locator('#home-title').click();await back();await position(-1);
       assert(await page.locator('#toast').evaluate(el=>el.classList.contains('visible') && el.textContent==='再按一次返回退出'));
