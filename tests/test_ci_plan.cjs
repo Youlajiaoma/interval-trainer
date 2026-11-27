@@ -12,15 +12,15 @@ const all = ['staff', 'daily', 'motion', 'singing', 'harmony', 'ui', 'pwa'];
 const base = 'a'.repeat(40), head = 'b'.repeat(40);
 const push = {GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/dev', GITHUB_SHA: head};
 
-test('CI���ĵ�����ͼ�ͻ��������޸�ֻ����ټ��', () => {
+test('CI：文档、截图和基础测试修改只需快速检查', () => {
   assert.deepEqual(selectChecks(['README.md', 'AGENTS.md', 'docs/harmony-practice.md', 'tests/test_audio.cjs', 'tests/v15-phone-main.png']), []);
 });
 
-test('CI����ϰģ��ֻ��������������飬��ģ��Ķ�ȡ����', () => {
+test('CI：练习模块只加跑相关浏览器检查，多模块改动取并集', () => {
   const cases = [
     [['site/singing.js', 'site/pitch.js', 'site/singing.css'], ['singing']],
     [['site/harmony-practice.js', 'site/harmony-mix.js', 'site/harmony-practice.css',
-      'site/assets/harmony-songs.js', 'site/assets/harmony-practice/�¸�/����.wav'], ['harmony']],
+      'site/assets/harmony-songs.js', 'site/assets/harmony-practice/新歌/旋律.wav'], ['harmony']],
     [['site/sight.js', 'site/sight.css', 'site/staff-interval.js'], ['staff']],
     [['site/daily-tasks.js'], ['daily', 'motion']],
     [['site/pwa-register.js', 'site/sw.js', 'site/manifest.webmanifest', 'site/update.html', 'site/build-info.js', 'site/icons/icon-192.png'], ['pwa']],
@@ -31,7 +31,7 @@ test('CI����ϰģ��ֻ��������������飬�
   for (const [files, expected] of cases) assert.deepEqual(selectChecks(files), expected, files.join(', '));
 });
 
-test('CI������ҳ�桢��Ƶ���洢����鹤�ߵĸĶ�����ȫ����������', () => {
+test('CI：公共页面、音频、存储及检查工具的改动保留全部浏览器检查', () => {
   for (const file of ['site/index.html', 'site/app.js', 'site/styles.css', 'site/audio.js', 'site/storage.js',
     'site/modules.js', 'site/logic.js', 'site/review.js', 'site/statistics.js', 'site/motion.js',
     'site/assets/piano-samples.js', 'tests/run.cjs', 'tests/ci-plan.cjs', 'tests/helpers/app-harness.cjs',
@@ -40,13 +40,13 @@ test('CI������ҳ�桢��Ƶ���洢����鹤�ߵĸĶ�
   }
 });
 
-test('CI���޸���������Ա��������ж�Ӧ���ԣ�����ģ�⻹Ҫ�� PWA ���', () => {
+test('CI：修改浏览器测试本身会运行对应测试，缓存模拟还要求 PWA 检查', () => {
   assert.deepEqual(selectChecks(['tests/test_harmony_practice_browser.cjs']), ['harmony']);
   assert.deepEqual(selectChecks(['tests/test_ui_embedded.py']), ['ui']);
   assert.deepEqual(selectChecks(['tests/test_pwa_integration.py', 'tests/test_sw.cjs']), ['pwa']);
 });
 
-test('CI��һ�����Ͷ���ύʱ�Ƚ�����ǰ�󣬰��������ύ�����Ƶ�޸�', () => {
+test('CI：一次推送多个提交时比较推送前后，包含较早提交里的音频修改', () => {
   const plan = planChecks(push, {before: base}, (from, to) => {
     assert.equal(from, base); assert.equal(to, head);
     return ['site/singing.js', 'README.md'];
@@ -54,12 +54,12 @@ test('CI��һ�����Ͷ���ύʱ�Ƚ�����ǰ�󣬰��
   assert.deepEqual(plan.checks, ['singing']);
 });
 
-test('CI�������ľɡ���·����ͬ������鷶Χ�����������ĵ�Ŀ¼��©��', () => {
+test('CI：改名的旧、新路径共同决定检查范围，不因移入文档目录而漏检', () => {
   assert.deepEqual(selectChecks(['site/harmony-mix.js', 'docs/old-mix.js']), ['harmony']);
 });
 
-test('CI��main �������Ķ�ѡ���������飬�ֶ�����ʽ��������� main PR ��ȫ��', () => {
-  const noDiff = () => { assert.fail('������鲻Ӧ����������'); };
+test('CI：main 发布按改动选择浏览器检查，手动、显式完整请求和 main PR 仍全量', () => {
+  const noDiff = () => { assert.fail('完整检查不应依赖差异结果'); };
   for (const [environment, event] of [
     [{...push, CI_FULL: 'true'}, {before: base}],
     [{...push, GITHUB_EVENT_NAME: 'pull_request', CI_FULL: 'false'}, {pull_request: {base: {ref: 'main', sha: base}}}],
@@ -81,7 +81,7 @@ test('CI: reusable workflow accepts the caller base SHA for changed-file checks'
   assert.deepEqual(plan.checks, ['motion']);
 });
 
-test('CI��dev PR �Ƚ�Ŀ���֧�͵�ǰ�ϲ����', () => {
+test('CI：dev PR 比较目标分支和当前合并结果', () => {
   const environment = {...push, GITHUB_EVENT_NAME: 'pull_request', GITHUB_REF: 'refs/pull/7/merge'};
   const event = {pull_request: {base: {ref: 'dev', sha: base}, head: {sha: 'c'.repeat(40)}}};
   const plan = planChecks(environment, event, (from, to) => {
@@ -91,7 +91,7 @@ test('CI��dev PR �Ƚ�Ŀ���֧�͵�ǰ�ϲ����', () => {
   assert.deepEqual(plan.checks, ['staff']);
 });
 
-test('CI���״����͡�ȱ�ٲ�����޷�ʶ���¼�ʱ�˻��������', () => {
+test('CI：首次推送、缺少差异或无法识别事件时退回完整检查', () => {
   const unavailable = () => { throw Error('before commit unavailable'); };
   assert.deepEqual(planChecks(push, {before: '0'.repeat(40)}, unavailable).checks, all);
   assert.deepEqual(planChecks(push, {}, unavailable).checks, all);
@@ -101,7 +101,7 @@ test('CI���״����͡�ȱ�ٲ�����޷�ʶ���¼��
   assert.deepEqual(planChecks({GITHUB_EVENT_NAME: 'unknown'}, {}, unavailable).checks, all);
 });
 
-test('CI��ѡ����������ʱ�ܾ�ƴд���󡢿��б��ͻ����ͻ�Ĳ���', () => {
+test('CI：选择浏览器检查时拒绝拼写错误、空列表和互相冲突的参数', () => {
   for (const args of [['--browser-only='], ['--browser-only=singng'], ['--browser-only=singing', '--full'],
     ['--browser-only=staff', '--browser-only=harmony']]) {
     const result = spawnSync(process.execPath, ['tests/run.cjs', ...args], {
@@ -111,19 +111,19 @@ test('CI��ѡ����������ʱ�ܾ�ƴд���󡢿���
   }
 });
 
-test('CI��ѡ������������ȱ�ٻ���ʱ����ʧ�ܣ����ظ����л������', () => {
+test('CI：选定的浏览器检查缺少环境时返回失败，不重复运行基础检查', () => {
   for (const id of ['staff', 'ui']) {
     const result = spawnSync(process.execPath, ['tests/run.cjs', '--browser-only=' + id], {
       cwd: path.resolve(__dirname, '..'), encoding: 'utf8', windowsHide: true,
       env: {...process.env, CHROMIUM_PATH: path.join(__dirname, 'missing-browser'), PYTHON: path.join(__dirname, 'missing-python')}
     });
     assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.match(result.stdout, /ͨ�� 0��ʧ�� 0������ 1/);
-    assert.doesNotMatch(result.stdout, /���߻���ģ��|\[ͨ��\]/);
+    assert.match(result.stdout, /通过 0，失败 0，跳过 1/);
+    assert.doesNotMatch(result.stdout, /离线缓存模拟|\[通过\]/);
   }
 });
 
-test('CI��ʵ�����������ȷ���ݿ�����������鷶Χ��ʹ�ö�����ժҪ�ļ�', () => {
+test('CI：实际命令输出正确传递快速与完整检查范围，使用独立的摘要文件', () => {
   const root = path.resolve(__dirname, '..');
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8', windowsHide: true}).trim();
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tonaloom-ci-plan-'));
@@ -142,7 +142,7 @@ test('CI��ʵ�����������ȷ���ݿ������
       assert.equal(outputs.needs_browser, String(full));
       assert.equal(outputs.needs_python, String(full));
       assert.equal(outputs.browser_checks, full ? all.join(',') : '');
-      assert.match(fs.readFileSync(summary, 'utf8'), /���������߻���ģ��ʼ������/);
+      assert.match(fs.readFileSync(summary, 'utf8'), /基础与离线缓存模拟始终运行/);
     }
   } finally {
     for (const file of [payload, output, summary]) if (fs.existsSync(file)) fs.unlinkSync(file);
