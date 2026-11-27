@@ -45,9 +45,9 @@ module.exports=async function navigationChecks(browser){
       const [,statsId]=settings[entry.id];
       const style=await page.locator('#'+statsId).evaluate(button=>{const css=getComputedStyle(button);return [css.backgroundColor,css.borderColor,css.borderRadius,css.padding,css.fontSize,css.minHeight];});
       if(statsButtonStyle)assert.deepEqual(style,statsButtonStyle,'各模块练习统计按钮样式一致');else statsButtonStyle=style;
-      const dailyId=`daily-${entry.id}-settings`;
-      assert(await page.locator('#'+dailyId).isVisible(),'每日任务设置应在对应模块设置内');
-      assert(await page.evaluate(([daily,stats])=>Boolean(document.getElementById(daily).compareDocumentPosition(document.getElementById(stats))&Node.DOCUMENT_POSITION_FOLLOWING),[dailyId,statsId]),'每日任务设置应在练习统计上方');
+      const dailyId=`daily-${entry.id}`;
+      assert(await page.locator('#'+dailyId+'-settings').isVisible(),'每日任务设置应在对应模块设置内');
+      assert(await page.evaluate(([daily,stats])=>Boolean(document.getElementById(daily).compareDocumentPosition(document.getElementById(stats))&Node.DOCUMENT_POSITION_FOLLOWING),[dailyId+'-settings',statsId]),'每日任务设置应在练习统计上方');
       await page.locator('#'+dailyId+'-plus').click();
       assert.equal(await page.locator('#'+dailyId+'-target').innerText(),'10');
       await page.locator('#'+dailyId+'-save').click();
