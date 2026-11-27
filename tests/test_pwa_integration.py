@@ -94,8 +94,8 @@ with sync_playwright() as p:
     page.locator('#home-harmonic').click()
     page.locator('#open-settings').click()
     page.locator('#daily-harmonic-plus').click()
+    page.wait_for_function('window.TonaloomDailyTasks.progress("harmonic").target===10')
     assert page.locator('#daily-harmonic-target').inner_text()=='10'
-    page.locator('#daily-harmonic-save').click()
     page.locator('#settings-done').click()
     page.locator('#back-home').click()
     page.locator('#home-harmonic').click()

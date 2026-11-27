@@ -237,9 +237,8 @@ body.module-active .app-shell{padding-top:14px}
 .daily-task-controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .daily-task-quantity{display:flex;align-items:center;gap:12px;font-size:14px;color:#d6d2e9}
 .daily-task-quantity>span{min-width:80px;text-align:center;font-variant-numeric:tabular-nums}
-.daily-task-quantity button,.daily-task-save{min-width:44px;min-height:44px;border:1px solid #45465f;border-radius:9px;background:#252639;color:#ded5fc;font-size:22px}
-.daily-task-save{min-width:82px;padding:0 14px;color:#e3ddf8;font-size:13px}
-.daily-task-quantity button:disabled,.daily-task-save:disabled{opacity:.4;cursor:default}
+.daily-task-quantity button{min-width:44px;min-height:44px;border:1px solid #45465f;border-radius:9px;background:#252639;color:#ded5fc;font-size:22px}
+.daily-task-quantity button:disabled{opacity:.4;cursor:default}
 .daily-tasks-error{font-size:12px;color:#ffb7c8;line-height:1.6}
 @media(max-width:620px){body.module-active .app-shell{padding-top:10px}}
 

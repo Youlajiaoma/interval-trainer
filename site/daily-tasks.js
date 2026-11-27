@@ -4,7 +4,8 @@
   const modules = root.TonaloomModules, key = modules.dailyTasksKey;
   const $ = id => document.getElementById(id), maximum = Math.floor(Number.MAX_SAFE_INTEGER / 10) * 10;
   const relevant = new Set([key,...modules.reviewDefinitions.map(item => item.key)]), counts = new Map();
-  let storage, editingId = 'harmonic', draftTarget = 0, saving = false, midnightTimer;
+  let storage, editingId = 'harmonic', draftTarget = 0, midnightTimer, savePromise;
+  const pendingTargets = new Map();
   function validTarget(value) { return Number.isSafeInteger(value) && value >= 0 && value <= maximum && value % 10 === 0; }
   function normalize(value) {
     return Object.fromEntries(modules.list.map(module => {
@@ -60,31 +61,43 @@
       const section = $('daily-' + module.id + '-settings'), prefix = 'daily-' + module.id;
       section.classList.toggle('hidden',module.id !== editingId);
       $(prefix + '-target').textContent = String(module.id === editingId ? draftTarget : settings()[module.id].target);
-      $(prefix + '-minus').disabled = saving || (module.id === editingId && draftTarget === 0);
-      $(prefix + '-plus').disabled = saving || (module.id === editingId && draftTarget >= maximum);
-      $(prefix + '-save').disabled = saving;
+      $(prefix + '-minus').disabled = module.id === editingId && draftTarget === 0;
+      $(prefix + '-plus').disabled = module.id === editingId && draftTarget >= maximum;
       $(prefix + '-error').classList.toggle('hidden',module.id !== editingId || !$(prefix + '-error').textContent);
     }
   }
   function open(id) {
     if (!modules.list.some(module => module.id === id)) return;
-    editingId = id; draftTarget = settings()[id].target;
+    editingId = id; draftTarget = pendingTargets.get(id) ?? settings()[id].target;
     const error = $('daily-' + id + '-error'); error.textContent = '';
     renderForm();
   }
-  async function save(id) {
-    if (saving || id !== editingId) return;
-    saving = true; renderForm();
-    try {
-      const config = settings();
-      config[id] = {enabled:draftTarget > 0,target:draftTarget};
-      await storage.replaceEntries([[key,JSON.stringify(config)]]);
-      render();
-    } catch {
-      const error = $('daily-' + id + '-error');
-      error.textContent = '任务设置保存失败，请重试或检查浏览器存储权限。';
-      error.classList.remove('hidden');
-    } finally { saving = false; renderForm(); }
+  function save(id) {
+    pendingTargets.set(id,draftTarget);
+    if (savePromise) return savePromise;
+    savePromise = (async () => {
+      let batch = new Map();
+      try {
+        while (pendingTargets.size) {
+          batch = new Map(pendingTargets);
+          const config = settings();
+          for (const [moduleId,target] of batch) config[moduleId] = {enabled:target > 0,target};
+          await storage.replaceEntries([[key,JSON.stringify(config)]]);
+          for (const [moduleId,target] of batch) {
+            if (pendingTargets.get(moduleId) === target) pendingTargets.delete(moduleId);
+          }
+          render();
+        }
+      } catch {
+        const errorId = pendingTargets.has(editingId) || batch.has(editingId)
+          ? editingId : (pendingTargets.keys().next().value || batch.keys().next().value || editingId);
+        pendingTargets.clear();
+        const error = $('daily-' + errorId + '-error');
+        error.textContent = '任务设置保存失败，请重试或检查浏览器存储权限。';
+        error.classList.remove('hidden');
+      }
+    })().finally(() => { savePromise = null; renderForm(); });
+    return savePromise;
   }
   function backupEntries(backup) {
     if (backup.dailyTasks === undefined) return [];
@@ -112,10 +125,11 @@
     for (const module of modules.list) {
       const prefix = 'daily-' + module.id;
       for (const [suffix,step] of [['minus',-10],['plus',10]]) $(prefix + '-' + suffix).addEventListener('click',() => {
-        if (editingId !== module.id || saving) return;
-        draftTarget = Math.min(maximum,Math.max(0,draftTarget + step)); renderForm();
+        if (editingId !== module.id) return;
+        draftTarget = Math.min(maximum,Math.max(0,draftTarget + step));
+        $(prefix + '-error').textContent = '';
+        renderForm(); void save(module.id);
       });
-      $(prefix + '-save').addEventListener('click',() => void save(module.id));
     }
     root.addEventListener('interval-trainer-storage-updated',event => {
       if (event.detail?.some(item => relevant.has(item))) render();

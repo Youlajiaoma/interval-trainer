@@ -845,8 +845,7 @@ input[type="range"]::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
 }
 
-.daily-task-quantity button,
-.daily-task-save {
+.daily-task-quantity button {
   min-width: 44px;
   min-height: 44px;
   color: var(--color-accent-hover);
@@ -855,15 +854,8 @@ input[type="range"]::-moz-range-thumb {
   border-radius: var(--radius-md);
 }
 
-.daily-task-save {
-  min-width: 82px;
-  padding-inline: 14px;
-  color: var(--color-text);
-  font-size: var(--font-size-body);
-}
 
-.daily-task-quantity button:disabled,
-.daily-task-save:disabled {
+.daily-task-quantity button:disabled {
   opacity: .4;
   cursor: default;
 }

@@ -38,15 +38,12 @@ const controls = {
         assert.equal(await page.locator('#'+prefix+'-target').textContent(),'0');
         assert(await page.locator('#'+prefix+'-minus').isDisabled());
         await page.click('#'+prefix+'-plus'); assert.equal(await page.locator('#'+prefix+'-target').textContent(),'10');
-        assert(!await page.evaluate(id => TonaloomDailyTasks.progress(id).enabled,id),'未保存前目标不能生效');
-        await page.click('#'+prefix+'-save');
         await page.waitForFunction(id => TonaloomDailyTasks.progress(id).target === 10,id);
         if (id==='harmonic') {
           await page.click('#'+prefix+'-minus'); assert.equal(await page.locator('#'+prefix+'-target').textContent(),'0');
           assert(await page.locator('#'+prefix+'-minus').isDisabled());
-          await page.click('#'+prefix+'-save');
           await page.waitForFunction(id => !TonaloomDailyTasks.progress(id).enabled,id);
-          await page.click('#'+prefix+'-plus'); await page.click('#'+prefix+'-save');
+          await page.click('#'+prefix+'-plus');
           await page.waitForFunction(id => TonaloomDailyTasks.progress(id).target === 10,id);
         }
         assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth));
@@ -90,16 +87,14 @@ const controls = {
       }
       await page.screenshot({path:path.join(screenshots,`${width}-home.png`)});
       assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));
-      await page.reload(); await page.waitForFunction(()=>window.IntervalAppReady);
-      await page.locator('#splash-screen').waitFor({state:'detached'});
+      await page.reload(); await page.waitForFunction(()=>window.IntervalAppReady); await page.locator('#splash-screen').waitFor({state:'detached'});
       assert(await page.evaluate(ids=>ids.every(id=>TonaloomDailyTasks.progress(id).complete),ids));
       assert(!await page.evaluate(()=>TonaloomDailyTasks.progress('singing').enabled),'未设置的模唱每日任务保持关闭');
       if(width===390){
         const second=await context.newPage(); await second.goto('http://127.0.0.1:8767/');
-        await second.waitForFunction(()=>window.IntervalAppReady);
-        await second.locator('#splash-screen').waitFor({state:'detached'});
+        await second.waitForFunction(()=>window.IntervalAppReady); await second.locator('#splash-screen').waitFor({state:'detached'});
         await page.click('#home-harmonic'); await page.click('#open-settings');
-        await page.click('#daily-harmonic-plus'); await page.click('#daily-harmonic-save');
+        await page.click('#daily-harmonic-plus');
         await second.waitForFunction(()=>TonaloomDailyTasks.progress('harmonic').target===20);
         assert.equal(await second.locator('#home-harmonic-marker').textContent(),'→'); await second.close();
       }

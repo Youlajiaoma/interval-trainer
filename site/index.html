@@ -12,13 +12,13 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png?v=2.11.0" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=2.11.0">
-  <link rel="stylesheet" href="styles.css?v=2.21.7">
-  <link rel="stylesheet" href="sight.css?v=2.21.7">
-  <link rel="stylesheet" href="singing.css?v=2.21.7">
-  <link rel="stylesheet" href="harmony-practice.css?v=2.21.7-local-audio2">
-  <link rel="stylesheet" href="theme.css?v=2.21.7-ui6">
-  <link rel="stylesheet" href="splash.css?v=2.21.7">
-  <script src="splash.js?v=2.21.7" defer></script>
+  <link rel="stylesheet" href="styles.css?v=2.21.8">
+  <link rel="stylesheet" href="sight.css?v=2.21.8">
+  <link rel="stylesheet" href="singing.css?v=2.21.8">
+  <link rel="stylesheet" href="harmony-practice.css?v=2.21.8-local-audio2">
+  <link rel="stylesheet" href="theme.css?v=2.21.8-ui6">
+  <link rel="stylesheet" href="splash.css?v=2.21.8">
+  <script src="splash.js?v=2.21.8" defer></script>
 </head>
 <body>
   <div class="splash-screen" id="splash-screen" aria-hidden="true">
@@ -34,7 +34,7 @@
     <header class="app-header">
       <h1>Tonaloom</h1>
       <div class="app-version" aria-label="程序版本和构建编号">
-        <span id="app-version">2.21.7</span>
+        <span id="app-version">2.21.8</span>
         <span id="app-build">本地开发版</span>
       </div>
     </header>
@@ -193,7 +193,7 @@
       <section class="settings-section"><label class="slider-label" for="singing-volume"><span>钢琴音量</span><strong id="singing-volume-value">65%</strong></label><input id="singing-volume" type="range" min="0" max="100" step="1" value="65"></section>
       <section class="settings-section daily-task-section" id="daily-singing-settings">
         <h3>每日任务</h3>
-        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="模唱每日任务量"><button id="daily-singing-minus" type="button" aria-label="模唱减少10题">−</button><span><output id="daily-singing-target" aria-live="polite">0</output> 题/日</span><button id="daily-singing-plus" type="button" aria-label="模唱增加10题">+</button></div><button id="daily-singing-save" class="daily-task-save" type="button">保存</button></div>
+        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="模唱每日任务量"><button id="daily-singing-minus" type="button" aria-label="模唱减少10题">−</button><span><output id="daily-singing-target" aria-live="polite">0</output> 题/日</span><button id="daily-singing-plus" type="button" aria-label="模唱增加10题">+</button></div></div>
         <p id="daily-singing-error" class="daily-tasks-error hidden" role="alert"></p>
       </section>
       <section class="settings-section stats-entry-section"><button id="singing-open-stats" class="open-stats-button" type="button"><span><strong>练习统计</strong></span><span aria-hidden="true">›</span></button></section>
@@ -224,12 +224,12 @@
       </section>
       <section class="settings-section daily-task-section" id="daily-harmonic-settings">
         <h3>每日任务</h3>
-        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="和声音程每日任务量"><button id="daily-harmonic-minus" type="button" aria-label="和声音程减少10题">−</button><span><output id="daily-harmonic-target" aria-live="polite">0</output> 题/日</span><button id="daily-harmonic-plus" type="button" aria-label="和声音程增加10题">+</button></div><button id="daily-harmonic-save" class="daily-task-save" type="button">保存</button></div>
+        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="和声音程每日任务量"><button id="daily-harmonic-minus" type="button" aria-label="和声音程减少10题">−</button><span><output id="daily-harmonic-target" aria-live="polite">0</output> 题/日</span><button id="daily-harmonic-plus" type="button" aria-label="和声音程增加10题">+</button></div></div>
         <p id="daily-harmonic-error" class="daily-tasks-error hidden" role="alert"></p>
       </section>
       <section class="settings-section daily-task-section hidden" id="daily-melodic-settings">
         <h3>每日任务</h3>
-        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="旋律音程每日任务量"><button id="daily-melodic-minus" type="button" aria-label="旋律音程减少10题">−</button><span><output id="daily-melodic-target" aria-live="polite">0</output> 题/日</span><button id="daily-melodic-plus" type="button" aria-label="旋律音程增加10题">+</button></div><button id="daily-melodic-save" class="daily-task-save" type="button">保存</button></div>
+        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="旋律音程每日任务量"><button id="daily-melodic-minus" type="button" aria-label="旋律音程减少10题">−</button><span><output id="daily-melodic-target" aria-live="polite">0</output> 题/日</span><button id="daily-melodic-plus" type="button" aria-label="旋律音程增加10题">+</button></div></div>
         <p id="daily-melodic-error" class="daily-tasks-error hidden" role="alert"></p>
       </section>
       <section class="settings-section stats-entry-section">
@@ -264,7 +264,7 @@
       </section>
       <section class="settings-section daily-task-section" id="daily-sight-settings">
         <h3>每日任务</h3>
-        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="音符辨认每日任务量"><button id="daily-sight-minus" type="button" aria-label="音符辨认减少10题">−</button><span><output id="daily-sight-target" aria-live="polite">0</output> 题/日</span><button id="daily-sight-plus" type="button" aria-label="音符辨认增加10题">+</button></div><button id="daily-sight-save" class="daily-task-save" type="button">保存</button></div>
+        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="音符辨认每日任务量"><button id="daily-sight-minus" type="button" aria-label="音符辨认减少10题">−</button><span><output id="daily-sight-target" aria-live="polite">0</output> 题/日</span><button id="daily-sight-plus" type="button" aria-label="音符辨认增加10题">+</button></div></div>
         <p id="daily-sight-error" class="daily-tasks-error hidden" role="alert"></p>
       </section>
       <section class="settings-section stats-entry-section"><button id="sight-open-stats" class="open-stats-button" type="button"><strong>练习统计</strong><span aria-hidden="true">›</span></button></section>
@@ -277,7 +277,7 @@
     <div class="settings-content">
       <section class="settings-section daily-task-section" id="daily-staff-settings">
         <h3>每日任务</h3>
-        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="音程辨认每日任务量"><button id="daily-staff-minus" type="button" aria-label="音程辨认减少10题">−</button><span><output id="daily-staff-target" aria-live="polite">0</output> 题/日</span><button id="daily-staff-plus" type="button" aria-label="音程辨认增加10题">+</button></div><button id="daily-staff-save" class="daily-task-save" type="button">保存</button></div>
+        <div class="daily-task-controls"><div class="daily-task-quantity" role="group" aria-label="音程辨认每日任务量"><button id="daily-staff-minus" type="button" aria-label="音程辨认减少10题">−</button><span><output id="daily-staff-target" aria-live="polite">0</output> 题/日</span><button id="daily-staff-plus" type="button" aria-label="音程辨认增加10题">+</button></div></div>
         <p id="daily-staff-error" class="daily-tasks-error hidden" role="alert"></p>
       </section>
       <section class="settings-section stats-entry-section"><button id="staff-open-stats" class="open-stats-button" type="button"><span><strong>练习统计与复习</strong></span><span aria-hidden="true">›</span></button></section>
@@ -318,26 +318,26 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="motion.js?v=2.21.7"></script>
+  <script src="motion.js?v=2.21.8"></script>
   <script src="logic.js"></script>
-  <script src="modules.js?v=2.21.7"></script>
+  <script src="modules.js?v=2.21.8"></script>
   <script src="assets/piano-samples.js"></script>
   <script src="assets/melodic-recordings.js"></script>
-  <script src="review.js?v=2.21.7"></script>
-  <script src="statistics.js?v=2.21.7-popover2"></script>
-  <script src="audio.js?v=2.21.7"></script>
+  <script src="review.js?v=2.21.8"></script>
+  <script src="statistics.js?v=2.21.8-popover2"></script>
+  <script src="audio.js?v=2.21.8"></script>
   <script src="storage.js"></script>
-  <script src="daily-tasks.js?v=2.21.7"></script>
-  <script src="pitch.js?v=2.21.7"></script>
-  <script src="singing.js?v=2.21.7"></script>
-  <script src="assets/harmony-songs.js?v=2.21.7-local-audio2"></script>
-  <script src="harmony-mix.js?v=2.21.7-local-audio2"></script>
-  <script src="harmony-practice.js?v=2.21.7-local-audio2"></script>
-  <script src="app.js?v=2.21.7-local-audio2"></script>
+  <script src="daily-tasks.js?v=2.21.8"></script>
+  <script src="pitch.js?v=2.21.8"></script>
+  <script src="singing.js?v=2.21.8"></script>
+  <script src="assets/harmony-songs.js?v=2.21.8-local-audio2"></script>
+  <script src="harmony-mix.js?v=2.21.8-local-audio2"></script>
+  <script src="harmony-practice.js?v=2.21.8-local-audio2"></script>
+  <script src="app.js?v=2.21.8-local-audio2"></script>
   <script src="vendor/vexflow-loader.js"></script>
-  <script src="sight.js?v=2.21.7"></script>
-  <script src="staff-interval.js?v=2.21.7"></script>
-  <script src="build-info.js?v=2.21.7"></script>
+  <script src="sight.js?v=2.21.8"></script>
+  <script src="staff-interval.js?v=2.21.8"></script>
+  <script src="build-info.js?v=2.21.8"></script>
   <script src="pwa-register.js"></script>
 </body>
 </html>

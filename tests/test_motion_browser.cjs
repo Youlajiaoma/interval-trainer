@@ -57,7 +57,7 @@ async function motion(page,selector) {
         await page.click('#'+doneId); await page.waitForSelector('#'+dialogId,{state:'hidden'});
         await page.click('#open-settings'); await settle(page,'#'+dialogId);
         assert(await page.locator(`#daily-${entry.id}-settings`).isVisible(),'每日任务设置应内嵌在模块设置中');
-        await page.click(`#daily-${entry.id}-plus`); await page.click(`#daily-${entry.id}-save`);
+        await page.click(`#daily-${entry.id}-plus`); await page.waitForFunction(id=>TonaloomDailyTasks.progress(id).target===10,entry.id);
         await page.click('#'+statsId);
         const currentStatsMotion = await motion(page,'#stats-dialog');
         assert.equal(currentStatsMotion.length,reduced ? 0 : 1);

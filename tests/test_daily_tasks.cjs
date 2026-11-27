@@ -35,8 +35,9 @@ function databaseAtNine() {
     [keys.staff,JSON.stringify(reviewStore({actual:3,count:9}))]
   ]));
 }
-test('每日任务直接显示在各自设置中；0关闭任务，按10增减且保存只影响当前模块',async t => {
+test('daily goals autosave independently per module',async t => {
   const html = fs.readFileSync(path.join(__dirname,'../site/index.html'),'utf8');
+  assert.doesNotMatch(html,/id="daily-[a-z]+-save"/,'daily goals do not need a Save button');
   assert(!html.includes('id="home-daily-tasks"') && !html.includes('id="daily-tasks-dialog"'));
   for (const [id,stats] of [['harmonic','open-stats'],['melodic','open-stats'],['sight','sight-open-stats'],['staff','staff-open-stats'],['singing','singing-open-stats']]) {
     assert(html.indexOf(`id="daily-${id}-settings"`) < html.indexOf(`id="${stats}"`),`${id} 每日任务应在统计上方`);
@@ -60,8 +61,7 @@ test('每日任务直接显示在各自设置中；0关闭任务，按10增减�
       assert.equal(app.get(prefix+'-target').textContent,'130','题量不应受100题等人为上限限制');
       assert(!app.get(prefix+'-plus').disabled);
     }
-    assert(!progress(app,id).enabled,'保存前不应启用目标');
-    await app.click(prefix+'-save');
+    assert(progress(app,id).enabled,'adjustment should autosave the goal');
     expectedTargets[id] = id === 'harmonic' ? 130 : 10;
     for (const other of Object.keys(expectedTargets)) assert.equal(progress(app,other).target,expectedTargets[other],`设置 ${id} 不应改变其他模块`);
     await closeSettings(app,id); await app.click('back-home');
@@ -71,7 +71,6 @@ test('每日任务直接显示在各自设置中；0关闭任务，按10增减�
   for (let i=0;i<13;i++) await app.click('daily-harmonic-minus');
   assert.equal(app.get('daily-harmonic-target').textContent,'0');
   assert(app.get('daily-harmonic-minus').disabled);
-  await app.click('daily-harmonic-save');
   assert(!progress(app,'harmonic').enabled && progress(app,'harmonic').target===0);
   const refreshed = await appFor(t,{database});
   assert.deepEqual(JSON.parse(JSON.stringify(refreshed.window.TonaloomDailyTasks.backup())),JSON.parse(app.storage.getItem(tasksKey)));
@@ -127,11 +126,11 @@ test('按当地日期跨天重新计算任务，已完成记录和目标设置�
 test('把任务设为0只关闭目标，不清除已完成题目；重新增加可继续达标',async t => {
   const app = await appFor(t,{database:databaseAtNine()}); await app.click('home-harmonic'); await app.answer('answer-grid',4);
   assert(progress(app,'harmonic').complete); await app.click('back-home');
-  await openDaily(app); await app.click('daily-harmonic-minus'); await app.click('daily-harmonic-save');
+  await openDaily(app); await app.click('daily-harmonic-minus');
   assert(!progress(app,'harmonic').enabled);
   assert.equal(JSON.parse(app.storage.getItem(keys.harmonic)).totalAnswers,10);
   await closeSettings(app); await app.click('back-home');
-  await openDaily(app); await app.click('daily-harmonic-plus'); await app.click('daily-harmonic-save');
+  await openDaily(app); await app.click('daily-harmonic-plus');
   assert(progress(app,'harmonic').complete); assert.equal(progress(app,'harmonic').count,10);
 });
 test('任务设置随备份恢复，旧备份保留本机任务设置，无效任务不能覆盖任何记录',async t => {
@@ -151,18 +150,26 @@ test('另一窗口答题和调整目标后同步完成状态，两个窗口的�
   await a.click('home-harmonic'); await b.click('home-harmonic'); await a.answer('answer-grid',4); await b.settle();
   assert(b.get('daily-practice-check').classList.contains('is-complete'));
   await b.answer('answer-grid',4); await a.settle(); assert.equal(progress(a,'harmonic').count,11);
-  await a.click('back-home'); await openDaily(a); await a.click('daily-harmonic-plus'); await a.click('daily-harmonic-save'); await b.settle();
+  await a.click('back-home'); await openDaily(a); await a.click('daily-harmonic-plus'); await b.settle();
   assert(!b.get('daily-practice-check').classList.contains('is-complete'));
   assert.equal(progress(b,'harmonic').target,20);
 });
-test('任务保存失败时保留原设置和编辑内容，重试成功后更新目标',async t => {
+test('autosave failure is reported and a later adjustment is saved',async t => {
   const database = createMemoryDatabase(), app = await appFor(t,{database});
-  await openDaily(app); await app.click('daily-harmonic-plus');
-  database.failNextWrite({after:0}); await app.click('daily-harmonic-save');
+  await openDaily(app); database.failNextWrite({after:0}); await app.click('daily-harmonic-plus');
   assert(!app.get('daily-harmonic-error').classList.contains('hidden'));
   assert.equal(app.get('daily-harmonic-target').textContent,'10');
   assert.equal(app.storage.getItem(tasksKey),null);
   assert(!progress(app,'harmonic').enabled);
-  await app.click('daily-harmonic-save');
+  await app.click('daily-harmonic-plus');
   assert(progress(app,'harmonic').enabled);
+  assert.equal(progress(app,'harmonic').target,20);
+});
+
+test('rapid daily-goal taps all persist',async t => {
+  const app = await appFor(t); await openDaily(app);
+  const plus=app.get('daily-harmonic-plus'); plus.click(); plus.click(); plus.click();
+  await app.settle();
+  assert.equal(app.get('daily-harmonic-target').textContent,'30');
+  assert.equal(progress(app,'harmonic').target,30);
 });

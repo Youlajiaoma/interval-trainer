@@ -230,7 +230,7 @@ async function installMicrophone(page) {
       assert.match(await page.locator('#stats-intervals').innerText(), /C/);
       await page.keyboard.press('Escape'); await page.waitForSelector('#stats-dialog', {state:'hidden'});
       await page.click('#back-home'); await page.click('#home-singing'); await page.click('#open-settings');
-      await page.click('#daily-singing-plus'); await page.click('#daily-singing-save');
+      await page.click('#daily-singing-plus'); await page.waitForFunction(()=>TonaloomDailyTasks.progress('singing').target===10);
       await page.click('#singing-settings-done'); await page.click('#back-home');
       assert.equal(await page.evaluate(() => TonaloomDailyTasks.progress('singing').count), 3);
       const saved = await page.evaluate(key => JSON.parse(IntervalPwaStorageAdapter.getItem(key)), settingsKey);
@@ -238,8 +238,7 @@ async function installMicrophone(page) {
       assert.equal(await page.evaluate(() => singingCapture.earlyRequests), 0);
       assert.equal(await page.evaluate(() => singingCapture.clipped), 0, '重播及延迟授权未截断参考音');
       assert(await page.evaluate(() => singingCapture.interruptions > 0 && singingCapture.resumes >= singingCapture.interruptions));
-      await page.reload(); await page.waitForFunction(() => window.IntervalAppReady);
-      await page.locator('#splash-screen').waitFor({state:'detached'});
+      await page.reload(); await page.waitForFunction(() => window.IntervalAppReady); await page.locator('#splash-screen').waitFor({state:'detached'});
       assert.equal(await resultCount(page), 3); assert.equal(await page.evaluate(() => singingCapture.calls), 0);
       await page.click('#home-singing'); await page.click('#singing-play'); await listening(page);
       await page.evaluate(() => singingCapture.track.dispatchEvent(new Event('ended')));
