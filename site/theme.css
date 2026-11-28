@@ -3,6 +3,7 @@
    structure and behaviour while sharing one coherent set of design tokens. */
 :root {
   --color-bg: #0d0f1b;
+  --color-chrome: #16152c;
   --color-bg-elevated: #131526;
   --color-surface: #191c31;
   --color-surface-2: #21253b;
@@ -57,15 +58,14 @@
 }
 
 html {
-  background: var(--color-bg);
+  background: var(--color-chrome);
   overflow-x: clip;
 }
 
 body {
   color: var(--color-text);
-  background:
-    radial-gradient(circle at 50% -180px, rgba(119, 91, 220, .19), transparent 500px),
-    var(--color-bg);
+  --page-glow: radial-gradient(circle at 50% -180px, rgba(119, 91, 220, .19), transparent 500px);
+  background: var(--page-glow), var(--color-bg);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -1508,6 +1508,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 620px) {
+  body {
+    background:
+      linear-gradient(to bottom, var(--color-chrome) 0, var(--color-chrome) 76px, transparent 180px),
+      var(--page-glow),
+      var(--color-bg);
+  }
+
   .app-shell {
     padding: calc(16px + env(safe-area-inset-top)) 15px calc(26px + env(safe-area-inset-bottom));
   }
