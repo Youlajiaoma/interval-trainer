@@ -78,9 +78,12 @@
     replace('stats-trend',wrap);
   }
   function renderCalendar(s,now){
-    // 和日期范围筛选无关的固定最近 49 天会交由 render 获取 fullLast49 数据。
     closeCalendarDetail();
-    const days=s.last49;
+    const calendarRoot=$('stats-calendar'),viewportWidth=root.innerWidth||390,gap=viewportWidth<=620?3:4;
+    const calendarWidth=Number(calendarRoot.clientWidth)||Math.max(180,Math.min(900,viewportWidth-(viewportWidth<=620?58:88)));
+    const previousSquare=Math.max(1,(calendarWidth-gap*6)/7-2),targetSquare=previousSquare*2/3;
+    const columns=Math.max(1,Math.round((calendarWidth+gap)/(targetSquare+2+gap)));
+    const days=s.calendarForDays?s.calendarForDays(columns*7):s.last49;
     const wrap=create('div','stats-calendar-wrap');
     const daysEl=create('div','stats-heatmap');
     daysEl.style.gridTemplateRows='repeat(7,minmax(0,1fr))';
@@ -130,8 +133,9 @@
       daysEl.appendChild(square);
     }
     wrap.append(daysEl);
-    const caption=create('div','stats-heat-caption');caption.append(create('span','','49 天前'),create('span','','今天'));
+    const caption=create('div','stats-heat-caption');caption.append(create('span','',`${Math.max(0,days.length-1)} 天前`),create('span','','今天'));
     wrap.append(caption,detail);replace('stats-calendar',wrap);
+    if(!Number(calendarRoot.clientWidth)&&root.requestAnimationFrame)root.requestAnimationFrame(()=>{if(Number(calendarRoot.clientWidth))renderCalendar(s,now);});
   }
   function renderIntervals(s){
     const wrap=create('div','stats-interval-list');
@@ -157,11 +161,13 @@
   }
   function readReview(review,enabled,period,now){
     const s=review.statistics(period,now),current=review.analysis(enabled,now);
-    return {...s,last49:review.statistics(49,now).trend,yesterdayWrong:current.yesterdayWrong,
+    const calendarForDays=days=>review.statistics(days,now).trend;
+    return {...s,last49:calendarForDays(49),calendarForDays,yesterdayWrong:current.yesterdayWrong,
       due:current.due.length,storageAvailable:review.storageAvailable};
   }
   function init(getStatistics){
     const select=$('stats-period');
+    let resizeTimer=null;
     function render(){
       // A page kept open across updates can retain the former note-only hiding class.
       $('stats-dialog').classList.remove('sight-stats-active');
@@ -173,6 +179,10 @@
       const warn=$('stats-storage-warning');warn.textContent=s.storageAvailable && window.IntervalPwaStorageAdapter?.available !== false?'记录自动保存在本机 IndexedDB。卸载应用或清除站点数据仍可能丢失，建议定期导出备份。':(window.IntervalPwaStorageAdapter?.failureMessage || '本浏览器不允许持久保存记录！请勿依赖当前练习数据。');
     }
     select.addEventListener('change',() => root.TonaloomMotion.content($('stats-panels'),render));
+    if(root.addEventListener)root.addEventListener('resize',()=>{
+      if(!$('stats-dialog').open)return;
+      root.clearTimeout(resizeTimer);resizeTimer=root.setTimeout(render,120);
+    },{passive:true});
     return {render};
   }
   root.IntervalStats=Object.freeze({init,readReview});

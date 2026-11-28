@@ -115,7 +115,8 @@ const site=path.join(__dirname,'../site');
   for(const range of ['7','30','90','all']){
    await page.selectOption('#stats-period',range);
    if(!await page.locator('#stats-period').isVisible())throw Error('note statistics date filter hidden');
-   if(await page.locator('#stats-calendar .stats-heat').count()!==49)throw Error('note statistics calendar missing');
+   const calendarCount=await page.locator('#stats-calendar .stats-heat').count();
+   if(calendarCount<49||calendarCount%7!==0)throw Error('note statistics calendar must show seven-day columns');
    if(await page.locator('#stats-performance-title').textContent()!=='各音符表现')throw Error('note statistics title');
    const noteText=await page.locator('#stats-intervals').textContent();
    if(!noteText.includes('高音谱号')||!noteText.includes('低音谱号'))throw Error('clef breakdown missing');

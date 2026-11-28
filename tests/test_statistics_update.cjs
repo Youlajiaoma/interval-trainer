@@ -21,7 +21,8 @@ test('浏览器保存了旧统计脚本时，新页面仍加载配套脚本并�
   await app.click('stats-sight');
   assert.equal(app.get('stats-performance-title').textContent, '各音符表现');
   assert.equal(app.get('stats-summary').children[0].children.length, 4);
-  assert.equal(app.get('stats-calendar').children[0].children[0].children.length, 49);
+  const calendarCount=app.get('stats-calendar').children[0].children[0].children.length;
+  assert(calendarCount>=49 && calendarCount%7===0);
   await app.click('stats-staff');
   assert.equal(app.get('stats-performance-title').textContent, '各音程表现');
   app.assertNoErrors();
@@ -35,7 +36,8 @@ test('音符旧页遗留的隐藏状态不会让共用统计空白，四类统�
     await app.click('stats-'+mode);
     assert(!app.get('stats-dialog').classList.contains('sight-stats-active'), '旧样式的隐藏条件必须移除');
     assert.equal(app.get('stats-summary').children[0].children.length, 4);
-    assert.equal(app.get('stats-calendar').children[0].children[0].children.length, 49);
+    const calendarCount=app.get('stats-calendar').children[0].children[0].children.length;
+    assert(calendarCount>=49 && calendarCount%7===0);
   }
   app.assertNoErrors();
 });

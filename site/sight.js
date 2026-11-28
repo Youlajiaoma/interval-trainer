@@ -471,12 +471,13 @@ function statistics(period,now){
    correct:rows.reduce((sum,row)=>sum+row.correct,0)};
  }));
  const tagged=key=>sources.flatMap(({clef,stats})=>stats[key].map(row=>({...row,clef})));
+ const calendarForDays=days=>mergeDays(sources.map(source=>review[source.clef].statistics(days,now).trend));
  const {dayKey,addCalendarDays}=root.IntervalReview;
  const practiced=new Set(mergeDays(sources.map(source=>source.allDays)).filter(day=>day.answered>0).map(day=>day.day));
  let date=practiced.has(dayKey(now))?now:addCalendarDays(now,-1),streak=0;
  while(practiced.has(dayKey(date))){streak++;date=addCalendarDays(date,-1);}
  return {period,unit:'音符',label:(unit,clef)=>`${clef==='treble'?'高音谱号':'低音谱号'} · ${reviewLabel(clef,unit)}`,
-  totals,byInterval,trend,last49:mergeDays(sources.map(source=>source.stats.last49)),
+  totals,byInterval,trend,last49:calendarForDays(49),calendarForDays,
   practiceDays:trend.filter(day=>day.answered>0).length,streak,
   history:tagged('history').sort((a,b)=>b.at-a.at),
   confusions:tagged('confusions').sort((a,b)=>b.count-a.count),

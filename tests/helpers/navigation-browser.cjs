@@ -93,7 +93,8 @@ module.exports=async function navigationChecks(browser){
     await page.waitForFunction(()=>TonaloomModules.statisticsMode==='melodic');
     await page.locator('#stats-melodic').focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>TonaloomModules.statisticsMode==='sight');
     await page.selectOption('#stats-period','7');assert.equal(await page.locator('#stats-performance-title').innerText(),'各音符表现');
-    const heatSquares=page.locator('#stats-calendar .stats-heat');assert.equal(await heatSquares.count(),49);
+    const heatSquares=page.locator('#stats-calendar .stats-heat'),heatCount=await heatSquares.count();
+    assert(heatCount>=49 && heatCount%7===0,'日历应按宽度显示完整的七天列');
     const weekStart=await heatSquares.nth(0).boundingBox(),weekEnd=await heatSquares.nth(6).boundingBox(),nextWeek=await heatSquares.nth(7).boundingBox();
     assert(Math.abs(weekStart.x-weekEnd.x)<2 && weekEnd.y>weekStart.y,'每列应按周排列七个热区格');
     assert(nextWeek.x>weekStart.x+weekStart.width,'下一周应从右侧新列开始');
@@ -103,6 +104,9 @@ module.exports=async function navigationChecks(browser){
       assert(Math.abs(heatmapBox.width-calendarBox.width)<2,'手机热力图应铺满统计卡片可用宽度');
       const heatBox=await heatSquares.first().boundingBox();
       assert(Math.abs(heatBox.width-heatBox.height)<2,'手机热力图格子应为正方形');
+      const gap=await page.locator('#stats-calendar .stats-heatmap').evaluate(el=>parseFloat(getComputedStyle(el).columnGap));
+      const priorSize=(heatmapBox.width-gap*6)/7-2;
+      assert(heatBox.width/priorSize>.60 && heatBox.width/priorSize<.74,'手机格子应比七列布局缩小约三分之一');
     }
     assert.equal(await heatSquares.last().getAttribute('title'),null,'热力图不应再依赖悬停提示');
     await heatSquares.last().click();

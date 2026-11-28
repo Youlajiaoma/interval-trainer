@@ -30,12 +30,13 @@ async function open(t, events = [], settings = {clef:'both', accidentals:false})
   return app;
 }
 
-test('音符空记录使用共用概览、49 天日历和空状态，不显示其他类别的数据', async t => {
+test('音符空记录使用共用概览、每列七格的自适应日历和空状态，不显示其他类别的数据', async t => {
   const app = await open(t);
   assert.deepEqual(values(app), ['0', '—', '0 天', '0 天']);
   assert.equal(app.get('stats-performance-title').textContent, '各音符表现');
   assert.equal(app.get('stats-confusions-title').textContent, '易混淆音符');
-  assert.equal(app.get('stats-calendar').children[0].children[0].children.length, 49);
+  const emptyCalendarCount=app.get('stats-calendar').children[0].children[0].children.length;
+  assert(emptyCalendarCount>=49 && emptyCalendarCount%7===0);
   assert.match(app.get('stats-trend').textContent, /没有答题记录/);
   assert.match(app.get('stats-intervals').textContent, /各音符的正确率/);
   assert.match(app.get('stats-storage-warning').textContent, /IndexedDB/);
@@ -78,7 +79,7 @@ test('音符高低音交替练习合并连续天数，断一天后重新计数�
   assert.equal(statistics(1, NOW).streak, 4, '连续练习沿用其他模块的全历史含义');
 });
 
-test('音符近 7、30、90 天与全部时间同步筛选总数、表现、误认和历史，日历保持最近 49 天', async t => {
+test('音符近 7、30、90 天与全部时间同步筛选总数、表现、误认和历史，日历仍按宽度显示七天一列', async t => {
   const app = await open(t, [
     {clef:'treble'}, {clef:'bass', day:-6, chosen:16}, {clef:'treble', day:-7},
     {clef:'bass', day:-29}, {clef:'treble', day:-30, chosen:16},
@@ -91,7 +92,7 @@ test('音符近 7、30、90 天与全部时间同步筛选总数、表现、误�
     assert.equal(s.byInterval.reduce((sum,row) => sum+row.answered,0), answered);
     assert.equal(s.confusions.reduce((sum,row) => sum+row.count,0), wrong);
     const squares = app.get('stats-calendar').children[0].children[0].children;
-    assert.equal(squares.length, 49);
+    assert(squares.length>=49 && squares.length%7===0);
     assert.equal(squares.filter(square => square.dataset.level !== '0').length, 5);
   }
 });
