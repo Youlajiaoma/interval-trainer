@@ -66,6 +66,36 @@ test('音符两个谱号按答题数合计正确率，同一天只算一个练�
   assert.match(detail.textContent,/答题 4 题 · 正确 3 题 · 正确率 75%/);
 });
 
+test('calendar heatmap maps the least active day to light purple and the most active day to deep purple', async t => {
+  const events=[];
+  for(let amount=1;amount<=7;amount++){
+    for(let count=0;count<amount;count++)events.push({clef:'treble',day:amount-7});
+  }
+  const app=await open(t,events);
+  const levels=[...app.get('stats-calendar').children[0].children[0].children]
+    .slice(-7).map(square=>square.dataset.level);
+  assert.deepEqual(levels,['1','2','3','4','5','6','7']);
+});
+
+test('calendar heatmap uses the same seven purple shades in both stylesheets, from light to deep', () => {
+  const stylesheets=['styles.css','theme.css'].map(file=>
+    fs.readFileSync(path.join(__dirname,'../site',file),'utf8'));
+  const palettes=stylesheets.map(source=>Array.from({length:7},(_,index)=>{
+    const level=index+1;
+    const match=source.match(new RegExp(`\\.stats-heat\\[data-level="${level}"\\]\\s*\\{?\\s*background:\\s*(#[0-9a-f]{6})`,'i'));
+    assert(match,`missing calendar color level ${level}`);
+    return match[1].toLowerCase();
+  }));
+  assert.deepEqual(palettes[0],palettes[1]);
+  const luminance=color=>{
+    const channels=color.slice(1).match(/../g).map(channel=>parseInt(channel,16)/255)
+      .map(channel=>channel<=0.04045?channel/12.92:((channel+0.055)/1.055)**2.4);
+    return channels[0]*0.2126+channels[1]*0.7152+channels[2]*0.0722;
+  };
+  const brightness=palettes[0].map(luminance);
+  assert(brightness.every((value,index)=>index===0||value<brightness[index-1]));
+});
+
 test('音符高低音交替练习合并连续天数，断一天后重新计数，今天未练仍保留昨天的连续记录', async t => {
   const app = await open(t, [
     {clef:'treble', day:-3}, {clef:'bass', day:-2}, {clef:'treble', day:-1},

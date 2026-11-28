@@ -84,6 +84,10 @@
     const previousSquare=Math.max(1,(calendarWidth-gap*6)/7-2),targetSquare=previousSquare*2/3;
     const columns=Math.max(1,Math.round((calendarWidth+gap)/(targetSquare+2+gap)));
     const days=s.calendarForDays?s.calendarForDays(columns*7):s.last49;
+    const activityValues=[...new Set(days.map(day=>Number(day.answered)||0).filter(count=>count>0))].sort((a,b)=>a-b);
+    const activityLevels=new Map(activityValues.map((count,index)=>[
+      count,activityValues.length===1?4:Math.round(index*6/(activityValues.length-1))+1
+    ]));
     const wrap=create('div','stats-calendar-wrap');
     const daysEl=create('div','stats-heatmap');
     daysEl.style.gridTemplateRows='repeat(7,minmax(0,1fr))';
@@ -126,7 +130,7 @@
     for(const d of days){
       const square=create('button','stats-heat');square.type='button';
       const n=d.answered;
-      square.dataset.level=String(n===0?0:n<5?1:n<12?2:n<25?3:4);
+      square.dataset.level=String(n===0?0:activityLevels.get(Number(n))||1);
       square.setAttribute('aria-label',`${d.day}：${n} 题，正确率 ${fmtPct(d.correct,n)}，点击查看详情`);
       square.setAttribute('aria-controls','stats-calendar-detail');square.setAttribute('aria-pressed','false');
       square.addEventListener('click',()=>showDetail(d,square));

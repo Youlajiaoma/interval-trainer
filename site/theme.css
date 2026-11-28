@@ -1022,10 +1022,13 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
 }
-.stats-heat[data-level="1"] { background: #514878; }
-.stats-heat[data-level="2"] { background: #7464a7; }
-.stats-heat[data-level="3"] { background: #9683d7; }
-.stats-heat[data-level="4"] { background: var(--color-accent-hover); }
+.stats-heat[data-level="1"] { background: #d9ccff; }
+.stats-heat[data-level="2"] { background: #c0aaff; }
+.stats-heat[data-level="3"] { background: #a78cff; }
+.stats-heat[data-level="4"] { background: #8d70ef; }
+.stats-heat[data-level="5"] { background: #7358d1; }
+.stats-heat[data-level="6"] { background: #5842a8; }
+.stats-heat[data-level="7"] { background: #3f2e7d; }
 
 .stats-heat.is-selected {
   border-color: #eee9ff;
