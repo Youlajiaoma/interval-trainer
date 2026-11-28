@@ -83,6 +83,8 @@
     const days=s.last49;
     const wrap=create('div','stats-calendar-wrap');
     const daysEl=create('div','stats-heatmap');
+    daysEl.style.gridTemplateRows='repeat(7,minmax(0,1fr))';
+    daysEl.style.gridTemplateColumns=`repeat(${Math.max(1,Math.ceil(days.length/7))},minmax(0,1fr))`;
     const detail=create('div','stats-heat-detail hidden');
     detail.id='stats-calendar-detail';detail.setAttribute('role','status');detail.setAttribute('aria-live','polite');
     function positionDetail(square){

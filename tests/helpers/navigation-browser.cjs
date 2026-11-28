@@ -94,6 +94,9 @@ module.exports=async function navigationChecks(browser){
     await page.locator('#stats-melodic').focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>TonaloomModules.statisticsMode==='sight');
     await page.selectOption('#stats-period','7');assert.equal(await page.locator('#stats-performance-title').innerText(),'各音符表现');
     const heatSquares=page.locator('#stats-calendar .stats-heat');assert.equal(await heatSquares.count(),49);
+    const weekStart=await heatSquares.nth(0).boundingBox(),weekEnd=await heatSquares.nth(6).boundingBox(),nextWeek=await heatSquares.nth(7).boundingBox();
+    assert(Math.abs(weekStart.x-weekEnd.x)<2 && weekEnd.y>weekStart.y,'每列应按周排列七个热区格');
+    assert(nextWeek.x>weekStart.x+weekStart.width,'下一周应从右侧新列开始');
     if(width<=620){
       const heatmapBox=await page.locator('#stats-calendar .stats-heatmap').boundingBox();
       const calendarBox=await page.locator('#stats-calendar').boundingBox();

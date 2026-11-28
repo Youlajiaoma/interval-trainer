@@ -1000,15 +1000,17 @@ input[type="range"]::-moz-range-thumb {
 .stats-heatmap {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
-  grid-auto-flow: row;
-  gap: 5px;
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
 }
 
 .stats-heat {
   display: block;
-  width: 100%;
+  width: calc(100% - 2px);
   height: auto;
+  justify-self: center;
   min-width: 0;
   min-height: 0;
   aspect-ratio: 1;
@@ -1764,15 +1766,12 @@ input[type="range"]::-moz-range-thumb {
     padding: 17px 14px;
   }
 
-  .stats-heatmap {
-    width: 100%;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: clamp(3px, 1vw, 5px);
-  }
+  .stats-heatmap { width: 100%; gap: 3px; }
 
   .stats-heat {
-    width: 100%;
+    width: calc(100% - 2px);
     height: auto;
+    justify-self: center;
     min-width: 0;
     min-height: 0;
     aspect-ratio: 1;
